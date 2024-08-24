@@ -77,11 +77,6 @@ Builds and runs a C++ benchmark program:
 - Compiles `rbench.cpp` along with other necessary files.
 - Runs the resulting executable.
 
-### `test_yurii_cpp:`
-Merges and formats a C++ file, then builds and runs it:
-- Merges `rbench.cpp` into `yurii_hashmap.cpp`.
-- Compiles and runs `yurii_hashmap.cpp`.
-
 ## Other Targets
 
 ### `format_rlib_c:`
