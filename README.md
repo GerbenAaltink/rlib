@@ -16,6 +16,7 @@ It contains
  - Several time functions supporting nano seconds.
  - Several math functions for if not available by std (on termux for example).
  - Arena blazing fast memory.
+  
 ![Gif of build process](build.gif)
 ## ENVIRONMENT VARIABLES
 
