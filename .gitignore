@@ -1,0 +1,13 @@
+build/*yur*
+build/yur*
+.vscore
+.bzr
+.bzrignore
+.vscode
+C-Data-Structs
+rasmd
+*yur*
+yur*
+hashmap.h
+primes.h
+errors.h 
