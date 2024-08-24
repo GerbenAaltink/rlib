@@ -11,5 +11,5 @@ yur*
 hashmap.h
 primes.h
 errors.h 
-.tty
+*.tty
 
