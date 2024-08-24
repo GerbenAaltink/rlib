@@ -77,6 +77,10 @@ Builds and runs a C++ benchmark program:
 - Compiles `rbench.cpp` along with other necessary files.
 - Runs the resulting executable.
 
+## Build process
+
+![Gif of build process](build.gif)
+
 ## Other Targets
 
 ### `format_rlib_c:`
