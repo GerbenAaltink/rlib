@@ -8,11 +8,11 @@ LDFLAGS = -lm
 
 all: test_rmalloc test_rtime test_arena test_rtree test_rstring test_rlexer test_rhashtable test_rkeytable test_rterminal test_rmerge format_all build format_all
 
-format_all:
+format_all: format_rlib_h
 	clang-format *.c *.h *.cpp -i --sort-includes=false
 
-format_rlib_c:
-	clang-format rlib.c -i --sort-includes --verbose
+format_rlib_h:
+	clang-format rlib.h build/rlib.h -i --sort-includes --verbose
 
 backup:
 	rzip zip rlib.rzip *.c *.h Makefile README.md *.cpp *.hpp ".vscode/" build
@@ -33,7 +33,9 @@ test_rmerge: build_rmerge run_rmerge
 build_rmerge:
 	$(CC) $(CFLAGS) rmerge.c -o ./build/rmerge
 run_rmerge:
-	./build/rmerge rlib.h > rlib.c
+	./build/rmerge _rlib.h > ./build/rlib.h
+	cp ./build/rlib.h ./rlib.h
+	cp ./build/rlib.h ./rlib.c
 
 test_rprint: build_rprint run_rprint
 build_rprint:
@@ -102,7 +104,7 @@ build_rkeytable:
 run_rkeytable:
 	./build/rkeytable
 
-build: format_rlib_c
+build: format_rlib_h
 	@gcc rlib.c -fPIC -shared -o ./build/librlib.so -O2
 	@echo "Built a new rlib.so"
 	@gcc rlibso.c -L./build -Wl,-rpath=. -lrlib -o  ./build/rlibso -O2
@@ -112,6 +114,7 @@ build: format_rlib_c
 install:
 	sudo cp ./build/rmerge /usr/bin/rmerge
 	sudo cp ./build/clean /usr/bin/clean
+	sudo cp ./build/rlib.h /usr/include/rlib.h
 
 publish:
 	brz add 

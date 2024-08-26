@@ -67,10 +67,21 @@ char *msecs_str(long long ms) {
     return result;
 }
 
-void nsleep(long nanoseconds) {
-    // long nanoseconds = (long)(1000000000 * s);
-
+void nsleep(nsecs_t nanoseconds) {
     long seconds = 0;
+    int factor = 0;
+    while (nanoseconds > 1000000000) {
+        factor++;
+        nanoseconds = nanoseconds / 10;
+    }
+    if (factor) {
+        seconds = 1;
+        factor--;
+        while (factor) {
+            seconds = seconds * 10;
+            factor--;
+        }
+    }
 
     struct timespec req = {seconds, nanoseconds};
     struct timespec rem;

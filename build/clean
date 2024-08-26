@@ -4,8 +4,8 @@ import sys
 
 delete_files = "--delete" in sys.argv
 
-exclude_files = ["Makefile", ".bzrignore", "clean",".clang-format"]
-source_extensions = [".c",".h",".cpp",".hpp",".md",".rzip"]
+exclude_files = ["Makefile", ".gitignore", ".bzrignore", "clean",".clang-format"]
+source_extensions = [".c",".h",".cpp",".hpp",".md",".rzip",".gif"]
 
 files_ignored = []
 files_pending = []

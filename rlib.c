@@ -1,6 +1,5 @@
-/*
-    RETOOR
-*/
+// RETOOR - Aug 26 2024
+// Found (local) include: license.h
 // Found (local) include: rmath.h
 // Found (local) include: rmalloc.h
 // Found (local) include: rtime.h
@@ -25,6 +24,28 @@
 // Found (local) include: rtime.h
 // Found (local) include: rstring.h
 // Found (local) include: rterminal.h
+// MIT License
+// ===========
+
+// Copyright (c) 2024 Retoor
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 #ifndef RLIB_H
 #define RLIB_H
 // BEGIN OF RLIB
@@ -171,10 +192,21 @@ char *msecs_str(long long ms) {
     return result;
 }
 
-void nsleep(long nanoseconds) {
-    // long nanoseconds = (long)(1000000000 * s);
-
+void nsleep(nsecs_t nanoseconds) {
     long seconds = 0;
+    int factor = 0;
+    while (nanoseconds > 1000000000) {
+        factor++;
+        nanoseconds = nanoseconds / 10;
+    }
+    if (factor) {
+        seconds = 1;
+        factor--;
+        while (factor) {
+            seconds = seconds * 10;
+            factor--;
+        }
+    }
 
     struct timespec req = {seconds, nanoseconds};
     struct timespec rem;

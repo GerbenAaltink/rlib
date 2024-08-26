@@ -18,6 +18,8 @@ It contains
  - Arena blazing fast memory.
 
 ## Extensive tested and benchmarked
+All files get merged together to one file called `rlib.c` that can be used as a header file.
+The result is a single header framework.
 ![Gif of build process](build.gif)
 
 ## ENVIRONMENT VARIABLES

@@ -116,9 +116,7 @@ int main(int argc, char *argv[]) {
         // file_output = argv[2];
     }
     FILE *f = tmpfile();
-    printf("/*\n");
-    printf("    RETOOR\n");
-    printf("*/\n");
+    printf("// RETOOR - %s\n", __DATE__);
     merge_file(file_input, f);
     rewind(f);
     char *data;
