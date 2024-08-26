@@ -14,9 +14,6 @@ format_all: format_rlib_h
 format_rlib_h:
 	clang-format rlib.h build/rlib.h -i --sort-includes --verbose
 
-backup:
-	rzip zip rlib.rzip *.c *.h Makefile README.md *.cpp *.hpp ".vscode/" build
-
 test_rlexer: build_rlexer run_rlexer
 build_rlexer:
 	$(CC) $(CFLAGS) rlexer.c -o ./build/rlexer
