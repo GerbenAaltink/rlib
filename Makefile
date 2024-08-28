@@ -1,119 +1,141 @@
 # Compiler
 CC = gcc
-
-# Compiler flags
+CXX = g++
 CFLAGS = -Wall -Wextra -Ofast
 LDFLAGS = -lm
- 
 
-all: test_rmalloc test_rtime test_arena test_rtree test_rstring test_rlexer test_rhashtable test_rkeytable test_rterminal test_rmerge format_all build format_all
+# Directories
+BUILD_DIR = build
+SRC_DIR = .
 
+# Source files and their corresponding object files
+SOURCES = rlexer.c rterminal.c rmerge.c rprint.c rstring.c rbench.c rbench.cpp yurii_hashmap.cpp rmalloc.c rtime.c arena.c rtree.c rhashtable.c rkeytable.c
+OBJECTS = $(SOURCES:.c=.o) $(SOURCES:.cpp=.o)
+
+# Default target
+all: format_all $(BUILD_DIR)/rlib.so $(BUILD_DIR)/rlibso test_rmalloc test_rtime test_arena test_rtree test_rstring test_rlexer test_rhashtable test_rkeytable test_rterminal test_rmerge
+
+# Formatting targets
 format_all: format_rlib_h
 	clang-format *.c *.h *.cpp -i --sort-includes=false
 
 format_rlib_h:
 	clang-format rlib.h build/rlib.h -i --sort-includes --verbose
 
-test_rlexer: build_rlexer run_rlexer
-build_rlexer:
-	$(CC) $(CFLAGS) rlexer.c -o ./build/rlexer
-run_rlexer:
-	./build/rlexer
+# Build shared library
+$(BUILD_DIR)/rlib.so: rlib.c
+	$(CC) $(CFLAGS) -fPIC -shared rlib.c -o $@
 
-test_rterminal: build_rterminal run_rterminal
-build_rterminal:
-	$(CC) $(CFLAGS) rterminal.c -o ./build/rterminal
-run_rterminal:
-	./build/rterminal
+# Build executable
+$(BUILD_DIR)/rlibso: rlibso.c $(BUILD_DIR)/rlib.so
+	$(CC) $(CFLAGS) rlibso.c -L$(BUILD_DIR) -Wl,-rpath=$(BUILD_DIR) -lrlib -o $@
 
-test_rmerge: build_rmerge run_rmerge
-build_rmerge:
-	$(CC) $(CFLAGS) rmerge.c -o ./build/rmerge
-run_rmerge:
-	./build/rmerge _rlib.h > ./build/rlib.h
-	cp ./build/rlib.h ./rlib.h
-	cp ./build/rlib.h ./rlib.c
+# Compile sources into objects
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
-test_rprint: build_rprint run_rprint
-build_rprint:
-	$(CC) $(CFLAGS) rprint.c -o ./build/rprint
-run_rprint:
-	./build/rprint
+%.o: %.cpp
+	$(CXX) $(CFLAGS) -c $< -o $@
 
-test_rstring: build_rstring run_rstring
-build_rstring:
-	$(CC) $(CFLAGS) rstring.c -o ./build/rstring
-run_rstring:
-	./build/rstring
+# Test targets
+test_rlexer: $(BUILD_DIR)/rlexer
+	$(BUILD_DIR)/rlexer
 
-test_rbench: build_rbench run_rbench
-build_rbench:
-	$(CC) $(CFLAGS) rbench.c -o ./build/rbench
-run_rbench:
-	./build/rbench
+$(BUILD_DIR)/rlexer: rlexer.o
+	$(CC) $(CFLAGS) $< -o $@
 
-test_rbench_cpp: build_rbench_cpp run_rbench_cpp
-build_rbench_cpp:
-	g++ $(CFLAGS) ./C-Data-Structs/src/primes.c rbench.cpp  -o ./build/rbench.cpp -I./C-Data-Structs/include
-run_rbench_cpp:
-	./build/rbench.cpp
+test_rterminal: $(BUILD_DIR)/rterminal
+	$(BUILD_DIR)/rterminal
 
-test_yurii_cpp: format_all build_yurii_cpp run_yurii_cpp
-build_yurii_cpp:
+$(BUILD_DIR)/rterminal: rterminal.o
+	$(CC) $(CFLAGS) $< -o $@
+
+test_rmerge: $(BUILD_DIR)/rmerge
+	$(BUILD_DIR)/rmerge _rlib.h > $(BUILD_DIR)/rlib.h
+	cp $(BUILD_DIR)/rlib.h ./rlib.h
+	cp $(BUILD_DIR)/rlib.h ./rlib.c
+
+$(BUILD_DIR)/rmerge: rmerge.o
+	$(CC) $(CFLAGS) $< -o $@
+
+test_rprint: $(BUILD_DIR)/rprint
+	$(BUILD_DIR)/rprint
+
+$(BUILD_DIR)/rprint: rprint.o
+	$(CC) $(CFLAGS) $< -o $@
+
+test_rstring: $(BUILD_DIR)/rstring
+	$(BUILD_DIR)/rstring
+
+$(BUILD_DIR)/rstring: rstring.o
+	$(CC) $(CFLAGS) $< -o $@
+
+test_rbench: $(BUILD_DIR)/rbench
+	$(BUILD_DIR)/rbench
+
+$(BUILD_DIR)/rbench: rbench.o
+	$(CC) $(CFLAGS) $< -o $@
+
+test_rbench_cpp: $(BUILD_DIR)/rbench_cpp
+	$(BUILD_DIR)/rbench_cpp
+
+$(BUILD_DIR)/rbench_cpp: rbench.cpp
+	g++ $(CFLAGS) rbench.cpp -o $@ -I./C-Data-Structs/include
+
+test_yurii_cpp: format_all $(BUILD_DIR)/yurii_hashmap_cpp
+	$(BUILD_DIR)/yurii_hashmap_cpp
+
+$(BUILD_DIR)/yurii_hashmap_cpp: yurii_hashmap.cpp
 	rmerge rbench.cpp > yurii_hashmap.cpp
-	g++ C-Data-Structs/src/primes.c yurii_hashmap.cpp -o ./build/yurii_hashmap.cpp -IC-Data-Structs/include
-run_yurii_cpp:
-	./build/yurii_hashmap.cpp
+	g++ C-Data-Structs/src/primes.c yurii_hashmap.cpp -o $@ -IC-Data-Structs/include
 
-test_rmalloc: build_rmalloc run_rmalloc
-build_rmalloc:
-	$(CC) $(CFLAGS) rmalloc.c -o ./build/rmalloc 
-run_rmalloc:
-	./build/rmalloc 
+test_rmalloc: $(BUILD_DIR)/rmalloc
+	$(BUILD_DIR)/rmalloc
 
-test_rtime: build_rtime run_rtime
-build_rtime:
-	$(CC) $(CFLAGS) rtime.c -o ./build/rtime
-run_rtime:
-	./build/rtime
+$(BUILD_DIR)/rmalloc: rmalloc.o
+	$(CC) $(CFLAGS) $< -o $@
 
-test_arena: build_arena run_arena
-build_arena:
-	$(CC) $(CFLAGS) arena.c -o ./build/arena
-run_arena:
-	./build/arena
+test_rtime: $(BUILD_DIR)/rtime
+	$(BUILD_DIR)/rtime
 
-test_rtree: build_rtree run_rtree
-build_rtree:
-	$(CC) $(CFLAGS) rtree.c -o ./build/rtree
-run_rtree:
-	./build/rtree
+$(BUILD_DIR)/rtime: rtime.o
+	$(CC) $(CFLAGS) $< -o $@
 
-test_rhashtable: build_rhashtable run_rhashtable
-build_rhashtable:
-	$(CC) $(CFLAGS) rhashtable.c -o ./build/rhashtable
-run_rhashtable:
-	./build/rhashtable
+test_arena: $(BUILD_DIR)/arena
+	$(BUILD_DIR)/arena
 
-test_rkeytable: build_rkeytable run_rkeytable
-build_rkeytable:
-	$(CC) $(CFLAGS) rkeytable.c -o ./build/rkeytable
-run_rkeytable:
-	./build/rkeytable
+$(BUILD_DIR)/arena: arena.o
+	$(CC) $(CFLAGS) $< -o $@
 
-build: format_rlib_h
-	@gcc rlib.c -fPIC -shared -o ./build/librlib.so -O2
-	@echo "Built a new rlib.so"
-	@gcc rlibso.c -L./build -Wl,-rpath=. -lrlib -o  ./build/rlibso -O2
-	@cd ./build && ./rlibso
-	@echo "Build succesful"
+test_rtree: $(BUILD_DIR)/rtree
+	$(BUILD_DIR)/rtree
 
+$(BUILD_DIR)/rtree: rtree.o
+	$(CC) $(CFLAGS) $< -o $@
+
+test_rhashtable: $(BUILD_DIR)/rhashtable
+	$(BUILD_DIR)/rhashtable
+
+$(BUILD_DIR)/rhashtable: rhashtable.o
+	$(CC) $(CFLAGS) $< -o $@
+
+test_rkeytable: $(BUILD_DIR)/rkeytable
+	$(BUILD_DIR)/rkeytable
+
+$(BUILD_DIR)/rkeytable: rkeytable.o
+	$(CC) $(CFLAGS) $< -o $@
+
+# Install target
 install:
-	sudo cp ./build/rmerge /usr/bin/rmerge
-	sudo cp ./build/clean /usr/bin/clean
-	sudo cp ./build/rlib.h /usr/include/rlib.h
+	sudo cp $(BUILD_DIR)/rmerge /usr/bin/rmerge
+	sudo cp $(BUILD_DIR)/clean /usr/bin/clean
+	sudo cp $(BUILD_DIR)/rlib.h /usr/include/rlib.h
 
+# Publish target
 publish:
 	brz add 
 	brz commit 
 	brz push lp:rlib
+
+clean:
+	rm -f $(BUILD_DIR)/*.o $(BUILD_DIR)/*.so $(BUILD_DIR)/*.cpp $(BUILD_DIR)/rmerge $(BUILD_DIR)/rprint $(BUILD_DIR)/rstring $(BUILD_DIR)/rbench $(BUILD_DIR)/rbench_cpp $(BUILD_DIR)/yurii_hashmap_cpp $(BUILD_DIR)/rmalloc $(BUILD_DIR)/rtime $(BUILD_DIR)/arena $(BUILD_DIR)/rtree $(BUILD_DIR)/rhashtable $(BUILD_DIR)/rkeytable

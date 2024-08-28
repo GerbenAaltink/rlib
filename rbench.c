@@ -4,6 +4,7 @@
 #include "rhashtable.h"
 #include <math.h>
 #include <string.h>
+#include "rtime.h"
 
 char *format_number_retoor(long lnumber) {
     static char formatted[1024];
@@ -357,17 +358,41 @@ void bench_endswith(long times) {
     rbench_free(r);
 }
 
+#define ifwhile(cond, action)                                                  \
+    {                                                                          \
+        bool _did_doit = false;                                                \
+        while (cond) {                                                         \
+            _did_doit = true;                                                  \
+            { action }                                                         \
+        }                                                                      \
+        if (_did_doit)
+
+#define endifwhile }
+
 int main() {
     show_progress = true;
-    long times = 90000000;
-    bench_table(times / 1000);
-    bench_sprintf(times / 1000);
-    bench_format_number(times / 10, 123456789);
-    bench_rstrmove(times);
+    long times = 900000000;
+
+    printf("With %% progress times:\n");
+    BENCH(times,
+          { bench_starts_with_yurii("abcdefghijklmnopqrstuvw", "abcdef"); });
+    BENCH(times, { bench_ends_with_yurii("abcdefghijklmnopqrstuvw", "uvw"); });
+
+    printf("Without %% progress times:\n");
+    BENCH(times * 1000,
+          { bench_starts_with_yurii("abcdefghijklmnopqrstuvw", "abcdef"); });
+    BENCH(times * 1000,
+          { bench_ends_with_yurii("abcdefghijklmnopqrstuvw", "uvw"); });
+
+    bench_table(times / 10000);
+    bench_sprintf(times / 10000);
+    bench_format_number(times / 100, 123456789);
+    bench_rstrmove(times / 100);
     bench_math(times);
-    bench_strcmp(times);
-    bench_startswith(times);
-    bench_endswith(times);
+    bench_strcmp(times / 100);
+
+    bench_startswith(times / 10);
+    bench_endswith(times / 10);
     printf("\nTotal execution time:%s\n", format_time(total_execution_time));
     printf("Total times: %s\n", rformat_number(total_times));
 

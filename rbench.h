@@ -15,6 +15,41 @@
 #include "rstring.h"
 #include "rterminal.h"
 
+#define BENCH(times, action)                                                   \
+    {                                                                          \
+        unsigned long utimes = (unsigned long)times;                           \
+        nsecs_t start = nsecs();                                               \
+        for (unsigned long i = 0; i < utimes; i++) {                           \
+            { action; }                                                        \
+        }                                                                      \
+        nsecs_t end = nsecs();                                                 \
+        printf("%s\n", format_time(end - start));                              \
+    }
+
+#define BENCHP(times, action)                                                  \
+    {                                                                          \
+        nsecs_t start = nsecs();                                               \
+        unsigned int prev_percentage = 0;                                      \
+        unsigned long utimes = (unsigned long)times;                           \
+        for (unsigned long i = 0; i < utimes; i++) {                           \
+            unsigned int percentage =                                          \
+                ((long double)i / (long double)times) * 100;                   \
+            int percentage_changed = percentage != prev_percentage;            \
+            __attribute__((unused)) int first = i == 0;                        \
+            __attribute__((unused)) int last = i == utimes - 1;                \
+            { action; };                                                       \
+            if (percentage_changed) {                                          \
+                printf("\r%d%%", percentage);                                  \
+                fflush(stdout);                                                \
+                                                                               \
+                prev_percentage = percentage;                                  \
+            }                                                                  \
+        }                                                                      \
+        printf("\r100%%\n");                                                   \
+        nsecs_t end = nsecs();                                                 \
+        printf("%s\n", format_time(end - start));                              \
+    }
+
 struct rbench_t;
 
 typedef struct rbench_function_t {

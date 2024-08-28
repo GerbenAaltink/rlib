@@ -29,6 +29,7 @@ unsigned rhash(char *s) {
 
 rnlist *rlget(char *s) {
     rnlist *np;
+
     for (np = rhashtab[rhash(s)]; np != NULL; np = np->next)
         if (strcmp(s, np->name) == 0)
             return np; // Found

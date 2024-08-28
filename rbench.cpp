@@ -141,7 +141,34 @@ nsecs_t total_execution_time = 0;
 long total_times = 0;
 bool show_progress = 1;
 
+void bench_fast_yurrii() {
+    HashMap_name *map = HashMap_name_new();
+    HashMap_name_init(map, 0);
+    char *key = NULL;
+    BENCHP(90000, {
+        key = rgenerate_key();
+        DS_codes_t code =
+            HashMap_name_put(map, (const char **)&key, (const char **)&key);
+        const char *res = *HashMap_name_get(map, (const char **)&key);
+        rasserts(!strcmp(res, key));
+    });
+    HashMap_name_destroy(map);
+}
+void bench_fast_retoor() {
+    rtree_t *tree = rtree_new();
+    char *key = NULL;
+    BENCHP(90000, {
+        key = rgenerate_key();
+        rtree_set(tree, key, key);
+        rasserts(!strcmp((char *)rtree_get(tree, key), key));
+    });
+    rtree_free(tree);
+}
+
 void bench_table(long times) {
+
+    bench_fast_retoor();
+    bench_fast_yurrii();
     rbench_t *r;
     rprint("\\T B\\l Times: %ld\n", times);
     r = rbench_new();
@@ -157,9 +184,71 @@ void bench_table(long times) {
     rbench_free(r);
 }
 
+typedef struct rtree2_t {
+    struct rtree2_t *children[255];
+    struct rtree2_t *next[255];
+    void *value;
+    char c;
+} rtree2_t;
+
+rtree2_t *rtree2_new() {
+    rtree2_t *tree = (rtree2_t *)calloc(1, sizeof(rtree2_t));
+    return tree;
+}
+
+void rtree2_set(rtree2_t *tree, char *key, void *value) {
+    if (tree->c == *key) {
+        key++;
+        if (!key) {
+            tree->value = value;
+        }
+    } else {
+        if (tree->children[*key]) {
+            tree = tree->children[*key];
+        } else {
+            printf("HIER EERS %cT\n", *key);
+            tree = tree->children[*key] = rtree2_new();
+            tree->c = *key;
+        }
+        key++;
+        if (!*key) {
+            printf("HIEr LAatSt 5c\n", *key);
+            tree->value = value;
+            return;
+        }
+        rtree2_set(tree, key, value);
+    }
+}
+void *rtree2_get(rtree2_t *tree, char *key) {
+    while (*key) {
+        tree = tree->children[*key];
+        key++;
+    }
+    return tree->value;
+}
+
+void bench_fast_retoor2() {
+    rtree2_t *tree = rtree2_new();
+    char *key = NULL;
+    BENCHP(90000, {
+        key = rgenerate_key();
+        rtree2_set(tree, key, key);
+        rasserts(!strcmp((char *)rtree2_get(tree, key), key));
+    });
+    // rtree_free(tree);
+}
+
 int main() {
+    rtree2_t *tree = rtree2_new();
+
+    char name[] = "key";
+    rtree2_set(tree, name, (void *)strdup("lala"));
+    char *val = (char *)rtree2_get(tree, name);
+    printf("%s\n", val);
+    bench_fast_retoor2();
+    exit(0);
     show_progress = true;
-    long times = 900000;
+    long times = 90000;
     bench_table(times);
 
     return rtest_end("");
