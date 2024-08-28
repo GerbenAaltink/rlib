@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+import pathlib
+import sys
+
+delete_files = "--delete" in sys.argv
+
+exclude_files = ["Makefile", ".gitignore", ".bzrignore", "clean",".clang-format",".clang-tidy"]
+source_extensions = [".bak", ".tar",".c",".h",".cpp",".hpp",".md",".rzip",".gif"]
+
+files_ignored = []
+files_pending = []
+
+file_count = 0
+
+for f in pathlib.Path(".").glob("*"):
+    if f.is_dir():
+       files_ignored.append(f)
+       continue
+    if f.name in exclude_files:
+       files_ignored.append(f) 
+       continue
+    if f.suffix not in source_extensions:
+       file_count += 1
+       files_pending.append(f)
+       if delete_files:
+          f.unlink();
+          print("{} - DELETED".format(str(f)))
+
+if not delete_files:
+    
+    print("IGNORED:")
+    for f in files_ignored:
+        print(" - {}".format(str(f)))
+    
+    print("PENDING DELETION:")    
+    for f in files_pending:
+        print(" - {}".format(str(f)))
+
+    print("{} files.".format(file_count))
+
+if not delete_files:
+    print("\n* Add --delete to remove files listed above.")

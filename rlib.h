@@ -1733,7 +1733,6 @@ char *rlex_format(char *content) {
 #include <sys/time.h>
 #include <time.h>
 
-
 #define BENCH(times, action)                                                   \
     {                                                                          \
         unsigned long utimes = (unsigned long)times;                           \
@@ -2101,4 +2100,3 @@ void rbench_free(rbench_t *r) { free(r); }
 #endif
 // END OF RLIB
 #endif
-
