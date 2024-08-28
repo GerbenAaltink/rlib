@@ -32,23 +32,27 @@ $(BUILD_DIR)/rlibso: rlibso.c $(BUILD_DIR)/rlib.so
 	$(CC) $(CFLAGS) rlibso.c -L$(BUILD_DIR) -Wl,-rpath=$(BUILD_DIR) -lrlib -o $@
 
 # Compile sources into objects
-%.o: %.c
+$(BUILD_DIR)/%.o: %.c clean_o
 	$(CC) $(CFLAGS) -c $< -o $@
+	
 
-%.o: %.cpp
+$(BUILD_DIR)/%.o: %.cpp clean_o
 	$(CXX) $(CFLAGS) -c $< -o $@
+	
+clean_o:
+	-@rm *.o
 
 # Test targets
 test_rlexer: $(BUILD_DIR)/rlexer
 	$(BUILD_DIR)/rlexer
 
-$(BUILD_DIR)/rlexer: rlexer.o
+$(BUILD_DIR)/rlexer: $(BUILD_DIR)/rlexer.o
 	$(CC) $(CFLAGS) $< -o $@
 
 test_rterminal: $(BUILD_DIR)/rterminal
 	$(BUILD_DIR)/rterminal
 
-$(BUILD_DIR)/rterminal: rterminal.o
+$(BUILD_DIR)/rterminal: $(BUILD_DIR)/rterminal.o
 	$(CC) $(CFLAGS) $< -o $@
 
 test_rmerge: $(BUILD_DIR)/rmerge
@@ -56,25 +60,25 @@ test_rmerge: $(BUILD_DIR)/rmerge
 	cp $(BUILD_DIR)/rlib.h ./rlib.h
 	cp $(BUILD_DIR)/rlib.h ./rlib.c
 
-$(BUILD_DIR)/rmerge: rmerge.o
+$(BUILD_DIR)/rmerge: $(BUILD_DIR)/rmerge.o
 	$(CC) $(CFLAGS) $< -o $@
 
 test_rprint: $(BUILD_DIR)/rprint
 	$(BUILD_DIR)/rprint
 
-$(BUILD_DIR)/rprint: rprint.o
+$(BUILD_DIR)/rprint: $(BUILD_DIR)/rprint.o
 	$(CC) $(CFLAGS) $< -o $@
 
 test_rstring: $(BUILD_DIR)/rstring
 	$(BUILD_DIR)/rstring
 
-$(BUILD_DIR)/rstring: rstring.o
+$(BUILD_DIR)/rstring: $(BUILD_DIR)/rstring.o
 	$(CC) $(CFLAGS) $< -o $@
 
 test_rbench: $(BUILD_DIR)/rbench
 	$(BUILD_DIR)/rbench
 
-$(BUILD_DIR)/rbench: rbench.o
+$(BUILD_DIR)/rbench: $(BUILD_DIR)/rbench.o
 	$(CC) $(CFLAGS) $< -o $@
 
 test_rbench_cpp: $(BUILD_DIR)/rbench_cpp
@@ -93,37 +97,37 @@ $(BUILD_DIR)/yurii_hashmap_cpp: yurii_hashmap.cpp
 test_rmalloc: $(BUILD_DIR)/rmalloc
 	$(BUILD_DIR)/rmalloc
 
-$(BUILD_DIR)/rmalloc: rmalloc.o
+$(BUILD_DIR)/rmalloc: $(BUILD_DIR)/rmalloc.o
 	$(CC) $(CFLAGS) $< -o $@
 
 test_rtime: $(BUILD_DIR)/rtime
 	$(BUILD_DIR)/rtime
 
-$(BUILD_DIR)/rtime: rtime.o
+$(BUILD_DIR)/rtime: $(BUILD_DIR)/rtime.o
 	$(CC) $(CFLAGS) $< -o $@
 
 test_arena: $(BUILD_DIR)/arena
 	$(BUILD_DIR)/arena
 
-$(BUILD_DIR)/arena: arena.o
+$(BUILD_DIR)/arena: $(BUILD_DIR)/arena.o
 	$(CC) $(CFLAGS) $< -o $@
 
 test_rtree: $(BUILD_DIR)/rtree
 	$(BUILD_DIR)/rtree
 
-$(BUILD_DIR)/rtree: rtree.o
+$(BUILD_DIR)/rtree: $(BUILD_DIR)/rtree.o
 	$(CC) $(CFLAGS) $< -o $@
 
 test_rhashtable: $(BUILD_DIR)/rhashtable
 	$(BUILD_DIR)/rhashtable
 
-$(BUILD_DIR)/rhashtable: rhashtable.o
+$(BUILD_DIR)/rhashtable: $(BUILD_DIR)/rhashtable.o
 	$(CC) $(CFLAGS) $< -o $@
 
 test_rkeytable: $(BUILD_DIR)/rkeytable
 	$(BUILD_DIR)/rkeytable
 
-$(BUILD_DIR)/rkeytable: rkeytable.o
+$(BUILD_DIR)/rkeytable: $(BUILD_DIR)/rkeytable.o
 	$(CC) $(CFLAGS) $< -o $@
 
 # Install target

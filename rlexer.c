@@ -4,6 +4,7 @@
 
 void test_lexer() {
     rtest_banner("Lexer");
+
     rlex("123"
          "-123 "
          "123.22.123.33"
