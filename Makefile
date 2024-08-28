@@ -13,7 +13,7 @@ SOURCES = rlexer.c rterminal.c rmerge.c rprint.c rstring.c rbench.c rbench.cpp y
 OBJECTS = $(SOURCES:.c=.o) $(SOURCES:.cpp=.o)
 
 # Default target
-all: format_all $(BUILD_DIR)/rlib.so $(BUILD_DIR)/rlibso test_rmalloc test_rtime test_arena test_rtree test_rstring test_rlexer test_rhashtable test_rkeytable test_rterminal test_rmerge
+all: format_all $(BUILD_DIR)/rlib.so $(BUILD_DIR)/rlibso test_rprint test_rmalloc test_rtime test_arena test_rtree test_rstring test_rlexer test_rhashtable test_rkeytable test_rterminal test_rmerge
 
 # Formatting targets
 format_all: format_rlib_h
@@ -25,6 +25,7 @@ format_rlib_h:
 # Build shared library
 $(BUILD_DIR)/rlib.so: rlib.c
 	$(CC) $(CFLAGS) -fPIC -shared rlib.c -o $@
+	$(CC) $(GCFLAGS) rlib.c -fPIC -shared -o ./build/librlib.so $@
 
 # Build executable
 $(BUILD_DIR)/rlibso: rlibso.c $(BUILD_DIR)/rlib.so

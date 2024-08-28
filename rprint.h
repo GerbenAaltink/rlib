@@ -163,7 +163,7 @@ void rprintlf(FILE *f, char *format, ...) {
 void rprintl(char *format, ...) {
     va_list args;
     va_start(args, format);
-    rprintlf(stdout, format, args);
+    rprintpf(stdout, "\\l", format, args);
     va_end(args);
 }
 
@@ -177,7 +177,7 @@ void rprintkf(FILE *f, char *format, ...) {
 void rprintk(char *format, ...) {
     va_list args;
     va_start(args, format);
-    rprintkf(stdout, format, args);
+    rprintpf(stdout, "\e[30m", format, args);
     va_end(args);
 }
 
@@ -191,7 +191,7 @@ void rprintrf(FILE *f, char *format, ...) {
 void rprintr(char *format, ...) {
     va_list args;
     va_start(args, format);
-    rprintrf(stdout, format, args);
+    rprintpf(stdout, "\e[31m", format, args);
     va_end(args);
 }
 
@@ -205,7 +205,7 @@ void rprintgf(FILE *f, char *format, ...) {
 void rprintg(char *format, ...) {
     va_list args;
     va_start(args, format);
-    rprintgf(stdout, format, args);
+    rprintpf(stdout, "\e[32m", format, args);
     va_end(args);
 }
 
@@ -219,7 +219,7 @@ void rprintyf(FILE *f, char *format, ...) {
 void rprinty(char *format, ...) {
     va_list args;
     va_start(args, format);
-    rprintyf(stdout, format, args);
+    rprintpf(stdout, "\e[33m", format, args);
     va_end(args);
 }
 
@@ -234,7 +234,7 @@ void rprintbf(FILE *f, char *format, ...) {
 void rprintb(char *format, ...) {
     va_list args;
     va_start(args, format);
-    rprintbf(stdout, format, args);
+    rprintpf(stdout, "\e[34m", format, args);
     va_end(args);
 }
 
@@ -248,7 +248,7 @@ void rprintmf(FILE *f, char *format, ...) {
 void rprintm(char *format, ...) {
     va_list args;
     va_start(args, format);
-    rprintmf(stdout, format, args);
+    rprintpf(stdout, "\e[35m", format, args);
     va_end(args);
 }
 
@@ -262,7 +262,7 @@ void rprintcf(FILE *f, char *format, ...) {
 void rprintc(char *format, ...) {
     va_list args;
     va_start(args, format);
-    rprintcf(stdout, format, args);
+    rprintpf(stdout, "\e[36m", format, args);
     va_end(args);
 }
 
@@ -276,7 +276,7 @@ void rprintwf(FILE *f, char *format, ...) {
 void rprintw(char *format, ...) {
     va_list args;
     va_start(args, format);
-    rprintwf(stdout, format, args);
+    rprintpf(stdout, "\e[37m", format, args);
     va_end(args);
 }
 #endif
