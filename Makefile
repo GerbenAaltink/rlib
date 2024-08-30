@@ -27,6 +27,12 @@ build_rlexer:
 run_rlexer:
 	./build/rlexer
 
+test_rterm: build_rterm run_rterm
+build_rterm:
+	$(CC) $(CFLAGS) rterm.c -o ./build/rterm
+run_rterm:
+	./build/rterm
+
 test_rterminal: build_rterminal run_rterminal
 build_rterminal:
 	$(CC) $(CFLAGS) rterminal.c -o ./build/rterminal
