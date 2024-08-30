@@ -1,4 +1,4 @@
-// RETOOR - Aug 30 2024
+// RETOOR - Aug 31 2024
 // Found (local) include: license.h
 // Found (local) include: rmath.h
 // Found (local) include: rmalloc.h
@@ -84,7 +84,8 @@ double modf(double x, double *iptr) {
 }
 #endif
 #endif
-#pragma once
+#ifndef RMALLOC_H
+#define RMALLOC_H
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -120,6 +121,8 @@ char *rstrdup(char *str) {
     rmalloc_count++;
     return res;
 }
+
+#endif
 
 #ifndef RLIB_TIME
 #define RLIB_TIME

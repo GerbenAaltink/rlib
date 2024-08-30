@@ -1,5 +1,3 @@
-build/*yur*
-build/yur*
 .vscore
 .bzr
 .bzrignore
@@ -13,4 +11,5 @@ primes.h
 errors.h 
 *.tty
 *.o
+build
 
