@@ -1,4 +1,4 @@
-// RETOOR - Aug 28 2024
+// RETOOR - Aug 30 2024
 // Found (local) include: license.h
 // Found (local) include: rmath.h
 // Found (local) include: rmalloc.h
@@ -84,8 +84,7 @@ double modf(double x, double *iptr) {
 }
 #endif
 #endif
-#ifndef RMALLOC_H
-#define RMALLOC_H
+#pragma once
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -121,8 +120,6 @@ char *rstrdup(char *str) {
     rmalloc_count++;
     return res;
 }
-
-#endif
 
 #ifndef RLIB_TIME
 #define RLIB_TIME
@@ -324,6 +321,21 @@ void arena_reset(arena_t *arena) { arena->pointer = 0; }
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/select.h>
+
+bool rfd_wait(int fd, int ms) {
+    fd_set read_fds;
+    struct timeval timeout;
+
+    FD_ZERO(&read_fds);
+    FD_SET(fd, &read_fds);
+
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 1000 * ms; // 100 milliseconds timeout
+
+    int ret = select(fd + 1, &read_fds, NULL, NULL, &timeout);
+    return ret > 0 && FD_ISSET(fd, &read_fds);
+}
 
 bool rfile_exists(char *path) {
     struct stat s;
