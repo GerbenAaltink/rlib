@@ -14,9 +14,12 @@ format_all: format_rlib_h
 format_rlib_h:
 	clang-format rlib.h build/rlib.h -i --sort-includes --verbose
 
-clear
+clear:
 	-@rm -rf build
-	mkdir build
+	@mkdir build
+	@echo "Build directory emptied"
+
+rebuild: clear all
 
 test_rlexer: build_rlexer run_rlexer
 build_rlexer:
