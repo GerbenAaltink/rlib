@@ -1,3 +1,4 @@
+
 #include "rstring.h"
 #include "rtest.h"
 #include <stdbool.h>
@@ -5,6 +6,15 @@
 #include <stdlib.h>
 
 void rstring_test_whitespace() {
+    char *str = malloc(30);
+    str[0] = 0;
+    char *str2 = rcat(10, 10);
+    printf("Numbers: %s\n", str2);
+    char *str3 = "Cool";
+    rcat(str, str3);
+    rcat(str, ' ');
+    rcat(str, 13.37);
+    printf("String: %s\n", str);
 
     rtest_banner("rstrip_whitespace");
     char output[1024];

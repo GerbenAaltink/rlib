@@ -10,6 +10,7 @@
 #include "rprint.h"
 #include "rstring.h"
 #include "rterminal.h"
+#include "rterm.h"
 #include "rtest.h"
 #include "rtree.h"
 #include "rlexer.h"

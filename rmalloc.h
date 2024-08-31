@@ -4,9 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-unsigned int rmalloc_count = 0;
-unsigned int rmalloc_alloc_count = 0;
-unsigned int rmalloc_free_count = 0;
+unsigned long long rmalloc_count = 0;
+unsigned long long rmalloc_alloc_count = 0;
+unsigned long long int rmalloc_free_count = 0;
 
 void *rmalloc(size_t size) {
     rmalloc_count++;

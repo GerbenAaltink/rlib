@@ -20,6 +20,12 @@ bool rfd_wait(int fd, int ms) {
     return ret > 0 && FD_ISSET(fd, &read_fds);
 }
 
+bool rfd_wait_forever(int fd) {
+    while ((!rfd_wait(fd, 10))) {
+    }
+    return true;
+}
+
 bool rfile_exists(char *path) {
     struct stat s;
     return !stat(path, &s);

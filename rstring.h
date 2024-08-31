@@ -9,6 +9,60 @@
 
 unsigned long _r_generate_key_current = 0;
 
+char *_rcat_int_int(int a, int b) {
+    static char res[20];
+    res[0] = 0;
+    sprintf(res, "%d%d", a, b);
+    return res;
+}
+char *_rcat_int_double(int a, double b) {
+    static char res[20];
+    res[0] = 0;
+    sprintf(res, "%d%f", a, b);
+    return res;
+}
+
+char *_rcat_charp_int(char *a, int b) {
+    char res[20];
+    sprintf(res, "%c", b);
+    return strcat(a, res);
+}
+
+char *_rcat_charp_double(char *a, double b) {
+    char res[20];
+    sprintf(res, "%f", b);
+    return strcat(a, res);
+}
+
+char *_rcat_charp_charp(char *a, char *b) {
+    ;
+    return strcat(a, b);
+}
+char *_rcat_charp_char(char *a, char b) {
+    char extra[] = {b, 0};
+    return strcat(a, extra);
+}
+char *_rcat_charp_bool(char *a, bool *b) {
+    if (b) {
+        return strcat(a, "true");
+    } else {
+        return strcat(a, "false");
+    }
+}
+
+#define rcat(x, y)                                                             \
+    _Generic((x),   \
+    int: _Generic((y),     \
+        int: _rcat_int_int,\
+        double: _rcat_int_double,\
+        char*: _rcat_charp_charp),\
+    char*: _Generic((y),\
+        int: _rcat_charp_int, \
+        double: _rcat_charp_double,\
+        char*: _rcat_charp_charp, \
+        char: _rcat_charp_char, \
+        bool: _rcat_charp_bool))((x),(y))
+
 char *rgenerate_key() {
     _r_generate_key_current++;
     static char key[100];
