@@ -80,10 +80,29 @@ bool rtest_test_assert(char *expr, int res, int line) {
     rcurrent_banner = content;                                                 \
     rtest_test_banner(content, __FILE__);
 #define rtest_true(expr) rtest_test_true(#expr, expr, __LINE__);
-#define rtest_assert(expr) rtest_test_true(#expr, expr, __LINE__);
-#define rassert(expr) rtest_test_assert(#expr, expr, __LINE__);
-#define rtest_asserts(expr) rtest_test_true_silent(#expr, expr, __LINE__);
-#define rasserts(expr) rtest_test_true_silent(#expr, expr, __LINE__);
+#define rtest_assert(expr)                                                     \
+    {                                                                          \
+        int __valid = expr ? 1 : 0;                                            \
+        rtest_test_true(#expr, __valid, __LINE__);                             \
+    };                                                                         \
+    ;
+
+#define rassert(expr)                                                          \
+    {                                                                          \
+        int __valid = expr ? 1 : 0;                                            \
+        rtest_test_true(#expr, __valid, __LINE__);                             \
+    };                                                                         \
+    ;
+#define rtest_asserts(expr)                                                    \
+    {                                                                          \
+        int __valid = expr ? 1 : 0;                                            \
+        rtest_test_true_silent(#expr, __valid, __LINE__);                      \
+    };
+#define rasserts(expr)                                                         \
+    {                                                                          \
+        int __valid = expr ? 1 : 0;                                            \
+        rtest_test_true_silent(#expr, __valid, __LINE__);                      \
+    };
 #define rtest_false(expr)                                                      \
     rprintf(" [%s]\t%s\t\n", expr == 0 ? "OK" : "NOK", #expr);                 \
     assert_count++;                                                            \

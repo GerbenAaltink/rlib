@@ -1,4 +1,4 @@
-// RETOOR - Aug 31 2024
+// RETOOR - Sep  1 2024
 // Found (local) include: license.h
 // Found (local) include: rmath.h
 // Found (local) include: rmalloc.h
@@ -92,9 +92,9 @@ double modf(double x, double *iptr) {
 #include <stdlib.h>
 #include <string.h>
 
-unsigned int rmalloc_count = 0;
-unsigned int rmalloc_alloc_count = 0;
-unsigned int rmalloc_free_count = 0;
+unsigned long long rmalloc_count = 0;
+unsigned long long rmalloc_alloc_count = 0;
+unsigned long long int rmalloc_free_count = 0;
 
 void *rmalloc(size_t size) {
     rmalloc_count++;
@@ -111,7 +111,7 @@ void *rfree(void *obj) {
 
 char *rmalloc_stats() {
     static char res[100] = {0};
-    sprintf(res, "Memory usage: %d allocated, %d freed, %d in use.",
+    sprintf(res, "Memory usage: %lld allocated, %lld freed, %lld in use.",
             rmalloc_alloc_count, rmalloc_free_count, rmalloc_count);
     return res;
 }
@@ -1114,10 +1114,29 @@ bool rtest_test_assert(char *expr, int res, int line) {
     rcurrent_banner = content;                                                 \
     rtest_test_banner(content, __FILE__);
 #define rtest_true(expr) rtest_test_true(#expr, expr, __LINE__);
-#define rtest_assert(expr) rtest_test_true(#expr, expr, __LINE__);
-#define rassert(expr) rtest_test_assert(#expr, expr, __LINE__);
-#define rtest_asserts(expr) rtest_test_true_silent(#expr, expr, __LINE__);
-#define rasserts(expr) rtest_test_true_silent(#expr, expr, __LINE__);
+#define rtest_assert(expr)                                                     \
+    {                                                                          \
+        int __valid = expr ? 1 : 0;                                            \
+        rtest_test_true(#expr, __valid, __LINE__);                             \
+    };                                                                         \
+    ;
+
+#define rassert(expr)                                                          \
+    {                                                                          \
+        int __valid = expr ? 1 : 0;                                            \
+        rtest_test_true(#expr, __valid, __LINE__);                             \
+    };                                                                         \
+    ;
+#define rtest_asserts(expr)                                                    \
+    {                                                                          \
+        int __valid = expr ? 1 : 0;                                            \
+        rtest_test_true_silent(#expr, __valid, __LINE__);                      \
+    };
+#define rasserts(expr)                                                         \
+    {                                                                          \
+        int __valid = expr ? 1 : 0;                                            \
+        rtest_test_true_silent(#expr, __valid, __LINE__);                      \
+    };
 #define rtest_false(expr)                                                      \
     rprintf(" [%s]\t%s\t\n", expr == 0 ? "OK" : "NOK", #expr);                 \
     assert_count++;                                                            \

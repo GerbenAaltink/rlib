@@ -23,7 +23,7 @@ void *rfree(void *obj) {
 
 char *rmalloc_stats() {
     static char res[100] = {0};
-    sprintf(res, "Memory usage: %d allocated, %d freed, %d in use.",
+    sprintf(res, "Memory usage: %lld allocated, %lld freed, %lld in use.",
             rmalloc_alloc_count, rmalloc_free_count, rmalloc_count);
     return res;
 }
