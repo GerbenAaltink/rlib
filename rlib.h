@@ -1,13 +1,13 @@
 // RETOOR - Sep  1 2024
 // Found (local) include: license.h
+// Found (local) include: rprint.h
+// Found (local) include: rtime.h
 // Found (local) include: rmath.h
 // Found (local) include: rmalloc.h
 // Found (local) include: rtime.h
 // Found (local) include: arena.h
 // Found (local) include: rmalloc.h
 // Found (local) include: rio.h
-// Found (local) include: rprint.h
-// Found (local) include: rtime.h
 // Found (local) include: rstring.h
 // Found (local) include: rmath.h
 // Found (local) include: rterminal.h
@@ -51,80 +51,8 @@
 #ifndef RLIB_H
 #define RLIB_H
 // BEGIN OF RLIB
-#ifndef RMATH_H
-#define RMATH_H
-#include <math.h>
-
-#ifndef ceil
-double ceil(double x) {
-    if (x == (double)(long long)x) {
-        return x;
-    } else if (x > 0.0) {
-        return (double)(long long)x + 1.0;
-    } else {
-        return (double)(long long)x;
-    }
-}
-#endif
-
-#ifndef floor
-double floor(double x) {
-    if (x >= 0.0) {
-        return (double)(long long)x;
-    } else {
-        double result = (double)(long long)x;
-        return (result == x) ? result : result - 1.0;
-    }
-}
-#endif
-
-#ifndef modf
-double modf(double x, double *iptr) {
-    double int_part = (x >= 0.0) ? floor(x) : ceil(x);
-    *iptr = int_part;
-    return x - int_part;
-}
-#endif
-#endif
-#ifndef RMALLOC_H
-#define RMALLOC_H
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-unsigned long long rmalloc_count = 0;
-unsigned long long rmalloc_alloc_count = 0;
-unsigned long long int rmalloc_free_count = 0;
-
-void *rmalloc(size_t size) {
-    rmalloc_count++;
-    rmalloc_alloc_count++;
-    return malloc(size);
-}
-void *rrealloc(void *obj, size_t size) { return realloc(obj, size); }
-void *rfree(void *obj) {
-    rmalloc_count--;
-    rmalloc_free_count++;
-    free(obj);
-    return NULL;
-}
-
-char *rmalloc_stats() {
-    static char res[100] = {0};
-    sprintf(res, "Memory usage: %lld allocated, %lld freed, %lld in use.",
-            rmalloc_alloc_count, rmalloc_free_count, rmalloc_count);
-    return res;
-}
-
-char *rstrdup(char *str) {
-
-    char *res = (char *)strdup(str);
-    rmalloc_alloc_count++;
-    rmalloc_count++;
-    return res;
-}
-
-#endif
+#ifndef RPRINT_H
+#define RPRINT_H
 
 #ifndef RLIB_TIME
 #define RLIB_TIME
@@ -273,107 +201,6 @@ char *format_time(int64_t nanoseconds) {
 }
 
 #endif
-#ifndef RARENA_H
-#define RARENA_H
-
-#include <assert.h>
-#include <stdlib.h>
-#include <string.h>
-
-typedef struct arena_t {
-    unsigned char *memory;
-    unsigned int pointer;
-    unsigned int size;
-} arena_t;
-
-arena_t *arena_construct() {
-    arena_t *arena = (arena_t *)rmalloc(sizeof(arena_t));
-    arena->memory = NULL;
-    arena->pointer = 0;
-    arena->size = 0;
-    return arena;
-}
-
-arena_t *arena_new(size_t size) {
-    arena_t *arena = arena_construct();
-    arena->memory = (unsigned char *)rmalloc(size);
-    arena->size = size;
-    return arena;
-}
-
-void *arena_alloc(arena_t *arena, size_t size) {
-    if (arena->pointer + size > arena->size) {
-        return NULL;
-    }
-    void *p = arena->memory + arena->pointer;
-    arena->pointer += size;
-    return p;
-}
-
-void arena_free(arena_t *arena) {
-    // Just constructed and unused arena memory is NULL so no free needed
-    if (arena->memory) {
-        rfree(arena->memory);
-    }
-    rfree(arena);
-}
-
-void arena_reset(arena_t *arena) { arena->pointer = 0; }
-#endif
-#ifndef RLIB_RIO
-#define RLIB_RIO
-#include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/select.h>
-#include <sys/stat.h>
-
-bool rfd_wait(int fd, int ms) {
-    fd_set read_fds;
-    struct timeval timeout;
-
-    FD_ZERO(&read_fds);
-    FD_SET(fd, &read_fds);
-
-    timeout.tv_sec = 0;
-    timeout.tv_usec = 1000 * ms; // 100 milliseconds timeout
-
-    int ret = select(fd + 1, &read_fds, NULL, NULL, &timeout);
-    return ret > 0 && FD_ISSET(fd, &read_fds);
-}
-
-bool rfd_wait_forever(int fd) {
-    while ((!rfd_wait(fd, 10))) {
-    }
-    return true;
-}
-
-bool rfile_exists(char *path) {
-    struct stat s;
-    return !stat(path, &s);
-}
-
-size_t rfile_size(char *path) {
-    struct stat s;
-    stat(path, &s);
-    return s.st_size;
-}
-
-size_t rfile_readb(char *path, void *data, size_t size) {
-    FILE *fd = fopen(path, "rb");
-    if (!fd) {
-        return 0;
-    }
-    __attribute__((unused)) size_t bytes_read =
-        fread(data, size, sizeof(char), fd);
-
-    fclose(fd);
-    return size;
-}
-
-#endif
-#ifndef RPRINT_H
-#define RPRINT_H
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -405,7 +232,7 @@ void rclear() { printf("\033[2J"); }
 void rprintpf(FILE *f, const char *prefix, const char *format, va_list args) {
     char *pprefix = (char *)prefix;
     char *pformat = (char *)format;
-    bool reset_color = true;
+    bool reset_color = false;
     bool press_any_key = false;
     char new_format[4096];
     bool enable_color = rprint_is_color_enabled();
@@ -416,21 +243,25 @@ void rprintpf(FILE *f, const char *prefix, const char *format, va_list args) {
     if (enable_color && pprefix[0]) {
         strcat(new_format, pprefix);
         new_format_length += strlen(pprefix);
+        reset_color = true;
     }
     while (true) {
         if (pformat[0] == '\\' && pformat[1] == 'i') {
             strcat(new_format, "\e[3m");
             new_format_length += strlen("\e[3m");
+            reset_color = true;
             pformat++;
             pformat++;
         } else if (pformat[0] == '\\' && pformat[1] == 'u') {
             strcat(new_format, "\e[4m");
             new_format_length += strlen("\e[4m");
+            reset_color = true;
             pformat++;
             pformat++;
         } else if (pformat[0] == '\\' && pformat[1] == 'b') {
             strcat(new_format, "\e[1m");
             new_format_length += strlen("\e[1m");
+            reset_color = true;
             pformat++;
             pformat++;
         } else if (pformat[0] == '\\' && pformat[1] == 'C') {
@@ -490,7 +321,7 @@ void rprintpf(FILE *f, const char *prefix, const char *format, va_list args) {
             pformat++;
         }
     }
-    if (enable_color && reset_color && pprefix[0]) {
+    if (reset_color) {
         strcat(new_format, "\e[0m");
         new_format_length += strlen("\e[0m");
     }
@@ -525,6 +356,7 @@ void rprint(char *format, ...) {
     rprintpf(stdout, "", format, args);
     va_end(args);
 }
+#define printf rprint
 
 // Print line
 void rprintlf(FILE *f, char *format, ...) {
@@ -652,6 +484,178 @@ void rprintw(char *format, ...) {
     rprintpf(stdout, "\e[37m", format, args);
     va_end(args);
 }
+#endif
+#ifndef RMATH_H
+#define RMATH_H
+#include <math.h>
+
+#ifndef ceil
+double ceil(double x) {
+    if (x == (double)(long long)x) {
+        return x;
+    } else if (x > 0.0) {
+        return (double)(long long)x + 1.0;
+    } else {
+        return (double)(long long)x;
+    }
+}
+#endif
+
+#ifndef floor
+double floor(double x) {
+    if (x >= 0.0) {
+        return (double)(long long)x;
+    } else {
+        double result = (double)(long long)x;
+        return (result == x) ? result : result - 1.0;
+    }
+}
+#endif
+
+#ifndef modf
+double modf(double x, double *iptr) {
+    double int_part = (x >= 0.0) ? floor(x) : ceil(x);
+    *iptr = int_part;
+    return x - int_part;
+}
+#endif
+#endif
+#ifndef RMALLOC_H
+#define RMALLOC_H
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+unsigned long long rmalloc_count = 0;
+unsigned long long rmalloc_alloc_count = 0;
+unsigned long long int rmalloc_free_count = 0;
+
+void *rmalloc(size_t size) {
+    rmalloc_count++;
+    rmalloc_alloc_count++;
+    return malloc(size);
+}
+void *rrealloc(void *obj, size_t size) { return realloc(obj, size); }
+void *rfree(void *obj) {
+    rmalloc_count--;
+    rmalloc_free_count++;
+    free(obj);
+    return NULL;
+}
+
+char *rmalloc_stats() {
+    static char res[100] = {0};
+    sprintf(res, "Memory usage: %lld allocated, %lld freed, %lld in use.",
+            rmalloc_alloc_count, rmalloc_free_count, rmalloc_count);
+    return res;
+}
+
+char *rstrdup(char *str) {
+
+    char *res = (char *)strdup(str);
+    rmalloc_alloc_count++;
+    rmalloc_count++;
+    return res;
+}
+
+#endif
+#ifndef RARENA_H
+#define RARENA_H
+
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct arena_t {
+    unsigned char *memory;
+    unsigned int pointer;
+    unsigned int size;
+} arena_t;
+
+arena_t *arena_construct() {
+    arena_t *arena = (arena_t *)rmalloc(sizeof(arena_t));
+    arena->memory = NULL;
+    arena->pointer = 0;
+    arena->size = 0;
+    return arena;
+}
+
+arena_t *arena_new(size_t size) {
+    arena_t *arena = arena_construct();
+    arena->memory = (unsigned char *)rmalloc(size);
+    arena->size = size;
+    return arena;
+}
+
+void *arena_alloc(arena_t *arena, size_t size) {
+    if (arena->pointer + size > arena->size) {
+        return NULL;
+    }
+    void *p = arena->memory + arena->pointer;
+    arena->pointer += size;
+    return p;
+}
+
+void arena_free(arena_t *arena) {
+    // Just constructed and unused arena memory is NULL so no free needed
+    if (arena->memory) {
+        rfree(arena->memory);
+    }
+    rfree(arena);
+}
+
+void arena_reset(arena_t *arena) { arena->pointer = 0; }
+#endif
+#ifndef RLIB_RIO
+#define RLIB_RIO
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/select.h>
+#include <sys/stat.h>
+
+bool rfd_wait(int fd, int ms) {
+    fd_set read_fds;
+    struct timeval timeout;
+
+    FD_ZERO(&read_fds);
+    FD_SET(fd, &read_fds);
+
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 1000 * ms; // 100 milliseconds timeout
+
+    int ret = select(fd + 1, &read_fds, NULL, NULL, &timeout);
+    return ret > 0 && FD_ISSET(fd, &read_fds);
+}
+
+bool rfd_wait_forever(int fd) {
+    while ((!rfd_wait(fd, 10))) {
+    }
+    return true;
+}
+
+bool rfile_exists(char *path) {
+    struct stat s;
+    return !stat(path, &s);
+}
+
+size_t rfile_size(char *path) {
+    struct stat s;
+    stat(path, &s);
+    return s.st_size;
+}
+
+size_t rfile_readb(char *path, void *data, size_t size) {
+    FILE *fd = fopen(path, "rb");
+    if (!fd) {
+        return 0;
+    }
+    __attribute__((unused)) size_t bytes_read =
+        fread(data, size, sizeof(char), fd);
+
+    fclose(fd);
+    return size;
+}
+
 #endif
 #ifndef RSTRING_H
 #define RSTRING_H
@@ -1036,7 +1040,6 @@ int rstrsort(char *input, char *output) {
 #include <string.h>
 #ifndef RTEST_H
 #define RTEST_H
-#include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <unistd.h>

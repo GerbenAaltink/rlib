@@ -1,7 +1,6 @@
 #ifndef RTEST_H
 #define RTEST_H
 #include "rmalloc.h"
-#include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <unistd.h>

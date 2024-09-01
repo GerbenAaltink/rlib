@@ -32,7 +32,7 @@ void rclear() { printf("\033[2J"); }
 void rprintpf(FILE *f, const char *prefix, const char *format, va_list args) {
     char *pprefix = (char *)prefix;
     char *pformat = (char *)format;
-    bool reset_color = true;
+    bool reset_color = false;
     bool press_any_key = false;
     char new_format[4096];
     bool enable_color = rprint_is_color_enabled();
@@ -43,21 +43,25 @@ void rprintpf(FILE *f, const char *prefix, const char *format, va_list args) {
     if (enable_color && pprefix[0]) {
         strcat(new_format, pprefix);
         new_format_length += strlen(pprefix);
+        reset_color = true;
     }
     while (true) {
         if (pformat[0] == '\\' && pformat[1] == 'i') {
             strcat(new_format, "\e[3m");
             new_format_length += strlen("\e[3m");
+            reset_color = true;
             pformat++;
             pformat++;
         } else if (pformat[0] == '\\' && pformat[1] == 'u') {
             strcat(new_format, "\e[4m");
             new_format_length += strlen("\e[4m");
+            reset_color = true;
             pformat++;
             pformat++;
         } else if (pformat[0] == '\\' && pformat[1] == 'b') {
             strcat(new_format, "\e[1m");
             new_format_length += strlen("\e[1m");
+            reset_color = true;
             pformat++;
             pformat++;
         } else if (pformat[0] == '\\' && pformat[1] == 'C') {
@@ -117,7 +121,7 @@ void rprintpf(FILE *f, const char *prefix, const char *format, va_list args) {
             pformat++;
         }
     }
-    if (enable_color && reset_color && pprefix[0]) {
+    if (reset_color) {
         strcat(new_format, "\e[0m");
         new_format_length += strlen("\e[0m");
     }
@@ -152,6 +156,7 @@ void rprint(char *format, ...) {
     rprintpf(stdout, "", format, args);
     va_end(args);
 }
+#define printf rprint
 
 // Print line
 void rprintlf(FILE *f, char *format, ...) {
