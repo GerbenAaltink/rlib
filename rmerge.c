@@ -1,6 +1,7 @@
 #include "rlexer.h"
 #include "rmalloc.h"
 #include "rprint.h"
+#include "rrex3.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -75,6 +76,14 @@ void merge_file(char *source, FILE *d) {
         include_path[0] = 0;
         if (!*line)
             break;
+        
+        rrex3_t * rrex;
+        rrex= rrex3(NULL,line,"#include *\"(.*)\"");
+        if(rrex){
+            strcpy(include_path, rrex->matches[0]);
+            rrex3_free(rrex);
+        } 
+        /*
         if (!strncmp(line, "#include ", 9)) {
             int index = 0;
             while (line[index] != '"' && line[index] != 0) {
@@ -94,7 +103,7 @@ void merge_file(char *source, FILE *d) {
                     include_path[pindex] = '\0';
                 }
             }
-        }
+        }*/
         if (include_path[0]) {
             printf("// Found (local) include: %s\n", include_path);
             merge_file(include_path, d);

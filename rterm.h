@@ -178,7 +178,8 @@ void rterm_loop(rterm_t *rt) {
     enableRawMode(&orig_termios);
 
     int x = 0, y = 0; // Initial cursor position
-    char ch;
+    char ch = 0;
+    ;
     while (1) {
         rterm_getwinsize(&rt->size);
         rt->cursor.available = rt->size.ws_col * rt->size.ws_row;

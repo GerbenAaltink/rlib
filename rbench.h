@@ -15,7 +15,7 @@
 #include "rstring.h"
 #include "rterminal.h"
 
-#define RBENCH(times, action)                                                   \
+#define RBENCH(times, action)                                                  \
     {                                                                          \
         unsigned long utimes = (unsigned long)times;                           \
         nsecs_t start = nsecs();                                               \
@@ -26,8 +26,9 @@
         printf("%s\n", format_time(end - start));                              \
     }
 
-#define RBENCHP(times, action)                                                  \
+#define RBENCHP(times, action)                                                 \
     {                                                                          \
+        printf("\n");                                                          \
         nsecs_t start = nsecs();                                               \
         unsigned int prev_percentage = 0;                                      \
         unsigned long utimes = (unsigned long)times;                           \
@@ -45,9 +46,8 @@
                 prev_percentage = percentage;                                  \
             }                                                                  \
         }                                                                      \
-        printf("\r100%%\n");                                                   \
         nsecs_t end = nsecs();                                                 \
-        printf("%s\n", format_time(end - start));                              \
+        printf("\r%s\n", format_time(end - start));                            \
     }
 
 struct rbench_t;

@@ -13,13 +13,23 @@ void *rmalloc(size_t size) {
     rmalloc_alloc_count++;
     return malloc(size);
 }
-void *rrealloc(void *obj, size_t size) { return realloc(obj, size); }
+void *rrealloc(void *obj, size_t size) {
+    if (obj == NULL) {
+        rmalloc_count++;
+        rmalloc_alloc_count++;
+    }
+    return realloc(obj, size);
+}
 void *rfree(void *obj) {
     rmalloc_count--;
     rmalloc_free_count++;
     free(obj);
     return NULL;
 }
+
+#define malloc rmalloc
+#define realloc rrealloc
+#define free rfree
 
 char *rmalloc_stats() {
     static char res[100] = {0};
