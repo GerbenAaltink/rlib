@@ -105,7 +105,6 @@ void merge_file(char *source, FILE *d) {
             }
         }*/
         if (include_path[0]) {
-            rprintyf(stderr, "// Found (local) include: %s\n", include_path);
             merge_file(include_path, d);
             include_path[0] = 0;
         } else {

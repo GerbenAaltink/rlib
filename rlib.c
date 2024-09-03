@@ -1,32 +1,4 @@
 // RETOOR - Sep  3 2024
-// Found (local) include: license.h
-// Found (local) include: rprint.h
-// Found (local) include: rtime.h
-// Found (local) include: rmath.h
-// Found (local) include: rmalloc.h
-// Found (local) include: rtest.h
-// Found (local) include: rmalloc.h
-// Found (local) include: rprint.h
-// Found (local) include: rrex3.h
-// Found (local) include: rtime.h
-// Found (local) include: arena.h
-// Found (local) include: rmalloc.h
-// Found (local) include: rio.h
-// Found (local) include: rstring.h
-// Found (local) include: rmath.h
-// Found (local) include: rterminal.h
-// Found (local) include: rtest.h
-// Found (local) include: rterm.h
-// Found (local) include: rio.h
-// Found (local) include: rtree.h
-// Found (local) include: rmalloc.h
-// Found (local) include: rlexer.h
-// Found (local) include: rstring.h
-// Found (local) include: rbench.h
-// Found (local) include: rprint.h
-// Found (local) include: rtime.h
-// Found (local) include: rstring.h
-// Found (local) include: rterminal.h
 // MIT License
 // ===========
 
