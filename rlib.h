@@ -1,4 +1,4 @@
-// RETOOR - Sep  3 2024
+// RETOOR - Sep  9 2024
 // MIT License
 // ===========
 
@@ -310,20 +310,20 @@ void rprintpf(FILE *f, const char *prefix, const char *format, va_list args) {
     }
 }
 
-void rprintp(char *format, ...) {
+void rprintp(const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(stdout, "", format, args);
     va_end(args);
 }
 
-void rprintf(FILE *f, char *format, ...) {
+void rprintf(FILE *f, const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(f, "", format, args);
     va_end(args);
 }
-void rprint(char *format, ...) {
+void rprint(const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(stdout, "", format, args);
@@ -332,13 +332,13 @@ void rprint(char *format, ...) {
 #define printf rprint
 
 // Print line
-void rprintlf(FILE *f, char *format, ...) {
+void rprintlf(FILE *f, const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(f, "\\l", format, args);
     va_end(args);
 }
-void rprintl(char *format, ...) {
+void rprintl(const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(stdout, "\\l", format, args);
@@ -346,13 +346,13 @@ void rprintl(char *format, ...) {
 }
 
 // Black
-void rprintkf(FILE *f, char *format, ...) {
+void rprintkf(FILE *f, const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(f, "\e[30m", format, args);
     va_end(args);
 }
-void rprintk(char *format, ...) {
+void rprintk(const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(stdout, "\e[30m", format, args);
@@ -360,13 +360,13 @@ void rprintk(char *format, ...) {
 }
 
 // Red
-void rprintrf(FILE *f, char *format, ...) {
+void rprintrf(FILE *f, const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(f, "\e[31m", format, args);
     va_end(args);
 }
-void rprintr(char *format, ...) {
+void rprintr(const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(stdout, "\e[31m", format, args);
@@ -374,13 +374,13 @@ void rprintr(char *format, ...) {
 }
 
 // Green
-void rprintgf(FILE *f, char *format, ...) {
+void rprintgf(FILE *f, const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(f, "\e[32m", format, args);
     va_end(args);
 }
-void rprintg(char *format, ...) {
+void rprintg(const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(stdout, "\e[32m", format, args);
@@ -388,13 +388,13 @@ void rprintg(char *format, ...) {
 }
 
 // Yellow
-void rprintyf(FILE *f, char *format, ...) {
+void rprintyf(FILE *f, const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(f, "\e[33m", format, args);
     va_end(args);
 }
-void rprinty(char *format, ...) {
+void rprinty(const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(stdout, "\e[33m", format, args);
@@ -402,14 +402,14 @@ void rprinty(char *format, ...) {
 }
 
 // Blue
-void rprintbf(FILE *f, char *format, ...) {
+void rprintbf(FILE *f, const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(f, "\e[34m", format, args);
     va_end(args);
 }
 
-void rprintb(char *format, ...) {
+void rprintb(const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(stdout, "\e[34m", format, args);
@@ -417,13 +417,13 @@ void rprintb(char *format, ...) {
 }
 
 // Magenta
-void rprintmf(FILE *f, char *format, ...) {
+void rprintmf(FILE *f, const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(f, "\e[35m", format, args);
     va_end(args);
 }
-void rprintm(char *format, ...) {
+void rprintm(const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(stdout, "\e[35m", format, args);
@@ -431,13 +431,13 @@ void rprintm(char *format, ...) {
 }
 
 // Cyan
-void rprintcf(FILE *f, char *format, ...) {
+void rprintcf(FILE *f, const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(f, "\e[36m", format, args);
     va_end(args);
 }
-void rprintc(char *format, ...) {
+void rprintc(const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(stdout, "\e[36m", format, args);
@@ -445,13 +445,13 @@ void rprintc(char *format, ...) {
 }
 
 // White
-void rprintwf(FILE *f, char *format, ...) {
+void rprintwf(FILE *f, const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(f, "\e[37m", format, args);
     va_end(args);
 }
-void rprintw(char *format, ...) {
+void rprintw(const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(stdout, "\e[37m", format, args);
@@ -668,23 +668,193 @@ FILE *rtest_create_file(char *path, char *content) {
 
 void rtest_delete_file(char *path) { unlink(path); }
 #endif
-#ifndef RREX3_H
-#define RREX3_H
+#ifndef RKEYTABLE_H
+#define RKEYTABLE_H
+/*
+    DERIVED FROM HASH TABLE K&R
+ */
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct rnklist {
+    struct rnklist *next;
+    struct rnklist *last;
+    char *name;
+    char *defn;
+} rnklist;
+
+static rnklist *rkeytab = NULL;
+
+rnklist *rlkget(char *s) {
+    rnklist *np;
+    for (np = rkeytab; np != NULL; np = np->next)
+        if (strcmp(s, np->name) == 0)
+            return np; // Found
+    return NULL;       // Not found
+}
+
+char *rkget(char *s) {
+    rnklist *np = rlkget(s);
+    return np ? np->defn : NULL;
+}
+
+rnklist *rkset(char *name, char *defn) {
+    rnklist *np;
+    if ((np = (rlkget(name))) == NULL) { // Not found
+        np = (rnklist *)malloc(sizeof(rnklist));
+        np->name = strdup(name);
+        np->next = NULL;
+        np->last = NULL;
+
+        if (defn) {
+            np->defn = strdup(defn);
+        } else {
+            np->defn = NULL;
+        }
+
+        if (rkeytab == NULL) {
+            rkeytab = np;
+            rkeytab->last = np;
+        } else {
+            if (rkeytab->last)
+                rkeytab->last->next = np;
+
+            rkeytab->last = np;
+        }
+    } else {
+        if (np->defn)
+            free((void *)np->defn);
+        if (defn) {
+            np->defn = strdup(defn);
+        } else {
+            np->defn = NULL;
+        }
+    }
+    return np;
+}
+#endif
+#ifndef RHASHTABLE_H
+#define RHASHTABLE_H
+/*
+    ORIGINAL SOURCE IS FROM K&R
+ */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define HASHSIZE 101
+
+// Structure for the table entries
+typedef struct rnlist {
+    struct rnlist *next;
+    char *name;
+    char *defn;
+} rnlist;
+
+// Hash table array
+static rnlist *rhashtab[HASHSIZE];
+
+// Hash function
+unsigned rhash(char *s) {
+    unsigned hashval;
+    for (hashval = 0; *s != '\0'; s++)
+        hashval = *s + 31 * hashval;
+    return hashval % HASHSIZE;
+}
+
+rnlist *rlget(char *s) {
+    rnlist *np;
+    for (np = rhashtab[rhash(s)]; np != NULL; np = np->next)
+        if (strcmp(s, np->name) == 0)
+            return np; // Found
+    return NULL;       // Not found
+}
+
+// Lookup function
+char *rget(char *s) {
+    rnlist *np = rlget(s);
+    return np ? np->defn : NULL;
+}
+
+// Install function (adds a name and definition to the table)
+struct rnlist *rset(char *name, char *defn) {
+    struct rnlist *np = NULL;
+    unsigned hashval;
+
+    if ((rlget(name)) == NULL) { // Not found
+        np = (struct rnlist *)malloc(sizeof(*np));
+        if (np == NULL || (np->name = strdup(name)) == NULL)
+            return NULL;
+        hashval = rhash(name);
+        np->next = rhashtab[hashval];
+        rhashtab[hashval] = np;
+    } else {
+        if (np->defn)
+            free((void *)np->defn);
+        np->defn = NULL;
+    }
+    if ((np->defn = strdup(defn)) == NULL)
+        return NULL;
+    return np;
+}
+#endif
+#ifndef RSTRING_LIST_H
+#define RSTRING_LIST_H
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct rstring_list_t {
+    unsigned int size;
+    unsigned int count;
+    char **strings;
+} rstring_list_t;
+
+rstring_list_t *rstring_list_new() {
+    rstring_list_t *rsl = (rstring_list_t *)malloc(sizeof(rstring_list_t));
+    memset(rsl, 0, sizeof(rstring_list_t));
+    return rsl;
+}
+
+void rstring_list_free(rstring_list_t *rsl) {
+    for (unsigned int i = 0; i < rsl->size; i++) {
+        free(rsl->strings[i]);
+    }
+    free(rsl);
+    rsl = NULL;
+}
+
+void rstring_list_add(rstring_list_t *rsl, char *str) {
+    if (rsl->count == rsl->size) {
+        rsl->size++;
+        rsl->strings = realloc(rsl->strings, sizeof(char *) * rsl->size);
+    }
+    rsl->strings[rsl->count] = (char *)malloc(strlen(str) + 1);
+    strcpy(rsl->strings[rsl->count], str);
+    rsl->count++;
+}
+bool rstring_list_contains(rstring_list_t *rsl, char *str) {
+    for (unsigned int i = 0; i < rsl->count; i++) {
+        if (!strcmp(rsl->strings[i], str))
+            return true;
+    }
+    return false;
+}
+
+#endif
+#ifndef RREX3_H
+#define RREX3_H
+#include <assert.h>
+#include <ctype.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <assert.h>
-#include <stdlib.h>
-#include <ctype.h>
 #ifndef RREX3_DEBUG
 #define RREX3_DEBUG 0
-#endif
-#ifndef rprintr
-#define rprintr printf
-#endif
-#ifndef rassert
-#define rassert assert
 #endif
 
 struct rrex3_t;
@@ -800,14 +970,7 @@ bool rrex3_is_function(char chr) {
 
 inline static void rrex3_cmp_literal(rrex3_t *rrex3) {
     rrex3_set_previous(rrex3);
-    if (*rrex3->expr == 0 && !*rrex3->str) {
-        rprintr("ERROR, EMPTY CHECK");
-        exit(1);
-    }
-    if (rrex3->valid == false) {
-        rrex3->expr++;
-        return;
-    }
+
     if (rrex3->inside_brackets) {
         if (isalpharange(rrex3->expr) || isdigitrange(rrex3->expr)) {
             rrex3_cmp_literal_range(rrex3);
@@ -817,19 +980,29 @@ inline static void rrex3_cmp_literal(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
     printf("Literal check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
            rrex3->valid);
+
 #endif
+    if (*rrex3->expr == 0 && !*rrex3->str) {
+        printf("ERROR, EMPTY CHECK\n");
+        // exit(1);
+    }
+    if (rrex3->valid == false) {
+        rrex3->expr++;
+        return;
+    }
+
     if (*rrex3->expr == *rrex3->str) {
         rrex3->expr++;
         rrex3->str++;
         rrex3->valid = true;
-        /*if(*rrex3->expr &&rrex3->functions[(int)*rrex3->expr] ==
-        rrex3_cmp_literal && !rrex3->inside_brackets &&
-        !rrex3_is_function(*rrex3->expr)){ rrex3_cmp_literal(rrex3);
-            if(rrex3->valid == false){
-                rrex3->expr--;
-                rrex3->valid = true;
-            }
-        }*/
+        // if(*rrex3->expr &&rrex3->functions[(int)*rrex3->expr] ==
+        // rrex3_cmp_literal && !rrex3->inside_brackets &&
+        //! rrex3_is_function(*rrex3->expr)){ rrex3_cmp_literal(rrex3);
+        //   if(rrex3->valid == false){
+        //  rrex3->expr--;
+        // rrex3->valid = true;
+        // }
+        // }
         return;
     }
     rrex3->expr++;
@@ -904,7 +1077,7 @@ inline static void rrex3_cmp_whitespace_upper(rrex3_t *rrex3) {
     rrex3->expr++;
 }
 
-inline static void rrex3_cmp_plus(rrex3_t *rrex3) {
+inline static void rrex3_cmp_plus2(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
     printf("Plus check: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
@@ -971,7 +1144,211 @@ inline static void rrex3_cmp_plus(rrex3_t *rrex3) {
     rrex3->valid = true;
 }
 
+inline static void rrex3_cmp_plus(rrex3_t *rrex3) {
+#if RREX3_DEBUG == 1
+    rprintg("Asterisk start check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
+            rrex3->valid);
+#endif
+    if (!rrex3->valid) {
+        rrex3->expr++;
+        return;
+    }
+
+    char *left = rrex3->previous.expr;
+    // printf("%s\n",rrex3->str);
+    char *right = rrex3->expr + 1;
+    if (*right == ')') {
+        right++;
+    }
+    int right_valid = 0;
+    bool right_valid_once = false;
+    char *expr = right;
+    char *right_str = rrex3->str;
+    ;
+    char *right_expr = NULL;
+    char *str = rrex3->str;
+    bool first_time = true;
+    bool left_valid = true;
+    char *str_prev = NULL;
+    bool valid_from_start = true;
+    ;
+    while (*rrex3->str) {
+        if (!left_valid && !right_valid) {
+            break;
+        }
+        if (right_valid && !left_valid) {
+            str = right_str;
+            break;
+        }
+
+        rrex3->expr = right;
+        rrex3->str = str;
+#if RREX3_DEBUG == 1
+        printf("r");
+#endif
+        if (*rrex3->str && rrex3_move(rrex3, false)) {
+            right_valid++;
+            right_str = rrex3->str;
+            expr = rrex3->expr;
+            if (!right_valid_once) {
+                right_expr = rrex3->expr;
+                right_valid_once = true;
+            }
+        } else {
+            right_valid = 0;
+        }
+        if (first_time) {
+            first_time = false;
+            valid_from_start = right_valid;
+        }
+
+        if (right_valid && !valid_from_start && right_valid > 0) {
+            expr = right_expr - 1;
+            ;
+            if (*(right - 1) == ')') {
+                expr = right - 1;
+            }
+            break;
+        }
+
+        if ((!right_valid && right_valid_once)) {
+            expr = right_expr;
+            if (*(right - 1) == ')') {
+                str = str_prev;
+                expr = right - 1;
+            }
+            break;
+        }
+
+        str_prev = str;
+        rrex3->valid = true;
+        rrex3->str = str;
+        rrex3->expr = left;
+#if RREX3_DEBUG == 1
+        printf("l");
+#endif
+        if (rrex3_move(rrex3, false)) {
+            left_valid = true;
+
+            str = rrex3->str;
+        } else {
+            left_valid = false;
+        }
+    }
+
+    rrex3->expr = expr;
+    rrex3->str = str;
+    rrex3->valid = true;
+
+#if RREX3_DEBUG == 1
+    rprintg("Asterisk end check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
+            rrex3->valid);
+#endif
+}
+
 inline static void rrex3_cmp_asterisk(rrex3_t *rrex3) {
+#if RREX3_DEBUG == 1
+    rprintg("Asterisk start check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
+            rrex3->valid);
+#endif
+    if (!rrex3->valid) {
+        rrex3->valid = true;
+        rrex3->expr++;
+        return;
+    }
+
+    rrex3->str = rrex3->previous.str;
+    char *left = rrex3->previous.expr;
+    // printf("%s\n",rrex3->str);
+    char *right = rrex3->expr + 1;
+    if (*right == ')') {
+        right++;
+    }
+    int right_valid = 0;
+    bool right_valid_once = false;
+    char *expr = right;
+    char *right_str = rrex3->str;
+    ;
+    char *right_expr = NULL;
+    char *str = rrex3->str;
+    bool first_time = true;
+    bool left_valid = true;
+    char *str_prev = NULL;
+    bool valid_from_start = true;
+    ;
+    while (*rrex3->str) {
+        if (!left_valid && !right_valid) {
+            break;
+        }
+        if (right_valid && !left_valid) {
+            str = right_str;
+            break;
+        }
+
+        rrex3->expr = right;
+        rrex3->str = str;
+#if RREX3_DEBUG == 1
+        printf("r");
+#endif
+        if (*rrex3->str && rrex3_move(rrex3, false)) {
+            right_valid++;
+            right_str = rrex3->str;
+            expr = rrex3->expr;
+            if (!right_valid_once) {
+                right_expr = rrex3->expr;
+                right_valid_once = true;
+            }
+        } else {
+            right_valid = 0;
+        }
+        if (first_time) {
+            first_time = false;
+            valid_from_start = right_valid;
+        }
+
+        if (right_valid && !valid_from_start && right_valid > 0) {
+            expr = right_expr - 1;
+            if (*(right - 1) == ')') {
+                expr = right - 1;
+            }
+            break;
+        }
+
+        if ((!right_valid && right_valid_once)) {
+            expr = right_expr;
+            if (*(right - 1) == ')') {
+                str = str_prev;
+                expr = right - 1;
+            }
+            break;
+        }
+
+        str_prev = str;
+        rrex3->valid = true;
+        rrex3->str = str;
+        rrex3->expr = left;
+#if RREX3_DEBUG == 1
+        printf("l");
+#endif
+        if (rrex3_move(rrex3, false)) {
+            left_valid = true;
+            str = rrex3->str;
+        } else {
+            left_valid = false;
+        }
+    }
+
+    rrex3->expr = expr;
+    rrex3->str = str;
+    rrex3->valid = true;
+
+#if RREX3_DEBUG == 1
+    rprintg("Asterisk end check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
+            rrex3->valid);
+#endif
+}
+
+inline static void rrex3_cmp_asterisk2(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
     rprintg("Asterisk start check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
             rrex3->valid);
@@ -1019,7 +1396,10 @@ inline static void rrex3_cmp_asterisk(rrex3_t *rrex3) {
             // Match rright.
             success_next = true;
             if (!next_original) {
-                right_next = rrex3->expr;
+                if (!success_next_once) {
+                    right_next = rrex3->expr;
+                }
+
             } else {
                 right_next = next_original;
                 break;
@@ -1214,6 +1594,13 @@ inline static void rrex3_cmp_range(rrex3_t *rrex3) {
 }
 
 inline static void rrex3_cmp_word_start_or_end(rrex3_t *rrex3) {
+#if RREX3_DEBUG == 1
+    if (*rrex3->expr != 'B') {
+        printf("Check word start or end: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
+               rrex3->valid);
+    }
+
+#endif
     rrex3_set_previous(rrex3);
     bool valid = false;
     if (isalpha(*rrex3->str)) {
@@ -1231,6 +1618,11 @@ inline static void rrex3_cmp_word_start_or_end(rrex3_t *rrex3) {
     rrex3->valid = valid;
 }
 inline static void rrex3_cmp_word_not_start_or_end(rrex3_t *rrex3) {
+#if RREX3_DEBUG == 1
+    printf("Check word NOT start or end: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
+           rrex3->valid);
+
+#endif
     rrex3_set_previous(rrex3);
 
     rrex3_cmp_word_start_or_end(rrex3);
@@ -1310,11 +1702,12 @@ inline static void rrex3_cmp_parentheses(rrex3_t *rrex3) {
     rprinty("\\l Parentheses start check: %c:%c:%d\n", *rrex3->expr,
             *rrex3->str, rrex3->valid);
 #endif
+
+    rrex3_set_previous(rrex3);
     if (!rrex3->valid) {
         rrex3->expr++;
         return;
     }
-    rrex3_set_previous(rrex3);
     if (rrex3->match_count == rrex3->match_capacity) {
 
         rrex3->match_capacity++;
@@ -1465,8 +1858,10 @@ static bool rrex3_move(rrex3_t *rrex3, bool resume_on_fail) {
     rrex3->function = rrex3->functions[(int)rrex3->bytecode];
     rrex3->function(rrex3);
     if (!*rrex3->expr && !*rrex3->str) {
-
         rrex3->exit = true;
+        return rrex3->valid;
+    } else if (!*rrex3->expr) {
+        // rrex3->valid = true;
         return rrex3->valid;
     }
     if (rrex3->pattern_error) {
@@ -1474,6 +1869,7 @@ static bool rrex3_move(rrex3_t *rrex3, bool resume_on_fail) {
         return rrex3->valid;
     }
     if (resume_on_fail && !rrex3->valid && *rrex3->expr) {
+
         // rrex3_set_previous(rrex3);
         rrex3->failed.bytecode = rrex3->bytecode;
         rrex3->failed.function = rrex3->function;
@@ -1503,9 +1899,10 @@ static bool rrex3_move(rrex3_t *rrex3, bool resume_on_fail) {
                 return rrex3->valid;
             }
             rrex3->expr = rrex3->_expr;
-            if (rrex3->str)
+            if (*rrex3->str)
                 rrex3->valid = true;
         }
+    } else {
     }
     return rrex3->valid;
 }
@@ -1530,7 +1927,9 @@ rrex3_t *rrex3(rrex3_t *rrex3, char *str, char *expr) {
         if (!rrex3_move(rrex3, true))
             return NULL;
     }
+    rrex3->expr = rrex3->_expr;
     if (rrex3->valid) {
+
         return rrex3;
     } else {
         if (self_initialized) {
@@ -1540,146 +1939,164 @@ rrex3_t *rrex3(rrex3_t *rrex3, char *str, char *expr) {
     }
 }
 
-int rrex3_test() {
+void rrex3_test() {
     rrex3_t *rrex = rrex3_new();
 
-    rassert(rrex3(rrex, "aaaaaaa", "a*a$"));
+    assert(rrex3(rrex, "\"stdio.h\"\"string.h\"\"sys/time.h\"",
+                 "\"(.*)\"\"(.*)\"\"(.*)\""));
 
-    // rassert(rrex3("ababa", "a*b*a*b*a$"));
-    rassert(rrex3(rrex, "#include\"test.h\"a", "#include.*\".*\"a$"));
-    rassert(rrex3(rrex, "#include \"test.h\"a", "#include.*\".*\"a$"));
-    rassert(rrex3(rrex, "aaaaaad", "a*d$"));
-    rassert(rrex3(rrex, "abcdef", "abd?cdef"));
-    rassert(!rrex3(rrex, "abcdef", "abd?def"));
-    rassert(rrex3(rrex, "abcdef", "def"));
-    rassert(!rrex3(rrex, "abcdef", "^def"));
-    rassert(rrex3(rrex, "abcdef", "def$"));
-    rassert(!rrex3(rrex, "abcdef", "^abc$"));
-    rassert(rrex3(rrex, "aB!.#1", "......"));
-    rassert(!rrex3(rrex, "aB!.#\n", "      ......"));
-    rassert(!rrex3(rrex, "aaaaaad", "q+d$"));
-    rassert(rrex3(rrex, "aaaaaaa", "a+a$"));
-    rassert(rrex3(rrex, "aaaaaad", "q*d$"));
-    rassert(!rrex3(rrex, "aaaaaad", "^q*d$"));
+    assert(rrex3(rrex, "aaaaaaa", "a*a$"));
+
+    // assert(rrex3("ababa", "a*b*a*b*a$"));
+    assert(rrex3(rrex, "#include\"test.h\"a", "#include.*\".*\"a$"));
+    assert(rrex3(rrex, "#include \"test.h\"a", "#include.*\".*\"a$"));
+    assert(rrex3(rrex, "aaaaaad", "a*d$"));
+    assert(rrex3(rrex, "abcdef", "abd?cdef"));
+    assert(!rrex3(rrex, "abcdef", "abd?def"));
+    assert(rrex3(rrex, "abcdef", "def"));
+    assert(!rrex3(rrex, "abcdef", "^def"));
+    assert(rrex3(rrex, "abcdef", "def$"));
+    assert(!rrex3(rrex, "abcdef", "^abc$"));
+    assert(rrex3(rrex, "aB!.#1", "......"));
+    assert(!rrex3(rrex, "aB!.#\n", "      ......"));
+    assert(!rrex3(rrex, "aaaaaad", "q+d$"));
+    assert(rrex3(rrex, "aaaaaaa", "a+a$"));
+    assert(rrex3(rrex, "aaaaaad", "q*d$"));
+    assert(!rrex3(rrex, "aaaaaad", "^q*d$"));
 
     // Asterisk function
-    rassert(rrex3(rrex, "123321", "123*321"));
-    rassert(rrex3(rrex, "pony", "p*ony"));
-    rassert(rrex3(rrex, "pppony", "p*ony"));
-    rassert(rrex3(rrex, "ppony", "p*pony"));
-    rassert(rrex3(rrex, "pppony", "pp*pony"));
-    rassert(rrex3(rrex, "pppony", ".*pony"));
-    rassert(rrex3(rrex, "pony", ".*ony"));
-    rassert(rrex3(rrex, "pony", "po*ny"));
-    // rassert(rrex3(rrex,"ppppony", "p*pppony"));
+    assert(rrex3(rrex, "123321", "123*321"));
+    assert(rrex3(rrex, "pony", "p*ony"));
+    assert(rrex3(rrex, "pppony", "p*ony"));
+    assert(rrex3(rrex, "ppony", "p*pony"));
+    assert(rrex3(rrex, "pppony", "pp*pony"));
+    assert(rrex3(rrex, "pppony", ".*pony"));
+    assert(rrex3(rrex, "pony", ".*ony"));
+    assert(rrex3(rrex, "pony", "po*ny"));
+    // assert(rrex3(rrex,"ppppony", "p*pppony"));
 
     // Plus function
-    rassert(rrex3(rrex, "pony", "p+ony"));
-    rassert(!rrex3(rrex, "ony", "p+ony"));
-    rassert(rrex3(rrex, "ppony", "p+pony"));
-    rassert(rrex3(rrex, "pppony", "pp+pony"));
-    rassert(rrex3(rrex, "pppony", ".+pony"));
-    rassert(rrex3(rrex, "pony", ".+ony"));
-    rassert(rrex3(rrex, "pony", "po+ny"));
+    assert(rrex3(rrex, "pony", "p+ony"));
+    assert(!rrex3(rrex, "ony", "p+ony"));
+    assert(rrex3(rrex, "ppony", "p+pony"));
+    assert(rrex3(rrex, "pppony", "pp+pony"));
+    assert(rrex3(rrex, "pppony", ".+pony"));
+    assert(rrex3(rrex, "pony", ".+ony"));
+    assert(rrex3(rrex, "pony", "po+ny"));
 
     // Slash functions
-    rassert(rrex3(rrex, "a", "\\w"));
-    rassert(!rrex3(rrex, "1", "\\w"));
-    rassert(rrex3(rrex, "1", "\\W"));
-    rassert(!rrex3(rrex, "a", "\\W"));
-    rassert(rrex3(rrex, "a", "\\S"));
-    rassert(!rrex3(rrex, " ", "\\s"));
-    rassert(!rrex3(rrex, "\t", "\\s"));
-    rassert(!rrex3(rrex, "\n", "\\s"));
-    rassert(rrex3(rrex, "1", "\\d"));
-    rassert(!rrex3(rrex, "a", "\\d"));
-    rassert(rrex3(rrex, "a", "\\D"));
-    rassert(!rrex3(rrex, "1", "\\D"));
-    rassert(rrex3(rrex, "abc", "\\b"));
+    assert(rrex3(rrex, "a", "\\w"));
+    assert(!rrex3(rrex, "1", "\\w"));
+    assert(rrex3(rrex, "1", "\\W"));
+    assert(!rrex3(rrex, "a", "\\W"));
+    assert(rrex3(rrex, "a", "\\S"));
+    assert(!rrex3(rrex, " ", "\\s"));
+    assert(!rrex3(rrex, "\t", "\\s"));
+    assert(!rrex3(rrex, "\n", "\\s"));
+    assert(rrex3(rrex, "1", "\\d"));
+    assert(!rrex3(rrex, "a", "\\d"));
+    assert(rrex3(rrex, "a", "\\D"));
+    assert(!rrex3(rrex, "1", "\\D"));
+    assert(rrex3(rrex, "abc", "\\b"));
 
-    rassert(rrex3(rrex, "abc", "\\babc"));
-    rassert(!rrex3(rrex, "abc", "a\\b"));
-    rassert(!rrex3(rrex, "abc", "ab\\b"));
-    rassert(!rrex3(rrex, "abc", "abc\\b"));
-    rassert(rrex3(rrex, "abc", "a\\Bbc"));
-    rassert(rrex3(rrex, "abc", "ab\\B"));
-    rassert(!rrex3(rrex, "1ab", "1\\Bab"));
-    rassert(rrex3(rrex, "abc", "a\\Bbc"));
+    assert(rrex3(rrex, "abc", "\\babc"));
+    assert(!rrex3(rrex, "abc", "a\\b"));
+    assert(!rrex3(rrex, "abc", "ab\\b"));
+    assert(!rrex3(rrex, "abc", "abc\\b"));
+    assert(rrex3(rrex, "abc", "a\\Bbc"));
+    assert(rrex3(rrex, "abc", "ab\\B"));
+    assert(!rrex3(rrex, "1ab", "1\\Bab"));
+    assert(rrex3(rrex, "abc", "a\\Bbc"));
+
+    // Escaping of special chars
+    assert(rrex3(rrex, "()+*.\\", "\\(\\)\\+\\*\\.\\\\"));
 
     // Pipe
-    // rassert(rrex3(rrex,"abc","abc|def"));
-    rassert(rrex3(rrex, "abc", "def|jkl|abc"));
-    rassert(rrex3(rrex, "abc", "abc|def"));
+    // assert(rrex3(rrex,"abc","abc|def"));
+    assert(rrex3(rrex, "abc", "def|jkl|abc"));
+    assert(rrex3(rrex, "abc", "abc|def"));
 
-    rassert(rrex3(rrex, "rhq", "def|rhq|rha"));
-    rassert(rrex3(rrex, "abc", "abc|def"));
+    assert(rrex3(rrex, "rhq", "def|rhq|rha"));
+    assert(rrex3(rrex, "abc", "abc|def"));
 
     // Repeat
-    rassert(rrex3(rrex, "aaaaa", "a{4}"));
+    assert(rrex3(rrex, "aaaaa", "a{4}"));
 
-    rassert(rrex3(rrex, "aaaa", "a{1,3}a"));
+    assert(rrex3(rrex, "aaaa", "a{1,3}a"));
 
     // Range
-    rassert(rrex3(rrex, "abc", "[abc][abc][abc]$"));
-    rassert(rrex3(rrex, "def", "[^abc][^abc][^abc]$"));
-    rassert(rrex3(rrex, "defabc", "[^abc][^abc][^abc]abc"));
-    rassert(rrex3(rrex, "0-9", "0-9"));
-    rassert(rrex3(rrex, "55-9", "[^6-9]5-9$"));
-    rassert(rrex3(rrex, "a", "[a-z]$"));
-    rassert(rrex3(rrex, "A", "[A-Z]$"));
-    rassert(rrex3(rrex, "5", "[0-9]$"));
-    rassert(!rrex3(rrex, "a", "[^a-z]$"));
-    rassert(!rrex3(rrex, "A", "[^A-Z]$"));
-    rassert(!rrex3(rrex, "5", "[^0-9]$"));
-    rassert(rrex3(rrex, "123abc", "[0-9]*abc$"));
-    rassert(rrex3(rrex, "123123", "[0-9]*$"));
+    assert(rrex3(rrex, "abc", "[abc][abc][abc]$"));
+    assert(rrex3(rrex, "def", "[^abc][^abc][^abc]$"));
+    assert(rrex3(rrex, "defabc", "[^abc][^abc][^abc]abc"));
+    assert(rrex3(rrex, "0-9", "0-9"));
+    assert(rrex3(rrex, "55-9", "[^6-9]5-9$"));
+    assert(rrex3(rrex, "a", "[a-z]$"));
+    assert(rrex3(rrex, "A", "[A-Z]$"));
+    assert(rrex3(rrex, "5", "[0-9]$"));
+    assert(!rrex3(rrex, "a", "[^a-z]$"));
+    assert(!rrex3(rrex, "A", "[^A-Z]$"));
+    assert(!rrex3(rrex, "5", "[^0-9]$"));
+    assert(rrex3(rrex, "123abc", "[0-9]*abc$"));
+    assert(rrex3(rrex, "123123", "[0-9]*$"));
 
     // Parentheses
 
-    rassert(rrex3(rrex, "datadata", "(data)*"));
+    assert(rrex3(rrex, "datadata", "(data)*"));
 
-    rassert(rrex3(rrex, "datadatapony", "(data)*pony$"));
+    assert(rrex3(rrex, "datadatapony", "(data)*pony$"));
 
-    rassert(!rrex3(rrex, "datadatapony", "(d*p*ata)*pond$"));
-    rassert(rrex3(rrex, "datadatadato", "(d*p*ata)*dato"));
-    rassert(rrex3(rrex, "datadatadato", "(d*p*ata)*dato$"));
-    rassert(!rrex3(rrex, "datadatadato", "(d*p*a*ta)*gato$"));
+    assert(!rrex3(rrex, "datadatapony", "(d*p*ata)*pond$"));
+    assert(rrex3(rrex, "datadatadato", "(d*p*ata)*dato"));
+    assert(rrex3(rrex, "datadatadato", "(d*p*ata)*dato$"));
+    assert(!rrex3(rrex, "datadatadato", "(d*p*a*ta)*gato$"));
 
     // Matches
-    rassert(rrex3(rrex, "123", "(123)"));
-    rassert(!strcmp(rrex->matches[0], "123"));
+    assert(rrex3(rrex, "123", "(123)"));
+    assert(!strcmp(rrex->matches[0], "123"));
 
-    rassert(rrex3(rrex, "123321a", "(123)([0-4][2]1)a$"));
-    rassert(!strcmp(rrex->matches[1], "321"));
+    assert(rrex3(rrex, "123321a", "(123)([0-4][2]1)a$"));
+    assert(!strcmp(rrex->matches[1], "321"));
 
-    rassert(rrex3(rrex, "123321a", "(123)([0-4][2]1)a$"));
-    rassert(!strcmp(rrex->matches[1], "321"));
+    assert(rrex3(rrex, "123321a", "(123)([0-4][2]1)a$"));
+    assert(!strcmp(rrex->matches[1], "321"));
 
-    rassert(rrex3(rrex, "aaaabc", "(.*)c"));
+    assert(rrex3(rrex, "aaaabc", "(.*)c"));
 
-    rassert(rrex3(rrex, "abcde", ".....$"));
+    assert(rrex3(rrex, "abcde", ".....$"));
 
-    rassert(rrex3(rrex, "abcdefghijklmnopqrstuvwxyz",
-                  "..........................$"));
+    assert(rrex3(rrex, "abcdefghijklmnopqrstuvwxyz",
+                 "..........................$"));
     // printf("(%d)\n", rrex->valid);
 
-    rassert(rrex3(rrex, "    #include <stdio.h>", "#include.*<(.*)>"));
-    rassert(!strcmp(rrex->matches[0], "stdio.h"));
-    rassert(rrex3(rrex, "    #include \"stdlib.h\"", "#include.\"(.*)\""));
-    rassert(!strcmp(rrex->matches[0], "stdlib.h"));
-    rassert(rrex3(rrex, "    \"stdio.h\"\"string.h\"\"sys/time.h\"",
-                  "\"(.*)\"\"(.*)\"\"(.*)\""));
-    rassert(!strcmp(rrex->matches[0], "stdio.h"));
-    rassert(!strcmp(rrex->matches[1], "string.h"));
-    rassert(!strcmp(rrex->matches[2], "sys/time.h"));
+    assert(rrex3(rrex, "#include <stdio.h>", "#include.*<(.*)>"));
+    assert(!strcmp(rrex->matches[0], "stdio.h"));
+    assert(rrex3(rrex, "#include \"stdlib.h\"", "#include.\"(.*)\""));
+    assert(!strcmp(rrex->matches[0], "stdlib.h"));
+    assert(rrex3(rrex, "\"stdio.h\"\"string.h\"\"sys/time.h\"",
+                 "\"(.*)\"\"(.*)\"\"(.*)\""));
+    assert(!strcmp(rrex->matches[0], "stdio.h"));
+    assert(!strcmp(rrex->matches[1], "string.h"));
+    assert(!strcmp(rrex->matches[2], "sys/time.h"));
+
+    assert(rrex3(rrex, "    #include <stdio.h>", "#include.+<(.+)>"));
+    assert(!strcmp(rrex->matches[0], "stdio.h"));
+    assert(rrex3(rrex, "    #include \"stdlib.h\"", "#include.+\"(.+)\""));
+    assert(!strcmp(rrex->matches[0], "stdlib.h"));
+
+    assert(rrex3(rrex, "    \"stdio.h\"\"string.h\"\"sys/time.h\"",
+                 "\"(.+)\"\"(.+)\"\"(.+)\""));
+    assert(!strcmp(rrex->matches[0], "stdio.h"));
+    assert(!strcmp(rrex->matches[1], "string.h"));
+    assert(!strcmp(rrex->matches[2], "sys/time.h"));
+
+    assert(rrex3(rrex, "int abc ", "int (.*)[; ]?$"));
+    assert(!strcmp(rrex->matches[0], "abc"));
+    assert(rrex3(rrex, "int abc;", "int (.*)[; ]?$"));
+    assert(!strcmp(rrex->matches[0], "abc"));
+    assert(rrex3(rrex, "int abc", "int (.*)[; ]?$"));
+    assert(!strcmp(rrex->matches[0], "abc"));
 
     rrex3_free(rrex);
-
-#ifdef RLIB_H
-    return rtest_end("");
-#else
-    return 0;
-#endif
 }
 #endif
 #ifndef RARENA_H
@@ -1730,13 +2147,82 @@ void arena_reset(arena_t *arena) { arena->pointer = 0; }
 #endif
 #ifndef RLIB_RIO
 #define RLIB_RIO
+#include <dirent.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/stat.h>
+#include <sys/dir.h>
 #include <sys/select.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+bool rfile_exists(char *path) {
+    struct stat s;
+    return !stat(path, &s);
+}
+
+void rjoin_path(char *p1, char *p2, char *output) {
+    output[0] = 0;
+    strcpy(output, p1);
+
+    if (output[strlen(output) - 1] != '/') {
+        char slash[] = "/";
+        strcat(output, slash);
+    }
+    if (p2[0] == '/') {
+        p2++;
+    }
+    strcat(output, p2);
+}
+
+int risprivatedir(const char *path) {
+    struct stat statbuf;
+
+    if (stat(path, &statbuf) != 0) {
+        perror("stat");
+        return -1;
+    }
+
+    if (!S_ISDIR(statbuf.st_mode)) {
+        return -2;
+    }
+
+    if ((statbuf.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO)) == S_IRWXU) {
+        return 1; // Private (owner has all permissions, others have none)
+    }
+
+    return 0;
+}
+bool risdir(const char *path) { return !risprivatedir(path); }
+
+void rforfile(char *path, void callback(char *)) {
+    if (!rfile_exists(path))
+        return;
+    DIR *dir = opendir(path);
+    struct dirent *d;
+    while ((d = readdir(dir)) != NULL) {
+        if (!d)
+            break;
+
+        if ((d->d_name[0] == '.' && strlen(d->d_name) == 1) ||
+            d->d_name[1] == '.') {
+            continue;
+        }
+        char full_path[4096];
+        rjoin_path(path, d->d_name, full_path);
+
+        if (risdir(full_path)) {
+            callback(full_path);
+            rforfile(full_path, callback);
+        } else {
+            callback(full_path);
+        }
+    }
+    closedir(dir);
+}
 
 bool rfd_wait(int fd, int ms) {
+
     fd_set read_fds;
     struct timeval timeout;
 
@@ -1756,11 +2242,6 @@ bool rfd_wait_forever(int fd) {
     return true;
 }
 
-bool rfile_exists(char *path) {
-    struct stat s;
-    return !stat(path, &s);
-}
-
 size_t rfile_size(char *path) {
     struct stat s;
     stat(path, &s);
@@ -1768,7 +2249,7 @@ size_t rfile_size(char *path) {
 }
 
 size_t rfile_readb(char *path, void *data, size_t size) {
-    FILE *fd = fopen(path, "rb");
+    FILE *fd = fopen(path, "r");
     if (!fd) {
         return 0;
     }
@@ -1997,7 +2478,7 @@ int rstrip_whitespace(char *input, char *output) {
     int count = 0;
     size_t len = strlen(input);
     for (size_t i = 0; i < len; i++) {
-        if (input[i] == '\t' || input[i] == ' ') {
+        if (input[i] == '\t' || input[i] == ' ' || input[i] == '\n') {
             continue;
         }
         count = i;
@@ -2010,6 +2491,45 @@ int rstrip_whitespace(char *input, char *output) {
     }
     return count;
 }
+
+void rstrtocstring(const char *input, char *output) {
+    int index = 0;
+    char clean_input[strlen(input) * 2];
+    char *iptr = clean_input;
+    rstraddslashes(input, clean_input);
+    output[index] = '"';
+    index++;
+    while (*iptr) {
+        if (*iptr == '"') {
+            output[index] = '\\';
+            output++;
+        } else if (*iptr == '\\' && *(iptr + 1) == 'n') {
+            output[index] = '\\';
+            output++;
+            output[index] = 'n';
+            output++;
+            output[index] = '"';
+            output++;
+            output[index] = '\n';
+            output++;
+            output[index] = '"';
+            output++;
+            iptr++;
+            iptr++;
+            continue;
+        }
+        output[index] = *iptr;
+        index++;
+        iptr++;
+    }
+    if (output[index - 1] == '"' && output[index - 2] == '\n') {
+        output[index - 1] = 0;
+    } else if (output[index - 1] != '"') {
+        output[index] = '"';
+        output[index + 1] = 0;
+    }
+}
+
 size_t rstrtokline(char *input, char *output, size_t offset, bool strip_nl) {
 
     size_t len = strlen(input);
@@ -2347,14 +2867,13 @@ void rlib_test_progressbar() {
 #endif
 #ifndef RTERM_H
 #define RTERM_H
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <termios.h>
-#include <sys/ioctl.h>
-#include <stdbool.h>
 #include <string.h>
-
+#include <sys/ioctl.h>
+#include <termios.h>
+#include <unistd.h>
 typedef struct winsize winsize_t;
 
 typedef struct rshell_keypress_t {
@@ -2370,6 +2889,7 @@ typedef struct rshell_keypress_t {
 typedef struct rterm_t {
     bool show_cursor;
     bool show_footer;
+    int ms_tick;
     rshell_keypress_t key;
     void (*before_cursor_move)(struct rterm_t *);
     void (*after_cursor_move)(struct rterm_t *);
@@ -2394,7 +2914,9 @@ typedef void (*rterm_event)(rterm_t *);
 void rterm_init(rterm_t *rterm) {
     memset(rterm, 0, sizeof(rterm_t));
     rterm->show_cursor = true;
-    rterm->show_cursor = true;
+    rterm->cursor.x = 0;
+    rterm->cursor.y = 0;
+    rterm->ms_tick = 100;
 }
 
 void rterm_getwinsize(winsize_t *w) {
@@ -2409,8 +2931,8 @@ void rterm_getwinsize(winsize_t *w) {
 void enableRawMode(struct termios *orig_termios) {
     struct termios raw = *orig_termios;
     raw.c_lflag &= ~(ICANON | ECHO); // Disable canonical mode and echoing
-    raw.c_cc[VMIN] = 0;
-    raw.c_cc[VTIME] = 1; // Set timeout for read input
+    raw.c_cc[VMIN] = 1;
+    raw.c_cc[VTIME] = 240; // Set timeout for read input
 
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 }
@@ -2426,7 +2948,7 @@ void rterm_clear_screen() {
 }
 
 void setBackgroundColor() {
-    printf("\x1b[44m"); // Set background color to blue
+    printf("\x1b[34m"); // Set background color to blue
 }
 
 void rterm_move_cursor(int x, int y) {
@@ -2446,6 +2968,7 @@ void cursor_restore(rterm_t *rt) {
 
 void rterm_print_status_bar(rterm_t *rt, char c, unsigned long i) {
     winsize_t ws = rt->size;
+    cursor_set(rt, rt->cursor.x, rt->cursor.y);
     rterm_move_cursor(0, ws.ws_row - 1);
 
     char output_str[1024];
@@ -2478,16 +3001,17 @@ void rterm_hide_cursor() {
     printf("\x1b[?25l"); // Hide the cursor
 }
 
-rshell_keypress_t rshell_getkey() {
+rshell_keypress_t rshell_getkey(rterm_t *rt) {
     static rshell_keypress_t press;
     press.c = 0;
     press.ctrl = false;
     press.shift = false;
     press.escape = false;
-    press.pressed = rfd_wait(0, 100);
-    if (press.pressed) {
-        press.c = getchar();
+    press.pressed = rfd_wait(0, rt->ms_tick);
+    if (!press.pressed) {
+        return press;
     }
+    press.c = getchar();
     char ch = press.c;
     if (ch == '\x1b') {
         // Get detail
@@ -2510,6 +3034,9 @@ rshell_keypress_t rshell_getkey() {
                     press.c = getchar(); // De arrow
                 }
             }
+        } else if (ch == 27) {
+            press.escape = true;
+            press.c = ch;
         } else {
             press.c = ch;
         }
@@ -2525,6 +3052,7 @@ void rterm_loop(rterm_t *rt) {
 
     int x = 0, y = 0; // Initial cursor position
     char ch = 0;
+
     ;
     while (1) {
         rterm_getwinsize(&rt->size);
@@ -2534,34 +3062,35 @@ void rterm_loop(rterm_t *rt) {
         }
 
         rterm_hide_cursor();
-        // setBackgroundColor();
+        setBackgroundColor();
         rterm_clear_screen();
         if (rt->before_draw) {
             rt->before_draw(rt);
         }
         rterm_print_status_bar(rt, ch, rt->iterations);
+
         if (!rt->iterations || (x != rt->cursor.x || y != rt->cursor.y)) {
-            if (y == rt->size.ws_row) {
-                y--;
+            if (rt->cursor.y == rt->size.ws_row) {
+                rt->cursor.y--;
             }
-            if (y < 0) {
-                y = 0;
+            if (rt->cursor.y < 0) {
+                rt->cursor.y = 0;
             }
-            rt->cursor.x = x;
-            rt->cursor.y = y;
+            x = rt->cursor.x;
+            y = rt->cursor.y;
             if (rt->before_cursor_move)
                 rt->before_cursor_move(rt);
             cursor_set(rt, rt->cursor.x, rt->cursor.y);
             if (rt->after_cursor_move)
                 rt->after_cursor_move(rt);
-            x = rt->cursor.x;
-            y = rt->cursor.y;
+            // x = rt->cursor.x;
+            // y = rt->cursor.y;
         }
         if (rt->show_cursor)
             rterm_show_cursor();
         fflush(stdout);
 
-        rt->key = rshell_getkey();
+        rt->key = rshell_getkey(rt);
         if (rt->key.pressed && rt->before_key_press) {
             rt->before_key_press(rt);
         }
@@ -2569,37 +3098,41 @@ void rterm_loop(rterm_t *rt) {
         ch = key.c;
         if (ch == 'q')
             break; // Press 'q' to quit
-
+        if (key.c == -1) {
+            nsleep(1000 * 1000);
+        }
         // Escape
         if (key.escape) {
             switch (key.c) {
             case 65: // Move up
-                if (y > -1)
-                    y--;
+                if (rt->cursor.y > -1)
+                    rt->cursor.y--;
                 break;
             case 66: // Move down
-                if (y < rt->size.ws_row)
-                    y++;
+                if (rt->cursor.y < rt->size.ws_row)
+                    rt->cursor.y++;
                 break;
             case 68: // Move left
-                if (x > 0)
-                    x--;
+                if (rt->cursor.x > 0)
+                    rt->cursor.x--;
                 if (key.ctrl)
-                    x -= 4;
+                    rt->cursor.x -= 4;
                 break;
             case 67: // Move right
-                if (x < rt->size.ws_col) {
-                    x++;
+                if (rt->cursor.x < rt->size.ws_col) {
+                    rt->cursor.x++;
                 }
                 if (key.ctrl) {
-                    x += 4;
+                    rt->cursor.x += 4;
                 }
                 break;
             }
         }
+
         if (rt->key.pressed && rt->after_key_press) {
             rt->after_key_press(rt);
         }
+
         rt->iterations++;
 
         //  usleep (1000);
@@ -3096,7 +3629,6 @@ char *rlex_format(char *content) {
 #include <sys/time.h>
 #include <time.h>
 
-
 #define RBENCH(times, action)                                                  \
     {                                                                          \
         unsigned long utimes = (unsigned long)times;                           \
@@ -3295,8 +3827,10 @@ rbench_function_t *rbench_execute_prepare(rbench_t *r, int findex, long times,
 }
 void rbench_execute_finish(rbench_t *r) {
     rbench_toggle_stdout(r);
-    free(r->progress_bar);
-    r->progress_bar = NULL;
+    if (r->progress_bar) {
+        free(r->progress_bar);
+        r->progress_bar = NULL;
+    }
     r->current->average_execution_time =
         r->current->total_execution_time / r->current->times_executed;
     ;
@@ -3464,4 +3998,3 @@ void rbench_free(rbench_t *r) { free(r); }
 #endif
 // END OF RLIB
 #endif
-

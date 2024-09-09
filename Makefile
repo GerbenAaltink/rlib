@@ -6,7 +6,7 @@ CFLAGS = -Wall -Wextra -Ofast
 LDFLAGS = -lm
  
 
-all: test_rmalloc test_rtime test_arena test_rtree test_rstring test_rlexer test_rrex3 test_rhashtable test_rkeytable test_rterminal test_rmerge run_rmerge format_all build format_all 
+all: test_rmalloc test_rstring_list test_rtime test_arena test_rtree test_rstring test_rlexer test_rrex3 test_rio test_rhashtable test_rkeytable test_rterminal test_rmerge run_rmerge format_all build format_all 
 
 format_all: format_rlib_h
 	clang-format *.c *.h *.cpp -i --sort-includes=false
@@ -21,6 +21,12 @@ clear:
 
 rebuild: clear all
 
+test_rstring_list: build_rstring_list run_rstring_list
+build_rstring_list:
+	$(CC) $(CFLAGS) rstring_list.c -o ./build/rstring_list	
+run_rstring_list:
+	./build/rstring_list
+
 test_rlexer: build_rlexer run_rlexer
 build_rlexer:
 	$(CC) $(CFLAGS) rlexer.c -o ./build/rlexer
@@ -32,6 +38,14 @@ build_rrex3:
 	$(CC) $(CFLAGS) rrex3.c -o ./build/rrex3
 run_rrex3:
 	./build/rrex3
+
+test_rio: build_rio run_rio
+build_rio:
+	$(CC) $(CFLAGS) rio.c -o ./build/rio
+run_rio:
+	./build/rio
+
+
 
 test_rterm: build_rterm run_rterm
 build_rterm:

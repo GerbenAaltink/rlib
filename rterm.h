@@ -8,7 +8,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include "rio.h"
-
+#include "rtime.h"
 typedef struct winsize winsize_t;
 
 typedef struct rshell_keypress_t {
@@ -24,6 +24,7 @@ typedef struct rshell_keypress_t {
 typedef struct rterm_t {
     bool show_cursor;
     bool show_footer;
+    int ms_tick;
     rshell_keypress_t key;
     void (*before_cursor_move)(struct rterm_t *);
     void (*after_cursor_move)(struct rterm_t *);
@@ -48,7 +49,9 @@ typedef void (*rterm_event)(rterm_t *);
 void rterm_init(rterm_t *rterm) {
     memset(rterm, 0, sizeof(rterm_t));
     rterm->show_cursor = true;
-    rterm->show_cursor = true;
+    rterm->cursor.x = 0;
+    rterm->cursor.y = 0;
+    rterm->ms_tick = 100;
 }
 
 void rterm_getwinsize(winsize_t *w) {
@@ -63,8 +66,8 @@ void rterm_getwinsize(winsize_t *w) {
 void enableRawMode(struct termios *orig_termios) {
     struct termios raw = *orig_termios;
     raw.c_lflag &= ~(ICANON | ECHO); // Disable canonical mode and echoing
-    raw.c_cc[VMIN] = 0;
-    raw.c_cc[VTIME] = 1; // Set timeout for read input
+    raw.c_cc[VMIN] = 1;
+    raw.c_cc[VTIME] = 240; // Set timeout for read input
 
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 }
@@ -80,7 +83,7 @@ void rterm_clear_screen() {
 }
 
 void setBackgroundColor() {
-    printf("\x1b[44m"); // Set background color to blue
+    printf("\x1b[34m"); // Set background color to blue
 }
 
 void rterm_move_cursor(int x, int y) {
@@ -100,6 +103,7 @@ void cursor_restore(rterm_t *rt) {
 
 void rterm_print_status_bar(rterm_t *rt, char c, unsigned long i) {
     winsize_t ws = rt->size;
+    cursor_set(rt, rt->cursor.x, rt->cursor.y);
     rterm_move_cursor(0, ws.ws_row - 1);
 
     char output_str[1024];
@@ -132,16 +136,17 @@ void rterm_hide_cursor() {
     printf("\x1b[?25l"); // Hide the cursor
 }
 
-rshell_keypress_t rshell_getkey() {
+rshell_keypress_t rshell_getkey(rterm_t *rt) {
     static rshell_keypress_t press;
     press.c = 0;
     press.ctrl = false;
     press.shift = false;
     press.escape = false;
-    press.pressed = rfd_wait(0, 100);
-    if (press.pressed) {
-        press.c = getchar();
+    press.pressed = rfd_wait(0, rt->ms_tick);
+    if (!press.pressed) {
+        return press;
     }
+    press.c = getchar();
     char ch = press.c;
     if (ch == '\x1b') {
         // Get detail
@@ -164,6 +169,9 @@ rshell_keypress_t rshell_getkey() {
                     press.c = getchar(); // De arrow
                 }
             }
+        } else if (ch == 27) {
+            press.escape = true;
+            press.c = ch;
         } else {
             press.c = ch;
         }
@@ -179,6 +187,7 @@ void rterm_loop(rterm_t *rt) {
 
     int x = 0, y = 0; // Initial cursor position
     char ch = 0;
+
     ;
     while (1) {
         rterm_getwinsize(&rt->size);
@@ -188,34 +197,35 @@ void rterm_loop(rterm_t *rt) {
         }
 
         rterm_hide_cursor();
-        // setBackgroundColor();
+        setBackgroundColor();
         rterm_clear_screen();
         if (rt->before_draw) {
             rt->before_draw(rt);
         }
         rterm_print_status_bar(rt, ch, rt->iterations);
+
         if (!rt->iterations || (x != rt->cursor.x || y != rt->cursor.y)) {
-            if (y == rt->size.ws_row) {
-                y--;
+            if (rt->cursor.y == rt->size.ws_row) {
+                rt->cursor.y--;
             }
-            if (y < 0) {
-                y = 0;
+            if (rt->cursor.y < 0) {
+                rt->cursor.y = 0;
             }
-            rt->cursor.x = x;
-            rt->cursor.y = y;
+            x = rt->cursor.x;
+            y = rt->cursor.y;
             if (rt->before_cursor_move)
                 rt->before_cursor_move(rt);
             cursor_set(rt, rt->cursor.x, rt->cursor.y);
             if (rt->after_cursor_move)
                 rt->after_cursor_move(rt);
-            x = rt->cursor.x;
-            y = rt->cursor.y;
+            // x = rt->cursor.x;
+            // y = rt->cursor.y;
         }
         if (rt->show_cursor)
             rterm_show_cursor();
         fflush(stdout);
 
-        rt->key = rshell_getkey();
+        rt->key = rshell_getkey(rt);
         if (rt->key.pressed && rt->before_key_press) {
             rt->before_key_press(rt);
         }
@@ -223,37 +233,41 @@ void rterm_loop(rterm_t *rt) {
         ch = key.c;
         if (ch == 'q')
             break; // Press 'q' to quit
-
+        if (key.c == -1) {
+            nsleep(1000 * 1000);
+        }
         // Escape
         if (key.escape) {
             switch (key.c) {
             case 65: // Move up
-                if (y > -1)
-                    y--;
+                if (rt->cursor.y > -1)
+                    rt->cursor.y--;
                 break;
             case 66: // Move down
-                if (y < rt->size.ws_row)
-                    y++;
+                if (rt->cursor.y < rt->size.ws_row)
+                    rt->cursor.y++;
                 break;
             case 68: // Move left
-                if (x > 0)
-                    x--;
+                if (rt->cursor.x > 0)
+                    rt->cursor.x--;
                 if (key.ctrl)
-                    x -= 4;
+                    rt->cursor.x -= 4;
                 break;
             case 67: // Move right
-                if (x < rt->size.ws_col) {
-                    x++;
+                if (rt->cursor.x < rt->size.ws_col) {
+                    rt->cursor.x++;
                 }
                 if (key.ctrl) {
-                    x += 4;
+                    rt->cursor.x += 4;
                 }
                 break;
             }
         }
+
         if (rt->key.pressed && rt->after_key_press) {
             rt->after_key_press(rt);
         }
+
         rt->iterations++;
 
         //  usleep (1000);

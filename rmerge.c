@@ -76,13 +76,13 @@ void merge_file(char *source, FILE *d) {
         include_path[0] = 0;
         if (!*line)
             break;
-        
-        rrex3_t * rrex;
-        rrex= rrex3(NULL,line,"#include *\"(.*)\"");
-        if(rrex){
+
+        rrex3_t *rrex;
+        rrex = rrex3(NULL, line, "#include *\"(.*)\"");
+        if (rrex) {
             strcpy(include_path, rrex->matches[0]);
             rrex3_free(rrex);
-        } 
+        }
         /*
         if (!strncmp(line, "#include ", 9)) {
             int index = 0;

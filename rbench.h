@@ -213,8 +213,10 @@ rbench_function_t *rbench_execute_prepare(rbench_t *r, int findex, long times,
 }
 void rbench_execute_finish(rbench_t *r) {
     rbench_toggle_stdout(r);
-    free(r->progress_bar);
-    r->progress_bar = NULL;
+    if (r->progress_bar) {
+        free(r->progress_bar);
+        r->progress_bar = NULL;
+    }
     r->current->average_execution_time =
         r->current->total_execution_time / r->current->times_executed;
     ;

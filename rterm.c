@@ -8,6 +8,7 @@ void after_cursor_move(rterm_t *rterm) {
     // rterm->cursor.x++;
 }
 void before_key_press(rterm_t *rterm) {
+
     // if(rterm->key.c == 65 && rterm->key.escape){
     //     rterm->key.c = 66;
     //}

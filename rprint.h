@@ -137,20 +137,20 @@ void rprintpf(FILE *f, const char *prefix, const char *format, va_list args) {
     }
 }
 
-void rprintp(char *format, ...) {
+void rprintp(const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(stdout, "", format, args);
     va_end(args);
 }
 
-void rprintf(FILE *f, char *format, ...) {
+void rprintf(FILE *f, const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(f, "", format, args);
     va_end(args);
 }
-void rprint(char *format, ...) {
+void rprint(const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(stdout, "", format, args);
@@ -159,13 +159,13 @@ void rprint(char *format, ...) {
 #define printf rprint
 
 // Print line
-void rprintlf(FILE *f, char *format, ...) {
+void rprintlf(FILE *f, const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(f, "\\l", format, args);
     va_end(args);
 }
-void rprintl(char *format, ...) {
+void rprintl(const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(stdout, "\\l", format, args);
@@ -173,13 +173,13 @@ void rprintl(char *format, ...) {
 }
 
 // Black
-void rprintkf(FILE *f, char *format, ...) {
+void rprintkf(FILE *f, const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(f, "\e[30m", format, args);
     va_end(args);
 }
-void rprintk(char *format, ...) {
+void rprintk(const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(stdout, "\e[30m", format, args);
@@ -187,13 +187,13 @@ void rprintk(char *format, ...) {
 }
 
 // Red
-void rprintrf(FILE *f, char *format, ...) {
+void rprintrf(FILE *f, const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(f, "\e[31m", format, args);
     va_end(args);
 }
-void rprintr(char *format, ...) {
+void rprintr(const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(stdout, "\e[31m", format, args);
@@ -201,13 +201,13 @@ void rprintr(char *format, ...) {
 }
 
 // Green
-void rprintgf(FILE *f, char *format, ...) {
+void rprintgf(FILE *f, const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(f, "\e[32m", format, args);
     va_end(args);
 }
-void rprintg(char *format, ...) {
+void rprintg(const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(stdout, "\e[32m", format, args);
@@ -215,13 +215,13 @@ void rprintg(char *format, ...) {
 }
 
 // Yellow
-void rprintyf(FILE *f, char *format, ...) {
+void rprintyf(FILE *f, const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(f, "\e[33m", format, args);
     va_end(args);
 }
-void rprinty(char *format, ...) {
+void rprinty(const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(stdout, "\e[33m", format, args);
@@ -229,14 +229,14 @@ void rprinty(char *format, ...) {
 }
 
 // Blue
-void rprintbf(FILE *f, char *format, ...) {
+void rprintbf(FILE *f, const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(f, "\e[34m", format, args);
     va_end(args);
 }
 
-void rprintb(char *format, ...) {
+void rprintb(const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(stdout, "\e[34m", format, args);
@@ -244,13 +244,13 @@ void rprintb(char *format, ...) {
 }
 
 // Magenta
-void rprintmf(FILE *f, char *format, ...) {
+void rprintmf(FILE *f, const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(f, "\e[35m", format, args);
     va_end(args);
 }
-void rprintm(char *format, ...) {
+void rprintm(const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(stdout, "\e[35m", format, args);
@@ -258,13 +258,13 @@ void rprintm(char *format, ...) {
 }
 
 // Cyan
-void rprintcf(FILE *f, char *format, ...) {
+void rprintcf(FILE *f, const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(f, "\e[36m", format, args);
     va_end(args);
 }
-void rprintc(char *format, ...) {
+void rprintc(const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(stdout, "\e[36m", format, args);
@@ -272,13 +272,13 @@ void rprintc(char *format, ...) {
 }
 
 // White
-void rprintwf(FILE *f, char *format, ...) {
+void rprintwf(FILE *f, const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(f, "\e[37m", format, args);
     va_end(args);
 }
-void rprintw(char *format, ...) {
+void rprintw(const char *format, ...) {
     va_list args;
     va_start(args, format);
     rprintpf(stdout, "\e[37m", format, args);

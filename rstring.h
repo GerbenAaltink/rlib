@@ -216,7 +216,7 @@ int rstrip_whitespace(char *input, char *output) {
     int count = 0;
     size_t len = strlen(input);
     for (size_t i = 0; i < len; i++) {
-        if (input[i] == '\t' || input[i] == ' ') {
+        if (input[i] == '\t' || input[i] == ' ' || input[i] == '\n') {
             continue;
         }
         count = i;
@@ -229,6 +229,45 @@ int rstrip_whitespace(char *input, char *output) {
     }
     return count;
 }
+
+void rstrtocstring(const char *input, char *output) {
+    int index = 0;
+    char clean_input[strlen(input) * 2];
+    char *iptr = clean_input;
+    rstraddslashes(input, clean_input);
+    output[index] = '"';
+    index++;
+    while (*iptr) {
+        if (*iptr == '"') {
+            output[index] = '\\';
+            output++;
+        } else if (*iptr == '\\' && *(iptr + 1) == 'n') {
+            output[index] = '\\';
+            output++;
+            output[index] = 'n';
+            output++;
+            output[index] = '"';
+            output++;
+            output[index] = '\n';
+            output++;
+            output[index] = '"';
+            output++;
+            iptr++;
+            iptr++;
+            continue;
+        }
+        output[index] = *iptr;
+        index++;
+        iptr++;
+    }
+    if (output[index - 1] == '"' && output[index - 2] == '\n') {
+        output[index - 1] = 0;
+    } else if (output[index - 1] != '"') {
+        output[index] = '"';
+        output[index + 1] = 0;
+    }
+}
+
 size_t rstrtokline(char *input, char *output, size_t offset, bool strip_nl) {
 
     size_t len = strlen(input);

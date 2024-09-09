@@ -1,20 +1,14 @@
 #ifndef RREX3_H
 #define RREX3_H
+#include <assert.h>
+#include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <assert.h>
-#include <stdlib.h>
-#include <ctype.h>
 #ifndef RREX3_DEBUG
 #define RREX3_DEBUG 0
-#endif
-#ifndef rprintr
-#define rprintr printf
-#endif
-#ifndef rassert
-#define rassert assert
 #endif
 
 struct rrex3_t;
@@ -130,14 +124,7 @@ bool rrex3_is_function(char chr) {
 
 inline static void rrex3_cmp_literal(rrex3_t *rrex3) {
     rrex3_set_previous(rrex3);
-    if (*rrex3->expr == 0 && !*rrex3->str) {
-        rprintr("ERROR, EMPTY CHECK");
-        exit(1);
-    }
-    if (rrex3->valid == false) {
-        rrex3->expr++;
-        return;
-    }
+
     if (rrex3->inside_brackets) {
         if (isalpharange(rrex3->expr) || isdigitrange(rrex3->expr)) {
             rrex3_cmp_literal_range(rrex3);
@@ -147,19 +134,29 @@ inline static void rrex3_cmp_literal(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
     printf("Literal check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
            rrex3->valid);
+
 #endif
+    if (*rrex3->expr == 0 && !*rrex3->str) {
+        printf("ERROR, EMPTY CHECK\n");
+        // exit(1);
+    }
+    if (rrex3->valid == false) {
+        rrex3->expr++;
+        return;
+    }
+
     if (*rrex3->expr == *rrex3->str) {
         rrex3->expr++;
         rrex3->str++;
         rrex3->valid = true;
-        /*if(*rrex3->expr &&rrex3->functions[(int)*rrex3->expr] ==
-        rrex3_cmp_literal && !rrex3->inside_brackets &&
-        !rrex3_is_function(*rrex3->expr)){ rrex3_cmp_literal(rrex3);
-            if(rrex3->valid == false){
-                rrex3->expr--;
-                rrex3->valid = true;
-            }
-        }*/
+        // if(*rrex3->expr &&rrex3->functions[(int)*rrex3->expr] ==
+        // rrex3_cmp_literal && !rrex3->inside_brackets &&
+        //! rrex3_is_function(*rrex3->expr)){ rrex3_cmp_literal(rrex3);
+        //   if(rrex3->valid == false){
+        //  rrex3->expr--;
+        // rrex3->valid = true;
+        // }
+        // }
         return;
     }
     rrex3->expr++;
@@ -234,7 +231,7 @@ inline static void rrex3_cmp_whitespace_upper(rrex3_t *rrex3) {
     rrex3->expr++;
 }
 
-inline static void rrex3_cmp_plus(rrex3_t *rrex3) {
+inline static void rrex3_cmp_plus2(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
     printf("Plus check: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
@@ -301,7 +298,211 @@ inline static void rrex3_cmp_plus(rrex3_t *rrex3) {
     rrex3->valid = true;
 }
 
+inline static void rrex3_cmp_plus(rrex3_t *rrex3) {
+#if RREX3_DEBUG == 1
+    rprintg("Asterisk start check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
+            rrex3->valid);
+#endif
+    if (!rrex3->valid) {
+        rrex3->expr++;
+        return;
+    }
+
+    char *left = rrex3->previous.expr;
+    // printf("%s\n",rrex3->str);
+    char *right = rrex3->expr + 1;
+    if (*right == ')') {
+        right++;
+    }
+    int right_valid = 0;
+    bool right_valid_once = false;
+    char *expr = right;
+    char *right_str = rrex3->str;
+    ;
+    char *right_expr = NULL;
+    char *str = rrex3->str;
+    bool first_time = true;
+    bool left_valid = true;
+    char *str_prev = NULL;
+    bool valid_from_start = true;
+    ;
+    while (*rrex3->str) {
+        if (!left_valid && !right_valid) {
+            break;
+        }
+        if (right_valid && !left_valid) {
+            str = right_str;
+            break;
+        }
+
+        rrex3->expr = right;
+        rrex3->str = str;
+#if RREX3_DEBUG == 1
+        printf("r");
+#endif
+        if (*rrex3->str && rrex3_move(rrex3, false)) {
+            right_valid++;
+            right_str = rrex3->str;
+            expr = rrex3->expr;
+            if (!right_valid_once) {
+                right_expr = rrex3->expr;
+                right_valid_once = true;
+            }
+        } else {
+            right_valid = 0;
+        }
+        if (first_time) {
+            first_time = false;
+            valid_from_start = right_valid;
+        }
+
+        if (right_valid && !valid_from_start && right_valid > 0) {
+            expr = right_expr - 1;
+            ;
+            if (*(right - 1) == ')') {
+                expr = right - 1;
+            }
+            break;
+        }
+
+        if ((!right_valid && right_valid_once)) {
+            expr = right_expr;
+            if (*(right - 1) == ')') {
+                str = str_prev;
+                expr = right - 1;
+            }
+            break;
+        }
+
+        str_prev = str;
+        rrex3->valid = true;
+        rrex3->str = str;
+        rrex3->expr = left;
+#if RREX3_DEBUG == 1
+        printf("l");
+#endif
+        if (rrex3_move(rrex3, false)) {
+            left_valid = true;
+
+            str = rrex3->str;
+        } else {
+            left_valid = false;
+        }
+    }
+
+    rrex3->expr = expr;
+    rrex3->str = str;
+    rrex3->valid = true;
+
+#if RREX3_DEBUG == 1
+    rprintg("Asterisk end check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
+            rrex3->valid);
+#endif
+}
+
 inline static void rrex3_cmp_asterisk(rrex3_t *rrex3) {
+#if RREX3_DEBUG == 1
+    rprintg("Asterisk start check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
+            rrex3->valid);
+#endif
+    if (!rrex3->valid) {
+        rrex3->valid = true;
+        rrex3->expr++;
+        return;
+    }
+
+    rrex3->str = rrex3->previous.str;
+    char *left = rrex3->previous.expr;
+    // printf("%s\n",rrex3->str);
+    char *right = rrex3->expr + 1;
+    if (*right == ')') {
+        right++;
+    }
+    int right_valid = 0;
+    bool right_valid_once = false;
+    char *expr = right;
+    char *right_str = rrex3->str;
+    ;
+    char *right_expr = NULL;
+    char *str = rrex3->str;
+    bool first_time = true;
+    bool left_valid = true;
+    char *str_prev = NULL;
+    bool valid_from_start = true;
+    ;
+    while (*rrex3->str) {
+        if (!left_valid && !right_valid) {
+            break;
+        }
+        if (right_valid && !left_valid) {
+            str = right_str;
+            break;
+        }
+
+        rrex3->expr = right;
+        rrex3->str = str;
+#if RREX3_DEBUG == 1
+        printf("r");
+#endif
+        if (*rrex3->str && rrex3_move(rrex3, false)) {
+            right_valid++;
+            right_str = rrex3->str;
+            expr = rrex3->expr;
+            if (!right_valid_once) {
+                right_expr = rrex3->expr;
+                right_valid_once = true;
+            }
+        } else {
+            right_valid = 0;
+        }
+        if (first_time) {
+            first_time = false;
+            valid_from_start = right_valid;
+        }
+
+        if (right_valid && !valid_from_start && right_valid > 0) {
+            expr = right_expr - 1;
+            if (*(right - 1) == ')') {
+                expr = right - 1;
+            }
+            break;
+        }
+
+        if ((!right_valid && right_valid_once)) {
+            expr = right_expr;
+            if (*(right - 1) == ')') {
+                str = str_prev;
+                expr = right - 1;
+            }
+            break;
+        }
+
+        str_prev = str;
+        rrex3->valid = true;
+        rrex3->str = str;
+        rrex3->expr = left;
+#if RREX3_DEBUG == 1
+        printf("l");
+#endif
+        if (rrex3_move(rrex3, false)) {
+            left_valid = true;
+            str = rrex3->str;
+        } else {
+            left_valid = false;
+        }
+    }
+
+    rrex3->expr = expr;
+    rrex3->str = str;
+    rrex3->valid = true;
+
+#if RREX3_DEBUG == 1
+    rprintg("Asterisk end check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
+            rrex3->valid);
+#endif
+}
+
+inline static void rrex3_cmp_asterisk2(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
     rprintg("Asterisk start check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
             rrex3->valid);
@@ -349,7 +550,10 @@ inline static void rrex3_cmp_asterisk(rrex3_t *rrex3) {
             // Match rright.
             success_next = true;
             if (!next_original) {
-                right_next = rrex3->expr;
+                if (!success_next_once) {
+                    right_next = rrex3->expr;
+                }
+
             } else {
                 right_next = next_original;
                 break;
@@ -544,6 +748,13 @@ inline static void rrex3_cmp_range(rrex3_t *rrex3) {
 }
 
 inline static void rrex3_cmp_word_start_or_end(rrex3_t *rrex3) {
+#if RREX3_DEBUG == 1
+    if (*rrex3->expr != 'B') {
+        printf("Check word start or end: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
+               rrex3->valid);
+    }
+
+#endif
     rrex3_set_previous(rrex3);
     bool valid = false;
     if (isalpha(*rrex3->str)) {
@@ -561,6 +772,11 @@ inline static void rrex3_cmp_word_start_or_end(rrex3_t *rrex3) {
     rrex3->valid = valid;
 }
 inline static void rrex3_cmp_word_not_start_or_end(rrex3_t *rrex3) {
+#if RREX3_DEBUG == 1
+    printf("Check word NOT start or end: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
+           rrex3->valid);
+
+#endif
     rrex3_set_previous(rrex3);
 
     rrex3_cmp_word_start_or_end(rrex3);
@@ -640,11 +856,12 @@ inline static void rrex3_cmp_parentheses(rrex3_t *rrex3) {
     rprinty("\\l Parentheses start check: %c:%c:%d\n", *rrex3->expr,
             *rrex3->str, rrex3->valid);
 #endif
+
+    rrex3_set_previous(rrex3);
     if (!rrex3->valid) {
         rrex3->expr++;
         return;
     }
-    rrex3_set_previous(rrex3);
     if (rrex3->match_count == rrex3->match_capacity) {
 
         rrex3->match_capacity++;
@@ -795,8 +1012,10 @@ static bool rrex3_move(rrex3_t *rrex3, bool resume_on_fail) {
     rrex3->function = rrex3->functions[(int)rrex3->bytecode];
     rrex3->function(rrex3);
     if (!*rrex3->expr && !*rrex3->str) {
-
         rrex3->exit = true;
+        return rrex3->valid;
+    } else if (!*rrex3->expr) {
+        // rrex3->valid = true;
         return rrex3->valid;
     }
     if (rrex3->pattern_error) {
@@ -804,6 +1023,7 @@ static bool rrex3_move(rrex3_t *rrex3, bool resume_on_fail) {
         return rrex3->valid;
     }
     if (resume_on_fail && !rrex3->valid && *rrex3->expr) {
+
         // rrex3_set_previous(rrex3);
         rrex3->failed.bytecode = rrex3->bytecode;
         rrex3->failed.function = rrex3->function;
@@ -833,9 +1053,10 @@ static bool rrex3_move(rrex3_t *rrex3, bool resume_on_fail) {
                 return rrex3->valid;
             }
             rrex3->expr = rrex3->_expr;
-            if (rrex3->str)
+            if (*rrex3->str)
                 rrex3->valid = true;
         }
+    } else {
     }
     return rrex3->valid;
 }
@@ -860,7 +1081,9 @@ rrex3_t *rrex3(rrex3_t *rrex3, char *str, char *expr) {
         if (!rrex3_move(rrex3, true))
             return NULL;
     }
+    rrex3->expr = rrex3->_expr;
     if (rrex3->valid) {
+
         return rrex3;
     } else {
         if (self_initialized) {
@@ -870,145 +1093,163 @@ rrex3_t *rrex3(rrex3_t *rrex3, char *str, char *expr) {
     }
 }
 
-int rrex3_test() {
+void rrex3_test() {
     rrex3_t *rrex = rrex3_new();
 
-    rassert(rrex3(rrex, "aaaaaaa", "a*a$"));
+    assert(rrex3(rrex, "\"stdio.h\"\"string.h\"\"sys/time.h\"",
+                 "\"(.*)\"\"(.*)\"\"(.*)\""));
 
-    // rassert(rrex3("ababa", "a*b*a*b*a$"));
-    rassert(rrex3(rrex, "#include\"test.h\"a", "#include.*\".*\"a$"));
-    rassert(rrex3(rrex, "#include \"test.h\"a", "#include.*\".*\"a$"));
-    rassert(rrex3(rrex, "aaaaaad", "a*d$"));
-    rassert(rrex3(rrex, "abcdef", "abd?cdef"));
-    rassert(!rrex3(rrex, "abcdef", "abd?def"));
-    rassert(rrex3(rrex, "abcdef", "def"));
-    rassert(!rrex3(rrex, "abcdef", "^def"));
-    rassert(rrex3(rrex, "abcdef", "def$"));
-    rassert(!rrex3(rrex, "abcdef", "^abc$"));
-    rassert(rrex3(rrex, "aB!.#1", "......"));
-    rassert(!rrex3(rrex, "aB!.#\n", "      ......"));
-    rassert(!rrex3(rrex, "aaaaaad", "q+d$"));
-    rassert(rrex3(rrex, "aaaaaaa", "a+a$"));
-    rassert(rrex3(rrex, "aaaaaad", "q*d$"));
-    rassert(!rrex3(rrex, "aaaaaad", "^q*d$"));
+    assert(rrex3(rrex, "aaaaaaa", "a*a$"));
+
+    // assert(rrex3("ababa", "a*b*a*b*a$"));
+    assert(rrex3(rrex, "#include\"test.h\"a", "#include.*\".*\"a$"));
+    assert(rrex3(rrex, "#include \"test.h\"a", "#include.*\".*\"a$"));
+    assert(rrex3(rrex, "aaaaaad", "a*d$"));
+    assert(rrex3(rrex, "abcdef", "abd?cdef"));
+    assert(!rrex3(rrex, "abcdef", "abd?def"));
+    assert(rrex3(rrex, "abcdef", "def"));
+    assert(!rrex3(rrex, "abcdef", "^def"));
+    assert(rrex3(rrex, "abcdef", "def$"));
+    assert(!rrex3(rrex, "abcdef", "^abc$"));
+    assert(rrex3(rrex, "aB!.#1", "......"));
+    assert(!rrex3(rrex, "aB!.#\n", "      ......"));
+    assert(!rrex3(rrex, "aaaaaad", "q+d$"));
+    assert(rrex3(rrex, "aaaaaaa", "a+a$"));
+    assert(rrex3(rrex, "aaaaaad", "q*d$"));
+    assert(!rrex3(rrex, "aaaaaad", "^q*d$"));
 
     // Asterisk function
-    rassert(rrex3(rrex, "123321", "123*321"));
-    rassert(rrex3(rrex, "pony", "p*ony"));
-    rassert(rrex3(rrex, "pppony", "p*ony"));
-    rassert(rrex3(rrex, "ppony", "p*pony"));
-    rassert(rrex3(rrex, "pppony", "pp*pony"));
-    rassert(rrex3(rrex, "pppony", ".*pony"));
-    rassert(rrex3(rrex, "pony", ".*ony"));
-    rassert(rrex3(rrex, "pony", "po*ny"));
-    // rassert(rrex3(rrex,"ppppony", "p*pppony"));
+    assert(rrex3(rrex, "123321", "123*321"));
+    assert(rrex3(rrex, "pony", "p*ony"));
+    assert(rrex3(rrex, "pppony", "p*ony"));
+    assert(rrex3(rrex, "ppony", "p*pony"));
+    assert(rrex3(rrex, "pppony", "pp*pony"));
+    assert(rrex3(rrex, "pppony", ".*pony"));
+    assert(rrex3(rrex, "pony", ".*ony"));
+    assert(rrex3(rrex, "pony", "po*ny"));
+    // assert(rrex3(rrex,"ppppony", "p*pppony"));
 
     // Plus function
-    rassert(rrex3(rrex, "pony", "p+ony"));
-    rassert(!rrex3(rrex, "ony", "p+ony"));
-    rassert(rrex3(rrex, "ppony", "p+pony"));
-    rassert(rrex3(rrex, "pppony", "pp+pony"));
-    rassert(rrex3(rrex, "pppony", ".+pony"));
-    rassert(rrex3(rrex, "pony", ".+ony"));
-    rassert(rrex3(rrex, "pony", "po+ny"));
+    assert(rrex3(rrex, "pony", "p+ony"));
+    assert(!rrex3(rrex, "ony", "p+ony"));
+    assert(rrex3(rrex, "ppony", "p+pony"));
+    assert(rrex3(rrex, "pppony", "pp+pony"));
+    assert(rrex3(rrex, "pppony", ".+pony"));
+    assert(rrex3(rrex, "pony", ".+ony"));
+    assert(rrex3(rrex, "pony", "po+ny"));
 
     // Slash functions
-    rassert(rrex3(rrex, "a", "\\w"));
-    rassert(!rrex3(rrex, "1", "\\w"));
-    rassert(rrex3(rrex, "1", "\\W"));
-    rassert(!rrex3(rrex, "a", "\\W"));
-    rassert(rrex3(rrex, "a", "\\S"));
-    rassert(!rrex3(rrex, " ", "\\s"));
-    rassert(!rrex3(rrex, "\t", "\\s"));
-    rassert(!rrex3(rrex, "\n", "\\s"));
-    rassert(rrex3(rrex, "1", "\\d"));
-    rassert(!rrex3(rrex, "a", "\\d"));
-    rassert(rrex3(rrex, "a", "\\D"));
-    rassert(!rrex3(rrex, "1", "\\D"));
-    rassert(rrex3(rrex, "abc", "\\b"));
+    assert(rrex3(rrex, "a", "\\w"));
+    assert(!rrex3(rrex, "1", "\\w"));
+    assert(rrex3(rrex, "1", "\\W"));
+    assert(!rrex3(rrex, "a", "\\W"));
+    assert(rrex3(rrex, "a", "\\S"));
+    assert(!rrex3(rrex, " ", "\\s"));
+    assert(!rrex3(rrex, "\t", "\\s"));
+    assert(!rrex3(rrex, "\n", "\\s"));
+    assert(rrex3(rrex, "1", "\\d"));
+    assert(!rrex3(rrex, "a", "\\d"));
+    assert(rrex3(rrex, "a", "\\D"));
+    assert(!rrex3(rrex, "1", "\\D"));
+    assert(rrex3(rrex, "abc", "\\b"));
 
-    rassert(rrex3(rrex, "abc", "\\babc"));
-    rassert(!rrex3(rrex, "abc", "a\\b"));
-    rassert(!rrex3(rrex, "abc", "ab\\b"));
-    rassert(!rrex3(rrex, "abc", "abc\\b"));
-    rassert(rrex3(rrex, "abc", "a\\Bbc"));
-    rassert(rrex3(rrex, "abc", "ab\\B"));
-    rassert(!rrex3(rrex, "1ab", "1\\Bab"));
-    rassert(rrex3(rrex, "abc", "a\\Bbc"));
+    assert(rrex3(rrex, "abc", "\\babc"));
+    assert(!rrex3(rrex, "abc", "a\\b"));
+    assert(!rrex3(rrex, "abc", "ab\\b"));
+    assert(!rrex3(rrex, "abc", "abc\\b"));
+    assert(rrex3(rrex, "abc", "a\\Bbc"));
+    assert(rrex3(rrex, "abc", "ab\\B"));
+    assert(!rrex3(rrex, "1ab", "1\\Bab"));
+    assert(rrex3(rrex, "abc", "a\\Bbc"));
+
+    // Escaping of special chars
+    assert(rrex3(rrex, "()+*.\\", "\\(\\)\\+\\*\\.\\\\"));
 
     // Pipe
-    // rassert(rrex3(rrex,"abc","abc|def"));
-    rassert(rrex3(rrex, "abc", "def|jkl|abc"));
-    rassert(rrex3(rrex, "abc", "abc|def"));
+    // assert(rrex3(rrex,"abc","abc|def"));
+    assert(rrex3(rrex, "abc", "def|jkl|abc"));
+    assert(rrex3(rrex, "abc", "abc|def"));
 
-    rassert(rrex3(rrex, "rhq", "def|rhq|rha"));
-    rassert(rrex3(rrex, "abc", "abc|def"));
+    assert(rrex3(rrex, "rhq", "def|rhq|rha"));
+    assert(rrex3(rrex, "abc", "abc|def"));
 
     // Repeat
-    rassert(rrex3(rrex, "aaaaa", "a{4}"));
+    assert(rrex3(rrex, "aaaaa", "a{4}"));
 
-    rassert(rrex3(rrex, "aaaa", "a{1,3}a"));
+    assert(rrex3(rrex, "aaaa", "a{1,3}a"));
 
     // Range
-    rassert(rrex3(rrex, "abc", "[abc][abc][abc]$"));
-    rassert(rrex3(rrex, "def", "[^abc][^abc][^abc]$"));
-    rassert(rrex3(rrex, "defabc", "[^abc][^abc][^abc]abc"));
-    rassert(rrex3(rrex, "0-9", "0-9"));
-    rassert(rrex3(rrex, "55-9", "[^6-9]5-9$"));
-    rassert(rrex3(rrex, "a", "[a-z]$"));
-    rassert(rrex3(rrex, "A", "[A-Z]$"));
-    rassert(rrex3(rrex, "5", "[0-9]$"));
-    rassert(!rrex3(rrex, "a", "[^a-z]$"));
-    rassert(!rrex3(rrex, "A", "[^A-Z]$"));
-    rassert(!rrex3(rrex, "5", "[^0-9]$"));
-    rassert(rrex3(rrex, "123abc", "[0-9]*abc$"));
-    rassert(rrex3(rrex, "123123", "[0-9]*$"));
+    assert(rrex3(rrex, "abc", "[abc][abc][abc]$"));
+    assert(rrex3(rrex, "def", "[^abc][^abc][^abc]$"));
+    assert(rrex3(rrex, "defabc", "[^abc][^abc][^abc]abc"));
+    assert(rrex3(rrex, "0-9", "0-9"));
+    assert(rrex3(rrex, "55-9", "[^6-9]5-9$"));
+    assert(rrex3(rrex, "a", "[a-z]$"));
+    assert(rrex3(rrex, "A", "[A-Z]$"));
+    assert(rrex3(rrex, "5", "[0-9]$"));
+    assert(!rrex3(rrex, "a", "[^a-z]$"));
+    assert(!rrex3(rrex, "A", "[^A-Z]$"));
+    assert(!rrex3(rrex, "5", "[^0-9]$"));
+    assert(rrex3(rrex, "123abc", "[0-9]*abc$"));
+    assert(rrex3(rrex, "123123", "[0-9]*$"));
 
     // Parentheses
 
-    rassert(rrex3(rrex, "datadata", "(data)*"));
+    assert(rrex3(rrex, "datadata", "(data)*"));
 
-    rassert(rrex3(rrex, "datadatapony", "(data)*pony$"));
+    assert(rrex3(rrex, "datadatapony", "(data)*pony$"));
 
-    rassert(!rrex3(rrex, "datadatapony", "(d*p*ata)*pond$"));
-    rassert(rrex3(rrex, "datadatadato", "(d*p*ata)*dato"));
-    rassert(rrex3(rrex, "datadatadato", "(d*p*ata)*dato$"));
-    rassert(!rrex3(rrex, "datadatadato", "(d*p*a*ta)*gato$"));
+    assert(!rrex3(rrex, "datadatapony", "(d*p*ata)*pond$"));
+    assert(rrex3(rrex, "datadatadato", "(d*p*ata)*dato"));
+    assert(rrex3(rrex, "datadatadato", "(d*p*ata)*dato$"));
+    assert(!rrex3(rrex, "datadatadato", "(d*p*a*ta)*gato$"));
 
     // Matches
-    rassert(rrex3(rrex, "123", "(123)"));
-    rassert(!strcmp(rrex->matches[0], "123"));
+    assert(rrex3(rrex, "123", "(123)"));
+    assert(!strcmp(rrex->matches[0], "123"));
 
-    rassert(rrex3(rrex, "123321a", "(123)([0-4][2]1)a$"));
-    rassert(!strcmp(rrex->matches[1], "321"));
+    assert(rrex3(rrex, "123321a", "(123)([0-4][2]1)a$"));
+    assert(!strcmp(rrex->matches[1], "321"));
 
-    rassert(rrex3(rrex, "123321a", "(123)([0-4][2]1)a$"));
-    rassert(!strcmp(rrex->matches[1], "321"));
+    assert(rrex3(rrex, "123321a", "(123)([0-4][2]1)a$"));
+    assert(!strcmp(rrex->matches[1], "321"));
 
-    rassert(rrex3(rrex, "aaaabc", "(.*)c"));
+    assert(rrex3(rrex, "aaaabc", "(.*)c"));
 
-    rassert(rrex3(rrex, "abcde", ".....$"));
+    assert(rrex3(rrex, "abcde", ".....$"));
 
-    rassert(rrex3(rrex, "abcdefghijklmnopqrstuvwxyz",
-                  "..........................$"));
+    assert(rrex3(rrex, "abcdefghijklmnopqrstuvwxyz",
+                 "..........................$"));
     // printf("(%d)\n", rrex->valid);
 
-    rassert(rrex3(rrex, "    #include <stdio.h>", "#include.*<(.*)>"));
-    rassert(!strcmp(rrex->matches[0], "stdio.h"));
-    rassert(rrex3(rrex, "    #include \"stdlib.h\"", "#include.\"(.*)\""));
-    rassert(!strcmp(rrex->matches[0], "stdlib.h"));
-    rassert(rrex3(rrex, "    \"stdio.h\"\"string.h\"\"sys/time.h\"",
-                  "\"(.*)\"\"(.*)\"\"(.*)\""));
-    rassert(!strcmp(rrex->matches[0], "stdio.h"));
-    rassert(!strcmp(rrex->matches[1], "string.h"));
-    rassert(!strcmp(rrex->matches[2], "sys/time.h"));
+    assert(rrex3(rrex, "#include <stdio.h>", "#include.*<(.*)>"));
+    assert(!strcmp(rrex->matches[0], "stdio.h"));
+    assert(rrex3(rrex, "#include \"stdlib.h\"", "#include.\"(.*)\""));
+    assert(!strcmp(rrex->matches[0], "stdlib.h"));
+    assert(rrex3(rrex, "\"stdio.h\"\"string.h\"\"sys/time.h\"",
+                 "\"(.*)\"\"(.*)\"\"(.*)\""));
+    assert(!strcmp(rrex->matches[0], "stdio.h"));
+    assert(!strcmp(rrex->matches[1], "string.h"));
+    assert(!strcmp(rrex->matches[2], "sys/time.h"));
+
+    assert(rrex3(rrex, "    #include <stdio.h>", "#include.+<(.+)>"));
+    assert(!strcmp(rrex->matches[0], "stdio.h"));
+    assert(rrex3(rrex, "    #include \"stdlib.h\"", "#include.+\"(.+)\""));
+    assert(!strcmp(rrex->matches[0], "stdlib.h"));
+
+    assert(rrex3(rrex, "    \"stdio.h\"\"string.h\"\"sys/time.h\"",
+                 "\"(.+)\"\"(.+)\"\"(.+)\""));
+    assert(!strcmp(rrex->matches[0], "stdio.h"));
+    assert(!strcmp(rrex->matches[1], "string.h"));
+    assert(!strcmp(rrex->matches[2], "sys/time.h"));
+
+    assert(rrex3(rrex, "int abc ", "int (.*)[; ]?$"));
+    assert(!strcmp(rrex->matches[0], "abc"));
+    assert(rrex3(rrex, "int abc;", "int (.*)[; ]?$"));
+    assert(!strcmp(rrex->matches[0], "abc"));
+    assert(rrex3(rrex, "int abc", "int (.*)[; ]?$"));
+    assert(!strcmp(rrex->matches[0], "abc"));
 
     rrex3_free(rrex);
-
-#ifdef RLIB_H
-    return rtest_end("");
-#else
-    return 0;
-#endif
 }
 #endif
