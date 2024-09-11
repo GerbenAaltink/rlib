@@ -6,7 +6,9 @@ CFLAGS = -Wall -Wextra -Ofast
 LDFLAGS = -lm
  
 
-all: test_rmalloc test_rrex4 test_rstring_list test_rtime test_arena test_rtree test_rstring test_rlexer test_rrex3 test_rio test_rhashtable test_rkeytable test_rterminal test_rmerge run_rmerge format_all build format_all 
+all: clear test_rmalloc test_rrex4 test_rstring_list test_rtime test_arena test_rtree test_rstring test_rlexer test_rrex3 test_rio test_rhashtable test_rkeytable test_rterminal test_rmerge run_rmerge format_all build format_all 
+
+
 
 format_all: format_rlib_h
 	clang-format *.c *.h *.cpp -i --sort-includes=false
