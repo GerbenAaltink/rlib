@@ -2,6 +2,7 @@
 #ifndef RLIB_H
 #define RLIB_H
 // BEGIN OF RLIB
+#include "rrex4.h"
 #include "rprint.h"
 #include "rmath.h"
 #include "rmalloc.h"

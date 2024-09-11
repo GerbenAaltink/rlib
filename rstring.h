@@ -51,17 +51,17 @@ char *_rcat_charp_bool(char *a, bool *b) {
 }
 
 #define rcat(x, y)                                                             \
-    _Generic((x),   \
-    int: _Generic((y),     \
-        int: _rcat_int_int,\
-        double: _rcat_int_double,\
-        char*: _rcat_charp_charp),\
-    char*: _Generic((y),\
-        int: _rcat_charp_int, \
-        double: _rcat_charp_double,\
-        char*: _rcat_charp_charp, \
-        char: _rcat_charp_char, \
-        bool: _rcat_charp_bool))((x),(y))
+    _Generic((x),                                                              \
+        int: _Generic((y),                                                     \
+        int: _rcat_int_int,                                                    \
+        double: _rcat_int_double,                                              \
+        char *: _rcat_charp_charp),                                            \
+        char *: _Generic((y),                                                  \
+        int: _rcat_charp_int,                                                  \
+        double: _rcat_charp_double,                                            \
+        char *: _rcat_charp_charp,                                             \
+        char: _rcat_charp_char,                                                \
+        bool: _rcat_charp_bool))((x), (y))
 
 char *rgenerate_key() {
     _r_generate_key_current++;

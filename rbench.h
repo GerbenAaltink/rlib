@@ -20,7 +20,9 @@
         unsigned long utimes = (unsigned long)times;                           \
         nsecs_t start = nsecs();                                               \
         for (unsigned long i = 0; i < utimes; i++) {                           \
-            { action; }                                                        \
+            {                                                                  \
+                action;                                                        \
+            }                                                                  \
         }                                                                      \
         nsecs_t end = nsecs();                                                 \
         printf("%s\n", format_time(end - start));                              \
