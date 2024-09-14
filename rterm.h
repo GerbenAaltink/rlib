@@ -31,10 +31,12 @@ typedef struct rterm_t {
     void (*after_key_press)(struct rterm_t *);
     void (*before_key_press)(struct rterm_t *);
     void (*before_draw)(struct rterm_t *);
+    void (*after_draw)(struct rterm_t *);
     void *session;
     unsigned long iterations;
     void (*tick)(struct rterm_t *);
     char *status_text;
+    char *_status_text_previous;
     winsize_t size;
     struct {
         int x;
@@ -52,6 +54,7 @@ void rterm_init(rterm_t *rterm) {
     rterm->cursor.x = 0;
     rterm->cursor.y = 0;
     rterm->ms_tick = 100;
+    rterm->_status_text_previous = NULL;
 }
 
 void rterm_getwinsize(winsize_t *w) {
@@ -102,6 +105,14 @@ void cursor_restore(rterm_t *rt) {
 }
 
 void rterm_print_status_bar(rterm_t *rt, char c, unsigned long i) {
+    if (rt->_status_text_previous &&
+        !strcmp(rt->_status_text_previous, rt->status_text)) {
+        return;
+    }
+    if (rt->_status_text_previous) {
+        free(rt->_status_text_previous);
+    }
+    rt->_status_text_previous = strdup(rt->status_text);
     winsize_t ws = rt->size;
     cursor_set(rt, rt->cursor.x, rt->cursor.y);
     rterm_move_cursor(0, ws.ws_row - 1);
@@ -203,7 +214,9 @@ void rterm_loop(rterm_t *rt) {
             rt->before_draw(rt);
         }
         rterm_print_status_bar(rt, ch, rt->iterations);
-
+        if (rt->after_draw) {
+            rt->after_draw(rt);
+        }
         if (!rt->iterations || (x != rt->cursor.x || y != rt->cursor.y)) {
             if (rt->cursor.y == rt->size.ws_row) {
                 rt->cursor.y--;
@@ -223,6 +236,7 @@ void rterm_loop(rterm_t *rt) {
         }
         if (rt->show_cursor)
             rterm_show_cursor();
+
         fflush(stdout);
 
         rt->key = rshell_getkey(rt);
@@ -267,7 +281,6 @@ void rterm_loop(rterm_t *rt) {
         if (rt->key.pressed && rt->after_key_press) {
             rt->after_key_press(rt);
         }
-
         rt->iterations++;
 
         //  usleep (1000);
