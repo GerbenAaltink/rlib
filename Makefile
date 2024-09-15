@@ -29,6 +29,12 @@ build_rstring_list:
 run_rstring_list:
 	./build/rstring_list
 
+test_rautocomplete: build_rautocomplete run_rautocomplete
+build_rautocomplete:
+	$(CC) $(CFLAGS) rautocomplete.c -o ./build/rautocomplete	
+run_rautocomplete:
+	./build/rautocomplete
+
 test_rlexer: build_rlexer run_rlexer
 build_rlexer:
 	$(CC) $(CFLAGS) rlexer.c -o ./build/rlexer

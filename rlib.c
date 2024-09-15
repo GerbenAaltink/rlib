@@ -1,4 +1,4 @@
-// RETOOR - Sep 13 2024
+// RETOOR - Sep 15 2024
 // MIT License
 // ===========
 
@@ -24,6 +24,53 @@
 #ifndef RLIB_H
 #define RLIB_H
 // BEGIN OF RLIB
+#ifndef RSTRING_LIST_H
+#define RSTRING_LIST_H
+#include <string.h>
+#include <stdlib.h>
+#include <stdbool.h>
+
+typedef struct rstring_list_t {
+    unsigned int size;
+    unsigned int count;
+    char **strings;
+} rstring_list_t;
+
+rstring_list_t *rstring_list_new() {
+    rstring_list_t *rsl = (rstring_list_t *)malloc(sizeof(rstring_list_t));
+    memset(rsl, 0, sizeof(rstring_list_t));
+    return rsl;
+}
+
+void rstring_list_free(rstring_list_t *rsl) {
+    for (unsigned int i = 0; i < rsl->size; i++) {
+        free(rsl->strings[i]);
+    }
+    free(rsl);
+    rsl = NULL;
+}
+
+void rstring_list_add(rstring_list_t *rsl, char *str) {
+    if (rsl->count == rsl->size) {
+        rsl->size++;
+        rsl->strings = realloc(rsl->strings, sizeof(char *) * rsl->size);
+    }
+    rsl->strings[rsl->count] = (char *)malloc(strlen(str) + 1);
+    strcpy(rsl->strings[rsl->count], str);
+    rsl->count++;
+}
+bool rstring_list_contains(rstring_list_t *rsl, char *str) {
+    for (unsigned int i = 0; i < rsl->count; i++) {
+        if (!strcmp(rsl->strings[i], str))
+            return true;
+    }
+    return false;
+}
+
+#endif
+#ifndef RAUTOCOMPLETE_H
+#define RAUTOCOMPLETE_H
+#define R4_DEBUG
 #ifndef RREX4_H
 #define RREX4_H
 #include <assert.h>
@@ -786,6 +833,66 @@ bool r4_match(char *str, char *expr) {
     bool result = r->valid;
     r4_free(r);
     return result;
+}
+#endif
+#define rautocomplete_new rstring_list_new
+#define rautocomplete_free rstring_list_free
+#define rautocomplete_add rstring_list_add
+#define rautocomplete_find rstring_list_find
+#define rautocomplete_t rstring_list_t
+#define rautocomplete_contains rstring_list_contains
+
+char *r4_escape(char *content) {
+    size_t size = strlen(content) * 2 + 1;
+    char *escaped = (char *)calloc(size, sizeof(char));
+    char *espr = escaped;
+    char *to_escape = "?*+()[]{}^$\\";
+    *espr = '(';
+    espr++;
+    while (*content) {
+        if (strchr(to_escape, *content)) {
+            *espr = '\\';
+            espr++;
+        }
+        *espr = *content;
+        espr++;
+        content++;
+    }
+    *espr = '.';
+    espr++;
+    *espr = '+';
+    espr++;
+    *espr = ')';
+    espr++;
+    *espr = 0;
+    return escaped;
+}
+
+char *rautocomplete_find(rstring_list_t *list, char *expr) {
+    if (!list->count)
+        return NULL;
+    if (!expr || !strlen(expr))
+        return NULL;
+
+    char *escaped = r4_escape(expr);
+
+    for (unsigned int i = list->count - 1; i >= 0; i--) {
+        if (i == -1)
+            break;
+        char *match;
+        r4_t *r = r4(list->strings[i], escaped);
+        if (r->valid && r->match_count == 1) {
+            match = strdup(r->matches[0]);
+        }
+        r4_free(r);
+        if (match) {
+
+            free(escaped);
+            return match;
+        }
+    }
+    free(escaped);
+    return NULL;
 }
 #endif
 #ifndef RPRINT_H
@@ -1563,50 +1670,6 @@ struct rnlist *rset(char *name, char *defn) {
         return NULL;
     return np;
 }
-#endif
-#ifndef RSTRING_LIST_H
-#define RSTRING_LIST_H
-#include <string.h>
-#include <stdlib.h>
-#include <stdbool.h>
-
-typedef struct rstring_list_t {
-    unsigned int size;
-    unsigned int count;
-    char **strings;
-} rstring_list_t;
-
-rstring_list_t *rstring_list_new() {
-    rstring_list_t *rsl = (rstring_list_t *)malloc(sizeof(rstring_list_t));
-    memset(rsl, 0, sizeof(rstring_list_t));
-    return rsl;
-}
-
-void rstring_list_free(rstring_list_t *rsl) {
-    for (unsigned int i = 0; i < rsl->size; i++) {
-        free(rsl->strings[i]);
-    }
-    free(rsl);
-    rsl = NULL;
-}
-
-void rstring_list_add(rstring_list_t *rsl, char *str) {
-    if (rsl->count == rsl->size) {
-        rsl->size++;
-        rsl->strings = realloc(rsl->strings, sizeof(char *) * rsl->size);
-    }
-    rsl->strings[rsl->count] = (char *)malloc(strlen(str) + 1);
-    strcpy(rsl->strings[rsl->count], str);
-    rsl->count++;
-}
-bool rstring_list_contains(rstring_list_t *rsl, char *str) {
-    for (unsigned int i = 0; i < rsl->count; i++) {
-        if (!strcmp(rsl->strings[i], str))
-            return true;
-    }
-    return false;
-}
-
 #endif
 #ifndef RREX3_H
 #define RREX3_H
