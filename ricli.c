@@ -104,21 +104,15 @@ ricli_t *ricli_terminal_new() {
 }
 void ricli_set_input(ricli_t *cli, const char *content);
 void ricli_autocomplete_execute(ricli_t *r) {
-
     char *result = rautocomplete_find(
         r->autocomplete,
-        r->input); // rautocomplete_find(r->autocomplete, r->input);
+        r->input); 
     unsigned int original_x = r->term->cursor.x;
     unsigned int original_y = r->term->cursor.y;
-    if (result) {
+    if (result && result[0] != 1) {
         original_x = r->x;
-        // ricli_set_input(r,result);
-        // r->term->status_text = result;
-        // ricli_set_input(r,result);
-        // r->x = original_x;
         cursor_set(r->term, 0, r->term->size.ws_row - 1);
-        printf("%s", result);
-        //  r->term->status_text = result;
+        printf("(%d)%s",result[0], result);
         cursor_set(r->term, original_x, original_y);
     }
 }
@@ -223,9 +217,9 @@ void ricli_load(ricli_t *cli, char *path) {
     strcpy(cli->history_file, path);
     size_t size = rfile_size(path);
     if (size == 0) {
+    
         return;
     }
-
     char *data = malloc(size + 1);
     memset(data, 0, size + 1);
     rfile_readb(path, data, size);
@@ -298,7 +292,7 @@ void ricli_keypress(rterm_t *rt) {
 
         if (cli->x > 0) {
             cli->x--;
-            // cli->input[cli->x] = 0;
+            cli->input[cli->x] = 0;
             ricli_delete_input(cli, cli->x);
         }
     } else if (rt->key.escape && rt->key.c == 'B') {
@@ -323,7 +317,7 @@ void ricli_keypress(rterm_t *rt) {
         if (cli->x > strlen(cli->input))
             cli->x = strlen(cli->input);
         cursor_set(rt, cli->x, rt->cursor.y);
-    } else {
+    } else if(!rt->key.escape) {
         if (rt->cursor.x > strlen(cli->input)) {
             rt->cursor.x = strlen(cli->input);
             cli->x = strlen(cli->input);
@@ -331,7 +325,7 @@ void ricli_keypress(rterm_t *rt) {
         ricli_put_input(cli, rt->key.c);
         ricli_autocomplete_execute(cli);
     }
-    // rterm_print_status_bar(rt, 0, 0);
+    //rterm_print_status_bar(rt, 0, 0);
 }
 
 void ricli_loop(ricli_t *r) { rterm_loop(r->term); }
