@@ -2,6 +2,7 @@
 #ifndef RLIB_H
 #define RLIB_H
 // BEGIN OF RLIB
+#include "rhttp.h"
 #include "rstring_list.h"
 #include "rautocomplete.h"
 #include "rrex4.h"

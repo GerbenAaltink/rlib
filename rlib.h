@@ -1,4 +1,4 @@
-// RETOOR - Sep 15 2024
+// RETOOR - Sep 28 2024
 // MIT License
 // ===========
 
@@ -24,6 +24,518 @@
 #ifndef RLIB_H
 #define RLIB_H
 // BEGIN OF RLIB
+#include <arpa/inet.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+
+#define BUFF_SIZE 1337
+#define RHTTP_MAX_CONNECTIONS 100
+
+int rhttp_opt_error = 1;
+int rhttp_opt_warn = 1;
+int rhttp_opt_info = 1;
+int rhttp_opt_port = 8080;
+int rhttp_opt_debug = 0;
+int rhttp_opt_request_logging = 0;
+int rhttp_sock = 0;
+int rhttp_opt_buffered = 0;
+int rhttp_c = 0;
+char rhttp_opt_host[1024] = "0.0.0.0";
+unsigned int rhttp_connections_handled = 0;
+
+typedef struct rhttp_header_t {
+    char *name;
+    char *value;
+    struct rhttp_header_t *next;
+} rhttp_header_t;
+
+typedef struct rhttp_request_t {
+    int c;
+    int closed;
+    char *raw;
+    char *line;
+    char *body;
+    char *method;
+    char *path;
+    char *version;
+    unsigned int bytes_received;
+    rhttp_header_t *headers;
+} rhttp_request_t;
+
+char *rhttp_current_timestamp() {
+    // Create a time_t object to hold the current time
+    time_t current_time;
+    // Get the current time
+    time(&current_time);
+
+    // Convert the time to local time (struct tm)
+    struct tm *local_time = localtime(&current_time);
+
+    // Create a buffer to hold the formatted date/time string
+    static char time_string[100];
+    time_string[0] = 0;
+
+    // Format the time as "YYYY-MM-DD HH:MM:SS"
+    strftime(time_string, sizeof(time_string), "%Y-%m-%d %H:%M:%S", local_time);
+
+    return time_string;
+}
+
+void rhttp_logs(const char *prefix, const char *level, const char *format,
+                va_list args) {
+    char buf[strlen(format) + BUFSIZ + 1];
+    buf[0] = 0;
+    sprintf(buf, "%s%s %s %s\e[0m", prefix, rhttp_current_timestamp(), level,
+            format);
+    vfprintf(stdout, buf, args);
+}
+void rhttp_log_info(const char *format, ...) {
+    if (!rhttp_opt_info)
+        return;
+    va_list args;
+    va_start(args, format);
+    rhttp_logs("\e[32m", "INFO ", format, args);
+    va_end(args);
+}
+void rhttp_log_debug(const char *format, ...) {
+    if (!rhttp_opt_debug)
+        return;
+    va_list args;
+    va_start(args, format);
+    if (rhttp_opt_debug)
+        rhttp_logs("\e[33m", "DEBUG", format, args);
+
+    va_end(args);
+}
+void rhttp_log_warn(const char *format, ...) {
+    if (!rhttp_opt_warn)
+        return;
+    va_list args;
+    va_start(args, format);
+    rhttp_logs("\e[34m", "WARN ", format, args);
+
+    va_end(args);
+}
+void rhttp_log_error(const char *format, ...) {
+    if (!rhttp_opt_error)
+        return;
+    va_list args;
+    va_start(args, format);
+    rhttp_logs("\e[35m", "ERROR", format, args);
+
+    va_end(args);
+}
+
+void http_request_init(rhttp_request_t *r) {
+    r->raw = NULL;
+    r->line = NULL;
+    r->body = NULL;
+    r->method = NULL;
+    r->path = NULL;
+    r->version = NULL;
+    r->headers = NULL;
+    r->bytes_received = 0;
+    r->closed = 0;
+}
+
+void rhttp_free_header(rhttp_header_t *h) {
+    if (!h)
+        return;
+    rhttp_header_t *next = h->next;
+    free(h->name);
+    free(h->value);
+    free(h);
+    if (next)
+        rhttp_free_header(next);
+}
+void rhttp_rhttp_free_headers(rhttp_request_t *r) {
+    if (!r->headers)
+        return;
+    rhttp_free_header(r->headers);
+    r->headers = NULL;
+}
+
+rhttp_header_t *rhttp_parse_headers(rhttp_request_t *s) {
+    int first = 1;
+    char *body = s->body;
+    while (body && *body) {
+        char *line = __strtok_r(first ? body : NULL, "\r\n", &body);
+        if (!line)
+            break;
+        rhttp_header_t *h = (rhttp_header_t *)malloc(sizeof(rhttp_header_t));
+        h->name = NULL;
+        h->value = NULL;
+        h->next = NULL;
+        char *name = __strtok_r(line, ": ", &line);
+        first = 0;
+        if (!name) {
+            rhttp_free_header(h);
+            break;
+        }
+        h->name = strdup(name);
+        char *value = __strtok_r(NULL, "\r\n", &line);
+        if (!value) {
+            rhttp_free_header(h);
+            break;
+        }
+        h->value = value ? strdup(value + 1) : strdup("");
+        h->next = s->headers;
+        s->headers = h;
+    }
+    return s->headers;
+}
+
+void rhttp_free_request(rhttp_request_t *r) {
+    if (r->bytes_received != 0) {
+
+        free(r->raw);
+        free(r->body);
+
+        free(r->method);
+        free(r->path);
+        free(r->version);
+        rhttp_rhttp_free_headers(r);
+    }
+    free(r);
+}
+
+void rhttp_print_header(rhttp_header_t *h) {
+    rhttp_log_debug("Header: <%s> \"%s\"\n", h->name, h->value);
+}
+void rhttp_print_headers(rhttp_header_t *h) {
+    while (h) {
+        rhttp_print_header(h);
+        h = h->next;
+    }
+}
+void rhttp_print_request_line(rhttp_request_t *r) {
+    rhttp_log_info("%s %s %s\n", r->method, r->path, r->version);
+}
+void rhttp_print_request(rhttp_request_t *r) {
+    rhttp_print_request_line(r);
+    if (rhttp_opt_debug)
+        rhttp_print_headers(r->headers);
+}
+
+rhttp_request_t *rhttp_parse_request(int s) {
+    rhttp_request_t *request =
+        (rhttp_request_t *)malloc(sizeof(rhttp_request_t));
+    http_request_init(request);
+    char buf[BUFF_SIZE] = {0};
+    request->c = s;
+    int breceived = read(s, buf, BUFF_SIZE);
+    if (breceived <= 0) {
+        close(request->c);
+        request->closed = 1;
+        return request;
+    }
+    buf[breceived] = '\0';
+    char *original_buf = buf;
+
+    char *b = original_buf;
+    request->raw = strdup(b);
+    b = original_buf;
+    char *line = strtok(b, "\r\n");
+    b = original_buf;
+    char *body = b + strlen(line) + 2;
+    request->body = strdup(body);
+    b = original_buf;
+    char *method = strtok(b, " ");
+    char *path = strtok(NULL, " ");
+    char *version = strtok(NULL, " ");
+    request->bytes_received = breceived;
+    request->line = line;
+    request->method = strdup(method);
+    request->path = strdup(path);
+    request->version = strdup(version);
+    request->headers = NULL;
+    rhttp_parse_headers(request);
+    return request;
+}
+
+void rhttp_close_server() {
+    close(rhttp_sock);
+    close(rhttp_c);
+    printf("Connections handled: %d\n", rhttp_connections_handled);
+    printf("Gracefully closed\n");
+    exit(0);
+}
+
+size_t rhttp_send_drain(int s, char *tsend, size_t to_send_len) {
+    if (to_send_len == 0 && *tsend) {
+        to_send_len = strlen(tsend) + 1;
+    }
+    char *to_send = (char *)malloc(to_send_len);
+    char *to_send_original = to_send;
+
+    memcpy(to_send, tsend, to_send_len);
+    // to_send[to_send_len] = '\0';
+    size_t bytes_sent = 0;
+    size_t bytes_sent_total = 0;
+    while (1) {
+        bytes_sent = send(s, to_send, to_send_len, 0);
+        if (bytes_sent <= 0) {
+            bytes_sent_total = 0;
+            break;
+        }
+        bytes_sent_total += bytes_sent;
+        to_send += bytes_sent;
+        if (bytes_sent_total == to_send_len) {
+            break;
+        } else {
+            rhttp_log_info("Extra send of %d bytes.\n", to_send_len);
+        }
+    }
+
+    free(to_send_original);
+    return bytes_sent_total;
+}
+
+typedef int (*rhttp_request_handler_t)(rhttp_request_t *r);
+
+void rhttp_serve(const char *host, int port, int backlog, int request_logging,
+                 int request_debug, rhttp_request_handler_t handler) {
+    at_quick_exit(rhttp_close_server);
+    rhttp_sock = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    addr.sin_addr.s_addr = inet_addr(host);
+    rhttp_opt_debug = request_debug;
+    rhttp_opt_request_logging = request_logging;
+    int opt = 1;
+    setsockopt(rhttp_sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+    if (bind(rhttp_sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        printf("Binding error\n");
+        exit(1);
+    }
+    listen(rhttp_sock, backlog);
+    while (1) {
+        struct sockaddr_in client_addr;
+        int addrlen = sizeof(client_addr);
+
+        rhttp_c = accept(rhttp_sock, (struct sockaddr *)&client_addr,
+                         (socklen_t *)&addrlen);
+        rhttp_connections_handled++;
+        rhttp_request_t *r = rhttp_parse_request(rhttp_c);
+        if (!r->closed) {
+            handler(r);
+        }
+        rhttp_free_request(r);
+    }
+}
+
+unsigned int rhttp_calculate_number_char_count(unsigned int number) {
+    unsigned int width = 1;
+    unsigned int tcounter = number;
+    while (tcounter / 10 >= 1) {
+        tcounter = tcounter / 10;
+        width++;
+    }
+    return width;
+}
+
+unsigned int counter = 100000000;
+int rhttp_counter_request_handler(rhttp_request_t *r) {
+    if (!strncmp(r->path, "/counter", strlen("/counter"))) {
+        counter++;
+        unsigned int width = rhttp_calculate_number_char_count(counter);
+        char to_send2[1024] = {0};
+        sprintf(to_send2,
+                "HTTP/1.1 200 OK\r\nContent-Length: %d\r\nConnection: "
+                "close\r\n\r\n%d",
+                width, counter);
+        rhttp_send_drain(r->c, to_send2, 0);
+        close(r->c);
+        return 1;
+    }
+    return 0;
+}
+int rhttp_root_request_handler(rhttp_request_t *r) {
+    if (!strcmp(r->path, "/")) {
+        char to_send[1024] = {0};
+        sprintf(to_send, "HTTP/1.1 200 OK\r\nContent-Length: 3\r\nConnection: "
+                         "close\r\n\r\nHi!");
+        rhttp_send_drain(r->c, to_send, 0);
+        close(r->c);
+        return 1;
+    }
+    return 0;
+}
+int rhttp_error_404_handler(rhttp_request_t *r) {
+    char to_send[1024] = {0};
+    sprintf(to_send, "HTTP/1.1 404 Document not found\r\nContent-Length: "
+                     "0\r\nConnection: close\r\n\r\n");
+    rhttp_send_drain(r->c, to_send, 0);
+    close(r->c);
+    return 1;
+}
+
+int rhttp_default_request_handler(rhttp_request_t *r) {
+    if (rhttp_opt_debug || rhttp_opt_request_logging)
+        rhttp_print_request(r);
+    if (rhttp_counter_request_handler(r)) {
+        // Counter handler
+        rhttp_log_info("Counter handler found for: %s\n", r->path);
+
+    } else if (rhttp_root_request_handler(r)) {
+        // Root handler
+        rhttp_log_info("Root handler found for: %s\n", r->path);
+
+    } else if (rhttp_error_404_handler(r)) {
+        rhttp_log_warn("Error 404 for: %s\n", r->path);
+
+        // Error handler
+    } else {
+        rhttp_log_warn("No handler found for: %s\n", r->path);
+        close(rhttp_c);
+    }
+    return 0;
+}
+
+int rhttp_main(int argc, char *argv[]) {
+    setvbuf(stdout, NULL, _IOLBF, BUFSIZ);
+    int opt;
+    while ((opt = getopt(argc, argv, "p:drh:bewi")) != -1) {
+        switch (opt) {
+        case 'i':
+            rhttp_opt_info = 1;
+            rhttp_opt_warn = 1;
+            rhttp_opt_error = 1;
+            break;
+        case 'e':
+            rhttp_opt_error = 1;
+            rhttp_opt_warn = 0;
+            rhttp_opt_info = 0;
+            break;
+        case 'w':
+            rhttp_opt_warn = 1;
+            rhttp_opt_error = 1;
+            rhttp_opt_info = 0;
+            break;
+        case 'p':
+            rhttp_opt_port = atoi(optarg);
+            break;
+        case 'b':
+            rhttp_opt_buffered = 1;
+            printf("Logging is buffered. Output may be incomplete.\n");
+            break;
+        case 'h':
+            strcpy(rhttp_opt_host, optarg);
+            break;
+        case 'd':
+            printf("Debug enabled\n");
+            rhttp_opt_debug = 1;
+            rhttp_opt_warn = 1;
+            rhttp_opt_info = 1;
+            rhttp_opt_error = 1;
+            break;
+        case 'r':
+            printf("Request logging enabled\n");
+            rhttp_opt_request_logging = 1;
+            break;
+        default:
+            printf("Usage: %s [-p port] [-h host] [-b]\n", argv[0]);
+            return 1;
+        }
+    }
+
+    printf("Starting server on: %s:%d\n", rhttp_opt_host, rhttp_opt_port);
+    if (rhttp_opt_buffered)
+        setvbuf(stdout, NULL, _IOFBF, BUFSIZ);
+
+    rhttp_serve(rhttp_opt_host, rhttp_opt_port, 1024, rhttp_opt_request_logging,
+                rhttp_opt_debug, rhttp_default_request_handler);
+
+    return 0;
+}
+
+/* CLIENT CODE */
+
+typedef struct rhttp_client_request_t {
+    char *host;
+    int port;
+    char *path;
+    bool is_done;
+    char *request;
+    char *response;
+    pthread_t thread;
+    int bytes_received;
+} rhttp_client_request_t;
+
+rhttp_client_request_t *rhttp_create_request(const char *host, int port,
+                                             const char *path) {
+    rhttp_client_request_t *r =
+        (rhttp_client_request_t *)malloc(sizeof(rhttp_client_request_t));
+    char request_line[4096] = {0};
+    sprintf(request_line,
+            "GET %s HTTP/1.1\r\n"
+            "Host: localhost:8000\r\n"
+            "Connection: close\r\n"
+            "Accept: */*\r\n"
+            "User-Agent: mhttpc\r\n"
+            "Accept-Language: en-US,en;q=0.5\r\n"
+            "Accept-Encoding: gzip, deflate\r\n"
+            "\r\n",
+            path);
+    r->request = strdup(request_line);
+    r->host = strdup(host);
+    r->port = port;
+    r->path = strdup(path);
+    r->is_done = false;
+    r->response = NULL;
+    r->bytes_received = 0;
+    return r;
+}
+
+int rhttp_execute_request(rhttp_client_request_t *r) {
+    int s = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(r->port);
+    addr.sin_addr.s_addr = inet_addr(r->host);
+    connect(s, (struct sockaddr *)&addr, sizeof(addr));
+    send(s, r->request, strlen(r->request), 0);
+    char buf[1024 * 1024] = {0};
+    int ret = recv(s, buf, 1024 * 1024, 0);
+    if (ret > 0) {
+        r->response = strdup(buf);
+    }
+
+    close(s);
+    return ret;
+}
+void rhttp_reset_request(rhttp_client_request_t *r) {
+    free(r->response);
+    r->is_done = false;
+    r->response = NULL;
+    r->bytes_received = 0;
+}
+
+void rhttp_client_bench(int workers, int times, const char *host, int port,
+                        const char *path) {
+    rhttp_client_request_t *requests[workers];
+    while (times > 0) {
+
+        for (int i = 0; i < workers && times; i++) {
+            requests[i] = rhttp_create_request(host, port, path);
+            rhttp_execute_request(requests[i]);
+            times--;
+        }
+    }
+}
+rhttp_client_request_t *rhttp_client_get(char *host, int port, char *path) {
+    rhttp_client_request_t *r = rhttp_create_request(host, port, path);
+    rhttp_execute_request(r);
+    r->is_done = true;
+    return r;
+}
+/*END CLIENT CODE */
 #ifndef RSTRING_LIST_H
 #define RSTRING_LIST_H
 #include <stdbool.h>
@@ -53,7 +565,8 @@ void rstring_list_free(rstring_list_t *rsl) {
 void rstring_list_add(rstring_list_t *rsl, char *str) {
     if (rsl->count == rsl->size) {
         rsl->size++;
-        rsl->strings = realloc(rsl->strings, sizeof(char *) * rsl->size);
+        rsl->strings =
+            (char **)realloc(rsl->strings, sizeof(char *) * rsl->size);
     }
     rsl->strings[rsl->count] = (char *)malloc(strlen(str) + 1);
     strcpy(rsl->strings[rsl->count], str);
@@ -83,9 +596,9 @@ bool rstring_list_contains(rstring_list_t *rsl, char *str) {
 #define R4_DEBUG_a
 
 #ifdef R4_DEBUG
-#define _R4_DEBUG 1
+static int _r4_debug = 1;
 #else
-#define _R4_DEBUG 0
+static int _r4_debug = 0;
 #endif
 
 static char *_format_function_name(const char *name) {
@@ -93,7 +606,9 @@ static char *_format_function_name(const char *name) {
     result[0] = 0;
 
     char *new_name = (char *)name;
-    new_name += 12;
+    new_name += 11;
+    if (new_name[0] == '_')
+        new_name += 1;
     if (strlen(new_name) == 0) {
         return " -";
     }
@@ -102,14 +617,11 @@ static char *_format_function_name(const char *name) {
 }
 
 #define DEBUG_VALIDATE_FUNCTION                                                \
-    \  
     if (_r4_debug || r4->debug)                                                \
         printf("DEBUG: %s %s <%s> \"%s\"\n", _format_function_name(__func__),  \
                r4->valid ? "valid" : "INVALID", r4->expr, r4->str);
 
 struct r4_t;
-
-static int _r4_debug = 0;
 
 void r4_enable_debug() { _r4_debug = true; }
 void r4_disable_debug() { _r4_debug = false; }
@@ -120,7 +632,9 @@ typedef struct r4_t {
     bool debug;
     bool valid;
     bool in_block;
+    bool is_greedy;
     bool in_range;
+    unsigned int backtracking;
     unsigned int loop_count;
     unsigned int in_group;
     unsigned int match_count;
@@ -132,6 +646,7 @@ typedef struct r4_t {
     bool (*slash_functions[254])(struct r4_t *);
     char *_str;
     char *_expr;
+    char *match;
     char *str;
     char *expr;
     char *str_previous;
@@ -145,9 +660,13 @@ v4_function_map v4_function_map_global[256];
 v4_function_map v4_function_map_slash[256];
 v4_function_map v4_function_map_block[256];
 
-static void r4_free_matches(r4_t *r) {
+void r4_free_matches(r4_t *r) {
     if (!r)
         return;
+    if (r->match) {
+        free(r->match);
+        r->match = NULL;
+    }
     if (!r->match_count) {
         return;
     }
@@ -159,13 +678,14 @@ static void r4_free_matches(r4_t *r) {
     r->matches = NULL;
 }
 
-static void r4_free(r4_t *r) {
+void r4_free(r4_t *r) {
     if (!r)
         return;
     r4_free_matches(r);
     free(r);
 }
 
+static bool r4_backtrack(r4_t *r4);
 static bool r4_validate(r4_t *r4);
 static void r4_match_add(r4_t *r4, char *extracted);
 
@@ -179,7 +699,7 @@ static bool r4_validate_literal(r4_t *r4) {
         r4->str++;
     }
     r4->expr++;
-    if (r4->in_range || r4->in_block) {
+    if (r4->in_block || r4->in_range || !r4->is_greedy) {
         return r4->valid;
     }
     return r4_validate(r4);
@@ -195,7 +715,7 @@ static bool r4_validate_plus(r4_t *r4) {
     DEBUG_VALIDATE_FUNCTION
     r4->expr++;
     if (r4->valid == false) {
-        return false;
+        return r4_validate(r4);
     }
     char *expr_left = r4->expr_previous;
     char *expr_right = r4->expr;
@@ -205,13 +725,13 @@ static bool r4_validate_plus(r4_t *r4) {
         return_expr = expr_right;
         expr_right++;
     }
-    r4->in_block = true;
+    r4->is_greedy = false;
     r4->expr = expr_left;
     while (r4->valid) {
         if (*expr_right) {
             r4->expr = expr_right;
-            r4->in_block = false;
-            if (r4_validate(r4)) {
+            r4->is_greedy = true;
+            if (r4_backtrack(r4)) {
 
                 if (return_expr) {
                     r4->str = str;
@@ -219,7 +739,7 @@ static bool r4_validate_plus(r4_t *r4) {
                 }
                 return r4_validate(r4);
             } else {
-                r4->in_block = true;
+                r4->is_greedy = false;
             }
         }
         r4->valid = true;
@@ -228,7 +748,7 @@ static bool r4_validate_plus(r4_t *r4) {
         r4_validate(r4);
         str = r4->str;
     }
-    r4->in_block = false;
+    r4->is_greedy = true;
     r4->valid = true;
     r4->expr = return_expr ? return_expr : expr_right;
     return r4_validate(r4);
@@ -237,7 +757,8 @@ static bool r4_validate_plus(r4_t *r4) {
 static bool r4_validate_dollar(r4_t *r4) {
     DEBUG_VALIDATE_FUNCTION
     r4->expr++;
-    return *r4->str == 0;
+    r4->valid = *r4->str == 0;
+    return r4_validate(r4);
 }
 
 static bool r4_validate_roof(r4_t *r4) {
@@ -258,7 +779,7 @@ static bool r4_validate_dot(r4_t *r4) {
     r4->valid = *r4->str != '\n';
     r4->str++;
 
-    if (r4->in_range || r4->in_block) {
+    if (r4->in_block || r4->in_range || !r4->is_greedy) {
         return r4->valid;
     }
     return r4_validate(r4);
@@ -268,7 +789,9 @@ static bool r4_validate_asterisk(r4_t *r4) {
     DEBUG_VALIDATE_FUNCTION
     r4->expr++;
     if (r4->valid == false) {
-        return true;
+        r4->valid = true;
+        return r4->valid;
+        // return r4_validate(r4);
     }
     char *expr_left = r4->expr_previous;
     char *expr_right = r4->expr;
@@ -278,13 +801,13 @@ static bool r4_validate_asterisk(r4_t *r4) {
         return_expr = expr_right;
         expr_right++;
     }
-    r4->in_block = true;
+    r4->is_greedy = false;
     r4->expr = expr_left;
     while (r4->valid) {
         if (*expr_right) {
             r4->expr = expr_right;
-            r4->in_block = false;
-            if (r4_validate(r4)) {
+            r4->is_greedy = true;
+            if (r4_backtrack(r4)) {
 
                 if (return_expr) {
                     r4->str = str;
@@ -292,7 +815,7 @@ static bool r4_validate_asterisk(r4_t *r4) {
                 }
                 return r4_validate(r4);
             } else {
-                r4->in_block = true;
+                r4->is_greedy = false;
             }
         }
         r4->valid = true;
@@ -301,47 +824,9 @@ static bool r4_validate_asterisk(r4_t *r4) {
         r4_validate(r4);
         str = r4->str;
     }
-    r4->in_block = false;
+    r4->is_greedy = true;
     r4->valid = true;
     r4->expr = return_expr ? return_expr : expr_right;
-    return r4_validate(r4);
-}
-
-static bool r4_validate_asterisk2(r4_t *r4) {
-    DEBUG_VALIDATE_FUNCTION
-    if (r4->str == r4->str_previous)
-        return false;
-    r4->expr++;
-    if (r4->valid == false) {
-        r4->valid = true;
-        return r4_validate(r4);
-    }
-    char *str_start = r4->str;
-    char *expr_left = r4->expr_previous;
-    char *expr_right = r4->expr;
-    char *return_expr = NULL;
-    if (*expr_right == ')') {
-        return_expr = expr_right;
-        expr_right++;
-    }
-    if (*expr_right) {
-        r4->expr = expr_right;
-        bool right_valid = r4_validate(r4);
-        if (right_valid) {
-            if (return_expr) {
-                r4->str = str_start;
-                r4->expr = return_expr;
-            }
-            return right_valid;
-        }
-    }
-    if (!*r4->str) {
-        return r4->valid;
-    }
-    r4->str = str_start;
-    r4->str_previous = str_start;
-    r4->expr = expr_left;
-    r4->valid = true;
     return r4_validate(r4);
 }
 
@@ -364,10 +849,7 @@ static bool r4_validate_digit(r4_t *r4) {
         r4->str++;
     }
     r4->expr++;
-    if (r4->in_block) {
-        return r4->valid;
-    }
-    if (r4->in_range) {
+    if (r4->in_block || r4->in_range || !r4->is_greedy) {
         return r4->valid;
     }
     return r4_validate(r4);
@@ -381,11 +863,7 @@ static bool r4_validate_not_digit(r4_t *r4) {
     }
     r4->expr++;
 
-    if (r4->in_block) {
-        return r4->valid;
-    }
-
-    if (r4->in_range) {
+    if (r4->in_block || r4->in_range || !r4->is_greedy) {
         return r4->valid;
     }
     return r4_validate(r4);
@@ -399,11 +877,7 @@ static bool r4_validate_word(r4_t *r4) {
     }
     r4->expr++;
 
-    if (r4->in_block) {
-        return r4->valid;
-    }
-
-    if (r4->in_range) {
+    if (r4->in_block || r4->in_range || !r4->is_greedy) {
         return r4->valid;
     }
     return r4_validate(r4);
@@ -417,11 +891,7 @@ static bool r4_validate_not_word(r4_t *r4) {
     }
     r4->expr++;
 
-    if (r4->in_block) {
-        return r4->valid;
-    }
-
-    if (r4->in_range) {
+    if (r4->in_block || r4->in_range || !r4->is_greedy) {
         return r4->valid;
     }
     return r4_validate(r4);
@@ -437,10 +907,6 @@ static bool r4_isrange(char *s) {
     return isalnum(*(s + 2));
 }
 
-static bool r4_validate_block_close(r4_t *r4) {
-    DEBUG_VALIDATE_FUNCTION
-    return r4->valid;
-}
 static bool r4_validate_block_open(r4_t *r4) {
     DEBUG_VALIDATE_FUNCTION
     if (r4->valid == false) {
@@ -480,13 +946,7 @@ static bool r4_validate_block_open(r4_t *r4) {
             if (reversed)
                 r4->str--;
             break;
-        } /*else if (*r4->expr == *r4->str) {
-             if (!reversed)
-                 r4->str++;
-             valid_once = true;
-             r4->expr++;
-             break;
-         }*/
+        }
     }
     char *expr_end = strchr(r4->expr, ']');
 
@@ -496,7 +956,7 @@ static bool r4_validate_block_open(r4_t *r4) {
     r4->expr++;
     r4->expr_previous = expr_self;
 
-    if (r4->in_range) {
+    if (r4->in_range || !r4->is_greedy) {
         return r4->valid;
     }
     return r4_validate(r4);
@@ -509,7 +969,7 @@ static bool r4_validate_whitespace(r4_t *r4) {
     if (r4->valid) {
         r4->str++;
     }
-    if (r4->in_range || r4->in_block) {
+    if (r4->in_range || r4->in_block || !r4->is_greedy) {
         return r4->valid;
     }
     return r4_validate(r4);
@@ -521,7 +981,7 @@ static bool r4_validate_not_whitespace(r4_t *r4) {
     if (r4->valid) {
         r4->str++;
     }
-    if (r4->in_range || r4->in_block) {
+    if (r4->in_range || r4->in_block || !r4->is_greedy) {
         return r4->valid;
     }
     return r4_validate(r4);
@@ -611,6 +1071,7 @@ static bool r4_validate_group_close(r4_t *r4) {
 
 static bool r4_validate_group_open(r4_t *r4) {
     DEBUG_VALIDATE_FUNCTION
+    char *expr_previous = r4->expr_previous;
     r4->expr++;
     bool save_match = r4->in_group == 0;
     r4->in_group++;
@@ -620,27 +1081,39 @@ static bool r4_validate_group_open(r4_t *r4) {
     if (!valid || *r4->expr != ')') {
         // this is a valid case if not everything between () matches
         r4->in_group--;
-        return false;
+        if (save_match == false) {
+            r4->valid = true;
+        }
+
+        // Not direct return? Not sure
+        return r4_validate(r4);
     }
+    // if(save_match){
+    //     r4->match_count++;
+    // }
     if (save_match) {
         char *str_extract_end = r4->str;
-        unsigned int extracted_length =
-            strlen(str_extract_start) - strlen(str_extract_end);
+        unsigned int extracted_length = str_extract_end - str_extract_start;
+        // strlen(str_extract_start) - strlen(str_extract_end);
         char *str_extracted =
             (char *)calloc(sizeof(char), extracted_length + 1);
         strncpy(str_extracted, str_extract_start, extracted_length);
         r4_match_add(r4, str_extracted);
     }
+    assert(*r4->expr == ')');
     r4->expr++;
     r4->in_group--;
+    r4->expr_previous = expr_previous;
     return r4_validate(r4);
 }
 
 static bool r4_validate_slash(r4_t *r4) {
     DEBUG_VALIDATE_FUNCTION
     // The handling code for handling slashes is implemented in r4_validate
+    char *expr_previous = r4->expr_previous;
     r4->expr++;
     r4_function f = v4_function_map_slash[(int)*r4->expr];
+    r4->expr_previous = expr_previous;
     return f(r4);
 }
 
@@ -651,7 +1124,7 @@ static void r4_match_add(r4_t *r4, char *extracted) {
     r4->match_count++;
 }
 
-static void r4_validate_word_boundary_start(r4_t *r4) {
+static bool r4_validate_word_boundary_start(r4_t *r4) {
     DEBUG_VALIDATE_FUNCTION
     r4->expr++;
     if (!r4->valid) {
@@ -659,13 +1132,12 @@ static void r4_validate_word_boundary_start(r4_t *r4) {
     }
     r4->valid =
         isalpha(*r4->str) && (r4->str == r4->_str || !isalpha(*(r4->str - 1)));
-    printf("<<%d>>\n", r4->valid);
-    if (r4->in_range || r4->in_block) {
+    if (r4->in_range || r4->in_block || !r4->is_greedy) {
         return r4->valid;
     }
     return r4_validate(r4);
 }
-static void r4_validate_word_boundary_end(r4_t *r4) {
+static bool r4_validate_word_boundary_end(r4_t *r4) {
     DEBUG_VALIDATE_FUNCTION
     r4->expr++;
     if (!r4->valid) {
@@ -673,7 +1145,7 @@ static void r4_validate_word_boundary_end(r4_t *r4) {
     }
     r4->valid =
         isalpha(*r4->str) && (*(r4->str + 1) == 0 || !isalpha(*(r4->str + 1)));
-    if (r4->in_range || r4->in_block) {
+    if (r4->in_range || r4->in_block || !r4->is_greedy) {
         return r4->valid;
     }
     return r4_validate(r4);
@@ -697,7 +1169,6 @@ static void v4_init_function_maps() {
     v4_function_map_global['|'] = r4_validate_pipe;
     v4_function_map_global['\\'] = r4_validate_slash;
     v4_function_map_global['['] = r4_validate_block_open;
-    v4_function_map_global[']'] = r4_validate_block_close;
     v4_function_map_global['{'] = r4_validate_range;
     v4_function_map_global['('] = r4_validate_group_open;
     v4_function_map_global[')'] = r4_validate_group_close;
@@ -712,15 +1183,13 @@ static void v4_init_function_maps() {
     v4_function_map_block['\\'] = r4_validate_slash;
 
     v4_function_map_block['{'] = r4_validate_range;
-
-    v4_function_map_block[']'] = r4_validate_block_close;
 }
 
 void r4_init(r4_t *r4) {
     v4_init_function_maps();
     if (r4 == NULL)
         return;
-    r4->debug = _R4_DEBUG;
+    r4->debug = _r4_debug;
     r4->valid = true;
     r4->validation_count = 0;
     r4->match_count = 0;
@@ -753,17 +1222,35 @@ static bool r4_pipe_next(r4_t *r4) {
     return false;
 }
 
+static bool r4_backtrack(r4_t *r4) {
+    if (_r4_debug)
+        printf("\033[36mDEBUG: backtrack start (%d)\n", r4->backtracking);
+    r4->backtracking++;
+    char *str = r4->str;
+    char *expr = r4->expr;
+    bool result = r4_validate(r4);
+    r4->backtracking--;
+    if (result == false) {
+        r4->expr = expr;
+        r4->str = str;
+    }
+    if (_r4_debug)
+        printf("DEBUG: backtrack end (%d) result: %d %s\n", r4->backtracking,
+               result, r4->backtracking == 0 ? "\033[0m" : "");
+    return result;
+}
+
 static bool r4_validate(r4_t *r4) {
     DEBUG_VALIDATE_FUNCTION
     r4->validation_count++;
     char c_val = *r4->expr;
-    if (c_val == 0)
+    if (c_val == 0) {
         return r4->valid;
+    }
     if (!r4_looks_behind(c_val)) {
         r4->expr_previous = r4->expr;
     } else if (r4->expr == r4->_expr) {
         // Regex may not start with a look behind ufnction
-        printf("HIEROO\n");
         return false;
     }
 
@@ -773,10 +1260,21 @@ static bool r4_validate(r4_t *r4) {
         }
     }
     r4_function f;
-    f = v4_function_map_global[(int)c_val];
+    if (r4->in_block) {
+        f = v4_function_map_block[(int)c_val];
+    } else {
+        f = v4_function_map_global[(int)c_val];
+    }
 
     r4->valid = f(r4);
     return r4->valid;
+}
+
+char *r4_get_match(r4_t *r) {
+    char *match = (char *)malloc(r->length + 1);
+    strncpy(match, r->_str + r->start, r->length);
+    match[r->length] = 0;
+    return match;
 }
 
 static bool r4_search(r4_t *r) {
@@ -785,19 +1283,26 @@ static bool r4_search(r4_t *r) {
     while (*r->str) {
         if (!(valid = r4_validate(r))) {
             // Move next until we find a match
-            r->start++;
+            if (!r->backtracking) {
+                r->start++;
+            }
             str_next++;
             r->str = str_next;
             r->expr = r->_expr;
             r->valid = true;
         } else {
+            /// HIGH DOUBT
+            if (!r->backtracking) {
+                // r->start = 0;
+            }
             break;
         }
     }
     r->valid = valid;
     if (r->valid) {
-        r->end = r->start + (r->str - str_next);
-        r->length = (r->str - str_next);
+        r->end = strlen(r->_str) - strlen(r->str);
+        r->length = r->end - r->start;
+        r->match = r4_get_match(r);
     }
     return r->valid;
 }
@@ -806,13 +1311,16 @@ r4_t *r4(const char *str, const char *expr) {
     r4_t *r = r4_new();
     r->_str = (char *)str;
     r->_expr = (char *)expr;
+    r->match = NULL;
     r->str = r->_str;
     r->expr = r->_expr;
     r->str_previous = r->_str;
     r->expr_previous = r->expr;
     r->in_block = false;
+    r->is_greedy = true;
     r->in_group = 0;
     r->loop_count = 0;
+    r->backtracking = 0;
     r->in_range = false;
     r4_search(r);
     return r;
@@ -822,7 +1330,12 @@ r4_t *r4_next(r4_t *r, char *expr) {
     if (expr) {
         r->_expr = expr;
     }
+    r->backtracking = 0;
     r->expr = r->_expr;
+    r->is_greedy = true;
+    r->in_block = false;
+    r->in_range = false;
+    r->in_group = false;
     r4_free_matches(r);
     r4_search(r);
     return r;

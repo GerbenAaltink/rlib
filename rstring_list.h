@@ -27,7 +27,8 @@ void rstring_list_free(rstring_list_t *rsl) {
 void rstring_list_add(rstring_list_t *rsl, char *str) {
     if (rsl->count == rsl->size) {
         rsl->size++;
-        rsl->strings = realloc(rsl->strings, sizeof(char *) * rsl->size);
+        rsl->strings =
+            (char **)realloc(rsl->strings, sizeof(char *) * rsl->size);
     }
     rsl->strings[rsl->count] = (char *)malloc(strlen(str) + 1);
     strcpy(rsl->strings[rsl->count], str);

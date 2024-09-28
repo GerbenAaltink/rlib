@@ -6,7 +6,7 @@ CFLAGS = -Wall -Wextra -Ofast
 LDFLAGS = -lm
  
 
-all: clear test_rmalloc test_rrex4 test_rstring_list test_rtime test_arena test_rtree test_rstring test_rlexer test_rrex3 test_rio test_rhashtable test_rkeytable test_rterminal test_rmerge run_rmerge format_all build format_all 
+all: clear test_rmalloc test_rrex4 test_rstring_list test_rhttp test_rtime test_arena test_rtree test_rstring test_rlexer test_rrex3 test_rio test_rhashtable test_rkeytable test_rterminal test_rmerge run_rmerge format_all build format_all 
 
 
 
@@ -28,6 +28,12 @@ build_rstring_list:
 	$(CC) $(CFLAGS) rstring_list.c -o ./build/rstring_list	
 run_rstring_list:
 	./build/rstring_list
+
+test_rhttp: build_rhttp run_rhttp
+build_rhttp:
+	$(CC) $(CFLAGS) rhttp.c -o ./build/rhttp	
+run_rhttp:
+	./build/rhttp
 
 test_rautocomplete: build_rautocomplete run_rautocomplete
 build_rautocomplete:
