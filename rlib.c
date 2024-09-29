@@ -362,7 +362,7 @@ int rhttp_root_request_handler(rhttp_request_t *r) {
     if (!strcmp(r->path, "/")) {
         char to_send[1024] = {0};
         sprintf(to_send, "HTTP/1.1 200 OK\r\nContent-Length: 3\r\nConnection: "
-                         "close\r\n\r\nHi!");
+                         "close\r\n\r\nOk!");
         rhttp_send_drain(r->c, to_send, 0);
         close(r->c);
         return 1;
@@ -528,8 +528,7 @@ void rhttp_free_client_request(rhttp_client_request_t *r) {
     if (r->host)
         free(r->host);
     if (r->path)
-        ;
-    free(r->path);
+        free(r->path);
     free(r);
 }
 
@@ -566,6 +565,54 @@ char *rhttp_client_get(const char *host, int port, const char *path) {
 
 #ifndef RSTRING_LIST_H
 #define RSTRING_LIST_H
+#ifndef RMALLOC_H
+#define RMALLOC_H
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+static unsigned long long rmalloc_count = 0;
+static unsigned long long rmalloc_alloc_count = 0;
+static unsigned long long int rmalloc_free_count = 0;
+
+void *rstrdup(const char *s) {
+    rmalloc_count++;
+    rmalloc_alloc_count++;
+    return strdup(s);
+}
+void *rmalloc(size_t size) {
+    rmalloc_count++;
+    rmalloc_alloc_count++;
+    return malloc(size);
+}
+void *rrealloc(void *obj, size_t size) {
+    if (!obj) {
+        rmalloc_count++;
+        rmalloc_alloc_count++;
+    }
+    return realloc(obj, size);
+}
+void *rfree(void *obj) {
+    rmalloc_count--;
+    rmalloc_free_count++;
+    free(obj);
+    return NULL;
+}
+
+#define malloc rmalloc
+#define realloc rrealloc
+#define free rfree
+#define strdup rstrdup
+
+char *rmalloc_stats() {
+    static char res[200] = {0};
+    sprintf(res, "Memory usage: %lld allocated, %lld freed, %lld in use.",
+            rmalloc_alloc_count, rmalloc_free_count, rmalloc_count);
+    return res;
+}
+
+#endif
+
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -609,6 +656,7 @@ bool rstring_list_contains(rstring_list_t *rsl, char *str) {
 }
 
 #endif
+
 #ifndef RAUTOCOMPLETE_H
 #define RAUTOCOMPLETE_H
 #define R4_DEBUG
@@ -1905,56 +1953,6 @@ double modf(double x, double *iptr) {
 }
 #endif
 #endif
-#ifndef RMALLOC_H
-#define RMALLOC_H
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-unsigned long long rmalloc_count = 0;
-unsigned long long rmalloc_alloc_count = 0;
-unsigned long long int rmalloc_free_count = 0;
-
-void *rmalloc(size_t size) {
-    rmalloc_count++;
-    rmalloc_alloc_count++;
-    return malloc(size);
-}
-void *rrealloc(void *obj, size_t size) {
-    if (obj == NULL) {
-        rmalloc_count++;
-        rmalloc_alloc_count++;
-    }
-    return realloc(obj, size);
-}
-void *rfree(void *obj) {
-    rmalloc_count--;
-    rmalloc_free_count++;
-    free(obj);
-    return NULL;
-}
-
-#define malloc rmalloc
-#define realloc rrealloc
-#define free rfree
-
-char *rmalloc_stats() {
-    static char res[100] = {0};
-    sprintf(res, "Memory usage: %lld allocated, %lld freed, %lld in use.",
-            rmalloc_alloc_count, rmalloc_free_count, rmalloc_count);
-    return res;
-}
-
-char *rstrdup(char *str) {
-
-    char *res = (char *)strdup(str);
-    rmalloc_alloc_count++;
-    rmalloc_count++;
-    return res;
-}
-
-#endif
-
 #ifndef RTEST_H
 #define RTEST_H
 #include <stdbool.h>
@@ -3861,6 +3859,11 @@ int rstrip_whitespace(char *input, char *output) {
     return count;
 }
 
+/*
+ * Converts "pony" to \"pony\". Addslashes does not
+ * Converts "pony\npony" to "pony\n"
+ * 			    "pony"
+ */
 void rstrtocstring(const char *input, char *output) {
     int index = 0;
     char clean_input[strlen(input) * 2];
@@ -4038,11 +4041,15 @@ int rstrsort(char *input, char *output) {
     int line_count = rstrsplit(input, lines);
     qsort(lines, line_count, sizeof(char *), cmp_line);
     rstrjoin(lines, line_count, "", output);
+    for (int i = 0; i < line_count; i++) {
+        free(lines[i]);
+    }
     free(lines);
     return line_count;
 }
 
 #endif
+
 #ifndef RLIB_TERMINAL_H
 #define RLIB_TERMINAL_H
 
@@ -4999,6 +5006,7 @@ char *rlex_format(char *content) {
     return result;
 }
 #endif
+
 #ifndef RBENCH_H
 #define RBENCH_H
 

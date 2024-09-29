@@ -1,5 +1,6 @@
 #ifndef RSTRING_LIST_H
 #define RSTRING_LIST_H
+#include "rmalloc.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>

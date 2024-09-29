@@ -1,5 +1,5 @@
-#include "rtest.h"
 #include "rstring_list.h"
+#include "rtest.h"
 
 void test_rstring_list() {
     rtest_banner("new");

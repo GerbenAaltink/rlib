@@ -15,6 +15,7 @@ void rstring_test_whitespace() {
     rcat(str, ' ');
     rcat(str, 13.37);
     printf("String: %s\n", str);
+    free(str);
 
     rtest_banner("rstrip_whitespace");
     char output[1024];
@@ -162,6 +163,7 @@ void rstring_test_rstrmove() {
 }
 
 int main() {
+    rtest_banner("rstring");
     rstring_test_whitespace();
     rstring_test_rstrtokline();
     rstring_test_rstrsort();

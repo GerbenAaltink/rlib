@@ -1,5 +1,6 @@
 #ifndef RSTRING_H
 #define RSTRING_H
+#include "rmalloc.h"
 #include "rmath.h"
 #include <ctype.h>
 #include <stdbool.h>
@@ -230,6 +231,11 @@ int rstrip_whitespace(char *input, char *output) {
     return count;
 }
 
+/*
+ * Converts "pony" to \"pony\". Addslashes does not
+ * Converts "pony\npony" to "pony\n"
+ * 			    "pony"
+ */
 void rstrtocstring(const char *input, char *output) {
     int index = 0;
     char clean_input[strlen(input) * 2];
@@ -407,6 +413,9 @@ int rstrsort(char *input, char *output) {
     int line_count = rstrsplit(input, lines);
     qsort(lines, line_count, sizeof(char *), cmp_line);
     rstrjoin(lines, line_count, "", output);
+    for (int i = 0; i < line_count; i++) {
+        free(lines[i]);
+    }
     free(lines);
     return line_count;
 }

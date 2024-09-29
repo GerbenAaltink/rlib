@@ -1,5 +1,6 @@
 #ifndef RLEXER_H
 #define RLEXER_H
+#include "rmalloc.h"
 #include "rstring.h"
 #include <ctype.h>
 #include <stdbool.h>

@@ -502,8 +502,7 @@ void rhttp_free_client_request(rhttp_client_request_t *r) {
     if (r->host)
         free(r->host);
     if (r->path)
-        ;
-    free(r->path);
+        free(r->path);
     free(r);
 }
 
