@@ -1,4 +1,4 @@
-// RETOOR - Sep 28 2024
+// RETOOR - Sep 29 2024
 // MIT License
 // ===========
 
@@ -24,6 +24,8 @@
 #ifndef RLIB_H
 #define RLIB_H
 // BEGIN OF RLIB
+#ifndef RHTTP_H
+#define RHTTP_H
 #include <arpa/inet.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -499,7 +501,9 @@ int rhttp_execute_request(rhttp_client_request_t *r) {
     addr.sin_family = AF_INET;
     addr.sin_port = htons(r->port);
     addr.sin_addr.s_addr = inet_addr(r->host);
-    connect(s, (struct sockaddr *)&addr, sizeof(addr));
+    if (connect(s, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        return 0;
+    }
     send(s, r->request, strlen(r->request), 0);
     char buf[1024 * 1024] = {0};
     int ret = recv(s, buf, 1024 * 1024, 0);
@@ -516,6 +520,18 @@ void rhttp_reset_request(rhttp_client_request_t *r) {
     r->response = NULL;
     r->bytes_received = 0;
 }
+void rhttp_free_client_request(rhttp_client_request_t *r) {
+    if (r->request)
+        free(r->request);
+    if (r->response)
+        free(r->response);
+    if (r->host)
+        free(r->host);
+    if (r->path)
+        ;
+    free(r->path);
+    free(r);
+}
 
 void rhttp_client_bench(int workers, int times, const char *host, int port,
                         const char *path) {
@@ -529,13 +545,25 @@ void rhttp_client_bench(int workers, int times, const char *host, int port,
         }
     }
 }
-rhttp_client_request_t *rhttp_client_get(char *host, int port, char *path) {
+char *rhttp_client_get(const char *host, int port, const char *path) {
+    static char http_response[1024 * 1024];
+    memset(http_response, 0, sizeof(http_response));
     rhttp_client_request_t *r = rhttp_create_request(host, port, path);
-    rhttp_execute_request(r);
+    if (!rhttp_execute_request(r))
+        return NULL;
     r->is_done = true;
-    return r;
+    char *body = strstr(r->response, "\r\n\r\n");
+    if (body) {
+        strcpy(http_response, body + 4);
+    } else {
+        strcpy(http_response, r->response);
+    }
+    rhttp_free_client_request(r);
+    return http_response;
 }
 /*END CLIENT CODE */
+#endif
+
 #ifndef RSTRING_LIST_H
 #define RSTRING_LIST_H
 #include <string.h>
