@@ -336,7 +336,7 @@ int rhttp_root_request_handler(rhttp_request_t *r) {
     if (!strcmp(r->path, "/")) {
         char to_send[1024] = {0};
         sprintf(to_send, "HTTP/1.1 200 OK\r\nContent-Length: 3\r\nConnection: "
-                         "close\r\n\r\nHi!");
+                         "close\r\n\r\nOk!");
         rhttp_send_drain(r->c, to_send, 0);
         close(r->c);
         return 1;
