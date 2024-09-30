@@ -1,12 +1,12 @@
 # Compiler
-CC = gcc
+CC = tcc
 
 # Compiler flags
 CFLAGS = -Wall -Wextra -Ofast
 LDFLAGS = -lm
  
 
-all: clear test_rmalloc test_rtemp test_rrex4 test_rstring_list test_rhttp test_rtime test_arena test_rtree test_rstring test_rlexer test_rrex3 test_rio test_rhashtable test_rkeytable test_rterminal test_rmerge run_rmerge format_all build format_all 
+all: clear test_rmalloc test_rtemp test_rjson test_rrex4 test_rstring_list test_rhttp test_rtime test_arena test_rtree test_rstring test_rlexer test_rrex3 test_rio test_rhashtable test_rkeytable test_rterminal test_rmerge run_rmerge format_all build format_all 
 
 
 
@@ -29,6 +29,11 @@ build_rtemp:
 run_rtemp:
 	./build/rtemp
 
+test_rjson: build_rjson run_rjson
+build_rjson:
+	$(CC) $(CFLAGS) rjson.c -o ./build/rjson	
+run_rjson:
+	./build/rjson
 
 
 test_rstring_list: build_rstring_list run_rstring_list

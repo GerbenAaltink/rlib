@@ -5,6 +5,7 @@
 #include "rtypes.h"
 #include "rtemp.h"
 #include "rhttp.h"
+#include "rjson.h"
 #include "rstring_list.h"
 #include "rautocomplete.h"
 #include "rrex4.h"

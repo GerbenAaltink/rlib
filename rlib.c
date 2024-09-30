@@ -1,4 +1,4 @@
-// RETOOR - Sep 30 2024
+// RETOOR - Oct  1 2024
 // MIT License
 // ===========
 
@@ -48,7 +48,7 @@ typedef unsigned char byte;
 #endif
 byte _current_rtempc_slot = 0;
 char _rtempc_buffer[RTEMPC_SLOT_COUNT][RTEMPC_SLOT_SIZE];
-inline char *rtempc(char *data) {
+char *rtempc(char *data) {
 
     uint current_rtempc_slot = _current_rtempc_slot;
     _rtempc_buffer[current_rtempc_slot][0] = 0;
@@ -500,12 +500,14 @@ typedef struct rhttp_header_t {
 typedef struct rhttp_request_t {
     int c;
     int closed;
+    nsecs_t start;
     char *raw;
     char *line;
     char *body;
     char *method;
     char *path;
     char *version;
+    void *context;
     unsigned int bytes_received;
     rhttp_header_t *headers;
 } rhttp_request_t;
@@ -573,6 +575,7 @@ void http_request_init(rhttp_request_t *r) {
     r->method = NULL;
     r->path = NULL;
     r->version = NULL;
+    r->start = 0;
     r->headers = NULL;
     r->bytes_received = 0;
     r->closed = 0;
@@ -656,7 +659,13 @@ void rhttp_print_request(rhttp_request_t *r) {
     if (rhttp_opt_debug)
         rhttp_print_headers(r->headers);
 }
-
+void rhttp_close(rhttp_request_t *r) {
+    if (!r)
+        return;
+    if (!r->closed)
+        close(r->c);
+    rhttp_free_request(r);
+}
 rhttp_request_t *rhttp_parse_request(int s) {
     rhttp_request_t *request =
         (rhttp_request_t *)malloc(sizeof(rhttp_request_t));
@@ -685,6 +694,7 @@ rhttp_request_t *rhttp_parse_request(int s) {
     char *version = strtok(NULL, " ");
     request->bytes_received = breceived;
     request->line = line;
+    request->start = nsecs();
     request->method = strdup(method);
     request->path = strdup(path);
     request->version = strdup(version);
@@ -734,7 +744,8 @@ size_t rhttp_send_drain(int s, void *tsend, size_t to_send_len) {
 typedef int (*rhttp_request_handler_t)(rhttp_request_t *r);
 
 void rhttp_serve(const char *host, int port, int backlog, int request_logging,
-                 int request_debug, rhttp_request_handler_t handler) {
+                 int request_debug, rhttp_request_handler_t handler,
+                 void *context) {
     at_quick_exit(rhttp_close_server);
     rhttp_sock = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in addr;
@@ -758,10 +769,11 @@ void rhttp_serve(const char *host, int port, int backlog, int request_logging,
                          (socklen_t *)&addrlen);
         rhttp_connections_handled++;
         rhttp_request_t *r = rhttp_parse_request(rhttp_c);
+        r->context = context;
         if (!r->closed) {
             handler(r);
         }
-        rhttp_free_request(r);
+        rhttp_close(r);
     }
 }
 
@@ -931,7 +943,7 @@ int rhttp_main(int argc, char *argv[]) {
         setvbuf(stdout, NULL, _IOFBF, BUFSIZ);
 
     rhttp_serve(rhttp_opt_host, rhttp_opt_port, 1024, rhttp_opt_request_logging,
-                rhttp_opt_debug, rhttp_default_request_handler);
+                rhttp_opt_debug, rhttp_default_request_handler, NULL);
 
     return 0;
 }
@@ -1056,6 +1068,1014 @@ char *rhttp_client_get(const char *host, int port, const char *path) {
 /*END CLIENT CODE */
 #endif
 
+#ifndef RJSON_H
+#define RJSON_H
+#ifndef RSTRING_H
+#define RSTRING_H
+#ifndef RMATH_H
+#define RMATH_H
+#include <math.h>
+
+#ifndef ceil
+double ceil(double x) {
+    if (x == (double)(long long)x) {
+        return x;
+    } else if (x > 0.0) {
+        return (double)(long long)x + 1.0;
+    } else {
+        return (double)(long long)x;
+    }
+}
+#endif
+
+#ifndef floor
+double floor(double x) {
+    if (x >= 0.0) {
+        return (double)(long long)x;
+    } else {
+        double result = (double)(long long)x;
+        return (result == x) ? result : result - 1.0;
+    }
+}
+#endif
+
+#ifndef modf
+double modf(double x, double *iptr) {
+    double int_part = (x >= 0.0) ? floor(x) : ceil(x);
+    *iptr = int_part;
+    return x - int_part;
+}
+#endif
+#endif
+#include <ctype.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+char *rstrtimestamp() {
+    time_t current_time;
+    time(&current_time);
+    struct tm *local_time = localtime(&current_time);
+    static char time_string[100];
+    time_string[0] = 0;
+    strftime(time_string, sizeof(time_string), "%Y-%m-%d %H:%M:%S", local_time);
+    return time_string;
+}
+
+ulonglong _r_generate_key_current = 0;
+
+char *_rcat_int_int(int a, int b) {
+    static char res[20];
+    res[0] = 0;
+    sprintf(res, "%d%d", a, b);
+    return res;
+}
+char *_rcat_int_double(int a, double b) {
+    static char res[20];
+    res[0] = 0;
+    sprintf(res, "%d%f", a, b);
+    return res;
+}
+
+char *_rcat_charp_int(char *a, int b) {
+    char res[20];
+    sprintf(res, "%c", b);
+    return strcat(a, res);
+}
+
+char *_rcat_charp_double(char *a, double b) {
+    char res[20];
+    sprintf(res, "%f", b);
+    return strcat(a, res);
+}
+
+char *_rcat_charp_charp(char *a, char *b) {
+    ;
+    return strcat(a, b);
+}
+char *_rcat_charp_char(char *a, char b) {
+    char extra[] = {b, 0};
+    return strcat(a, extra);
+}
+char *_rcat_charp_bool(char *a, bool *b) {
+    if (b) {
+        return strcat(a, "true");
+    } else {
+        return strcat(a, "false");
+    }
+}
+
+#define rcat(x, y)                                                             \
+    _Generic((x),                                                              \
+        int: _Generic((y),                                                     \
+        int: _rcat_int_int,                                                    \
+        double: _rcat_int_double,                                              \
+        char *: _rcat_charp_charp),                                            \
+        char *: _Generic((y),                                                  \
+        int: _rcat_charp_int,                                                  \
+        double: _rcat_charp_double,                                            \
+        char *: _rcat_charp_charp,                                             \
+        char: _rcat_charp_char,                                                \
+        bool: _rcat_charp_bool))((x), (y))
+
+char *rgenerate_key() {
+    _r_generate_key_current++;
+    static char key[100];
+    key[0] = 0;
+    sprintf(key, "%lld", _r_generate_key_current);
+    return key;
+}
+
+char *rformat_number(long long lnumber) {
+    static char formatted[1024];
+
+    char number[1024] = {0};
+    sprintf(number, "%lld", lnumber);
+
+    int len = strlen(number);
+    int commas_needed = (len - 1) / 3;
+    int new_len = len + commas_needed;
+
+    formatted[new_len] = '\0';
+
+    int i = len - 1;
+    int j = new_len - 1;
+    int count = 0;
+
+    while (i >= 0) {
+        if (count == 3) {
+            formatted[j--] = '.';
+            count = 0;
+        }
+        formatted[j--] = number[i--];
+        count++;
+    }
+    if (lnumber < 0)
+        formatted[j--] = '-';
+    return formatted;
+}
+
+bool rstrextractdouble(char *str, double *d1) {
+    for (size_t i = 0; i < strlen(str); i++) {
+        if (isdigit(str[i])) {
+            str += i;
+            sscanf(str, "%lf", d1);
+            return true;
+        }
+    }
+    return false;
+}
+
+void rstrstripslashes(const char *content, char *result) {
+    size_t content_length = strlen((char *)content);
+    unsigned int index = 0;
+    for (unsigned int i = 0; i < content_length; i++) {
+        char c = content[i];
+        if (c == '\\') {
+            i++;
+            c = content[i];
+            if (c == 'r') {
+                c = '\r';
+            } else if (c == 't') {
+                c = '\t';
+            } else if (c == 'b') {
+                c = '\b';
+            } else if (c == 'n') {
+                c = '\n';
+            } else if (c == 'f') {
+                c = '\f';
+            } else if (c == '\\') {
+                // No need tbh
+                c = '\\';
+            }
+        }
+        result[index] = c;
+        index++;
+    }
+    result[index] = 0;
+}
+
+int rstrstartswith(const char *s1, const char *s2) {
+    if (s1 == NULL)
+        return s2 == NULL;
+    if (s1 == s2 || s2 == NULL || *s2 == 0)
+        return true;
+    size_t len_s2 = strlen(s2);
+    size_t len_s1 = strlen(s1);
+    if (len_s2 > len_s1)
+        return false;
+    return !strncmp(s1, s2, len_s2);
+}
+
+bool rstrendswith(const char *s1, const char *s2) {
+    if (s1 == NULL)
+        return s2 == NULL;
+    if (s1 == s2 || s2 == NULL || *s2 == 0)
+        return true;
+    size_t len_s2 = strlen(s2);
+    size_t len_s1 = strlen(s1);
+    if (len_s2 > len_s1) {
+        return false;
+    }
+    s1 += len_s1 - len_s2;
+    return !strncmp(s1, s2, len_s2);
+}
+
+void rstraddslashes(const char *content, char *result) {
+    size_t content_length = strlen((char *)content);
+    unsigned int index = 0;
+    for (unsigned int i = 0; i < content_length; i++) {
+        if (content[i] == '\r') {
+            result[index] = '\\';
+            index++;
+            result[index] = 'r';
+            index++;
+            continue;
+        } else if (content[i] == '\t') {
+            result[index] = '\\';
+            index++;
+            result[index] = 't';
+            index++;
+            continue;
+        } else if (content[i] == '\n') {
+            result[index] = '\\';
+            index++;
+            result[index] = 'n';
+            index++;
+            continue;
+        } else if (content[i] == '\\') {
+            result[index] = '\\';
+            index++;
+            result[index] = '\\';
+            index++;
+            continue;
+        } else if (content[i] == '\b') {
+            result[index] = '\\';
+            index++;
+            result[index] = 'b';
+            index++;
+            continue;
+        } else if (content[i] == '\f') {
+            result[index] = '\\';
+            index++;
+            result[index] = 'f';
+            index++;
+            continue;
+        }
+        result[index] = content[i];
+        index++;
+    }
+    result[index] = 0;
+}
+
+int rstrip_whitespace(char *input, char *output) {
+    output[0] = 0;
+    int count = 0;
+    size_t len = strlen(input);
+    for (size_t i = 0; i < len; i++) {
+        if (input[i] == '\t' || input[i] == ' ' || input[i] == '\n') {
+            continue;
+        }
+        count = i;
+        size_t j;
+        for (j = 0; j < len - count; j++) {
+            output[j] = input[j + count];
+        }
+        output[j] = '\0';
+        break;
+    }
+    return count;
+}
+
+/*
+ * Converts "pony" to \"pony\". Addslashes does not
+ * Converts "pony\npony" to "pony\n"
+ * 			    "pony"
+ */
+void rstrtocstring(const char *input, char *output) {
+    int index = 0;
+    char clean_input[strlen(input) * 2];
+    char *iptr = clean_input;
+    rstraddslashes(input, clean_input);
+    output[index] = '"';
+    index++;
+    while (*iptr) {
+        if (*iptr == '"') {
+            output[index] = '\\';
+            output++;
+        } else if (*iptr == '\\' && *(iptr + 1) == 'n') {
+            output[index] = '\\';
+            output++;
+            output[index] = 'n';
+            output++;
+            output[index] = '"';
+            output++;
+            output[index] = '\n';
+            output++;
+            output[index] = '"';
+            output++;
+            iptr++;
+            iptr++;
+            continue;
+        }
+        output[index] = *iptr;
+        index++;
+        iptr++;
+    }
+    if (output[index - 1] == '"' && output[index - 2] == '\n') {
+        output[index - 1] = 0;
+    } else if (output[index - 1] != '"') {
+        output[index] = '"';
+        output[index + 1] = 0;
+    }
+}
+
+size_t rstrtokline(char *input, char *output, size_t offset, bool strip_nl) {
+
+    size_t len = strlen(input);
+    output[0] = 0;
+    size_t new_offset = 0;
+    size_t j;
+    size_t index = 0;
+
+    for (j = offset; j < len + offset; j++) {
+        if (input[j] == 0) {
+            index++;
+            break;
+        }
+        index = j - offset;
+        output[index] = input[j];
+
+        if (output[index] == '\n') {
+            index++;
+            break;
+        }
+    }
+    output[index] = 0;
+
+    new_offset = index + offset;
+
+    if (strip_nl) {
+        if (output[index - 1] == '\n') {
+            output[index - 1] = 0;
+        }
+    }
+    return new_offset;
+}
+
+void rstrjoin(char **lines, size_t count, char *glue, char *output) {
+    output[0] = 0;
+    for (size_t i = 0; i < count; i++) {
+        strcat(output, lines[i]);
+        if (i != count - 1)
+            strcat(output, glue);
+    }
+}
+
+int rstrsplit(char *input, char **lines) {
+    int index = 0;
+    size_t offset = 0;
+    char line[1024];
+    while ((offset = rstrtokline(input, line, offset, false)) && *line) {
+        if (!*line) {
+            break;
+        }
+        lines[index] = (char *)malloc(strlen(line) + 1);
+        strcpy(lines[index], line);
+        index++;
+    }
+    return index;
+}
+
+bool rstartswithnumber(char *str) { return isdigit(str[0]); }
+
+void rstrmove2(char *str, unsigned int start, size_t length,
+               unsigned int new_pos) {
+    size_t str_len = strlen(str);
+    char new_str[str_len + 1];
+    memset(new_str, 0, str_len);
+    if (start < new_pos) {
+        strncat(new_str, str + length, str_len - length - start);
+        new_str[new_pos] = 0;
+        strncat(new_str, str + start, length);
+        strcat(new_str, str + strlen(new_str));
+        memset(str, 0, str_len);
+        strcpy(str, new_str);
+    } else {
+        strncat(new_str, str + start, length);
+        strncat(new_str, str, start);
+        strncat(new_str, str + start + length, str_len - start);
+        memset(str, 0, str_len);
+        strcpy(str, new_str);
+    }
+    new_str[str_len] = 0;
+}
+
+void rstrmove(char *str, unsigned int start, size_t length,
+              unsigned int new_pos) {
+    size_t str_len = strlen(str);
+    if (start >= str_len || new_pos >= str_len || start + length > str_len) {
+        return;
+    }
+    char temp[length + 1];
+    strncpy(temp, str + start, length);
+    temp[length] = 0;
+    if (start < new_pos) {
+        memmove(str + start, str + start + length, new_pos - start);
+        strncpy(str + new_pos - length + 1, temp, length);
+    } else {
+        memmove(str + new_pos + length, str + new_pos, start - new_pos);
+        strncpy(str + new_pos, temp, length);
+    }
+}
+
+int cmp_line(const void *left, const void *right) {
+    char *l = *(char **)left;
+    char *r = *(char **)right;
+
+    char lstripped[strlen(l) + 1];
+    rstrip_whitespace(l, lstripped);
+    char rstripped[strlen(r) + 1];
+    rstrip_whitespace(r, rstripped);
+
+    double d1, d2;
+    bool found_d1 = rstrextractdouble(lstripped, &d1);
+    bool found_d2 = rstrextractdouble(rstripped, &d2);
+
+    if (found_d1 && found_d2) {
+        double frac_part1;
+        double int_part1;
+        frac_part1 = modf(d1, &int_part1);
+        double frac_part2;
+        double int_part2;
+        frac_part2 = modf(d2, &int_part2);
+        if (d1 == d2) {
+            return strcmp(lstripped, rstripped);
+        } else if (frac_part1 && frac_part2) {
+            return d1 > d2;
+        } else if (frac_part1 && !frac_part2) {
+            return 1;
+        } else if (frac_part2 && !frac_part1) {
+            return -1;
+        } else if (!frac_part1 && !frac_part2) {
+            return d1 > d2;
+        }
+    }
+    return 0;
+}
+
+int rstrsort(char *input, char *output) {
+    char **lines = (char **)malloc(strlen(input) * 10);
+    int line_count = rstrsplit(input, lines);
+    qsort(lines, line_count, sizeof(char *), cmp_line);
+    rstrjoin(lines, line_count, "", output);
+    for (int i = 0; i < line_count; i++) {
+        free(lines[i]);
+    }
+    free(lines);
+    return line_count;
+}
+
+#endif
+
+#ifndef RTEST_H
+#define RTEST_H
+#include <stdbool.h>
+#include <stdio.h>
+#include <unistd.h>
+#ifndef RPRINT_H
+#define RPRINT_H
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+long rpline_number = 0;
+nsecs_t rprtime = 0;
+
+int8_t _env_rdisable_colors = -1;
+bool _rprint_enable_colors = true;
+
+bool rprint_is_color_enabled() {
+    if (_env_rdisable_colors == -1) {
+        _env_rdisable_colors = getenv("RDISABLE_COLORS") != NULL;
+    }
+    if (_env_rdisable_colors) {
+        _rprint_enable_colors = false;
+    }
+    return _rprint_enable_colors;
+}
+
+void rprint_disable_colors() { _rprint_enable_colors = false; }
+void rprint_enable_colors() { _rprint_enable_colors = true; }
+void rprint_toggle_colors() { _rprint_enable_colors = !_rprint_enable_colors; }
+
+void rclear() { printf("\033[2J"); }
+
+void rprintpf(FILE *f, const char *prefix, const char *format, va_list args) {
+    char *pprefix = (char *)prefix;
+    char *pformat = (char *)format;
+    bool reset_color = false;
+    bool press_any_key = false;
+    char new_format[4096];
+    bool enable_color = rprint_is_color_enabled();
+    memset(new_format, 0, 4096);
+    int new_format_length = 0;
+    char temp[1000];
+    memset(temp, 0, 1000);
+    if (enable_color && pprefix[0]) {
+        strcat(new_format, pprefix);
+        new_format_length += strlen(pprefix);
+        reset_color = true;
+    }
+    while (true) {
+        if (pformat[0] == '\\' && pformat[1] == 'i') {
+            strcat(new_format, "\e[3m");
+            new_format_length += strlen("\e[3m");
+            reset_color = true;
+            pformat++;
+            pformat++;
+        } else if (pformat[0] == '\\' && pformat[1] == 'u') {
+            strcat(new_format, "\e[4m");
+            new_format_length += strlen("\e[4m");
+            reset_color = true;
+            pformat++;
+            pformat++;
+        } else if (pformat[0] == '\\' && pformat[1] == 'b') {
+            strcat(new_format, "\e[1m");
+            new_format_length += strlen("\e[1m");
+            reset_color = true;
+            pformat++;
+            pformat++;
+        } else if (pformat[0] == '\\' && pformat[1] == 'C') {
+            press_any_key = true;
+            rpline_number++;
+            pformat++;
+            pformat++;
+            reset_color = false;
+        } else if (pformat[0] == '\\' && pformat[1] == 'k') {
+            press_any_key = true;
+            rpline_number++;
+            pformat++;
+            pformat++;
+        } else if (pformat[0] == '\\' && pformat[1] == 'c') {
+            rpline_number++;
+            strcat(new_format, "\e[2J\e[H");
+            new_format_length += strlen("\e[2J\e[H");
+            pformat++;
+            pformat++;
+        } else if (pformat[0] == '\\' && pformat[1] == 'L') {
+            rpline_number++;
+            temp[0] = 0;
+            sprintf(temp, "%ld", rpline_number);
+            strcat(new_format, temp);
+            new_format_length += strlen(temp);
+            pformat++;
+            pformat++;
+        } else if (pformat[0] == '\\' && pformat[1] == 'l') {
+            rpline_number++;
+            temp[0] = 0;
+            sprintf(temp, "%.5ld", rpline_number);
+            strcat(new_format, temp);
+            new_format_length += strlen(temp);
+            pformat++;
+            pformat++;
+        } else if (pformat[0] == '\\' && pformat[1] == 'T') {
+            nsecs_t nsecs_now = nsecs();
+            nsecs_t end = rprtime ? nsecs_now - rprtime : 0;
+            temp[0] = 0;
+            sprintf(temp, "%s", format_time(end));
+            strcat(new_format, temp);
+            new_format_length += strlen(temp);
+            rprtime = nsecs_now;
+            pformat++;
+            pformat++;
+        } else if (pformat[0] == '\\' && pformat[1] == 't') {
+            rprtime = nsecs();
+            pformat++;
+            pformat++;
+        } else {
+            new_format[new_format_length] = *pformat;
+            new_format_length++;
+            if (!*pformat)
+                break;
+
+            // printf("%c",*pformat);
+            pformat++;
+        }
+    }
+    if (reset_color) {
+        strcat(new_format, "\e[0m");
+        new_format_length += strlen("\e[0m");
+    }
+
+    new_format[new_format_length] = 0;
+    vfprintf(f, new_format, args);
+
+    fflush(stdout);
+    if (press_any_key) {
+        nsecs_t s = nsecs();
+        fgetc(stdin);
+        rprtime += nsecs() - s;
+    }
+}
+
+void rprintp(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(stdout, "", format, args);
+    va_end(args);
+}
+
+void rprintf(FILE *f, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(f, "", format, args);
+    va_end(args);
+}
+void rprint(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(stdout, "", format, args);
+    va_end(args);
+}
+#define printf rprint
+
+// Print line
+void rprintlf(FILE *f, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(f, "\\l", format, args);
+    va_end(args);
+}
+void rprintl(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(stdout, "\\l", format, args);
+    va_end(args);
+}
+
+// Black
+void rprintkf(FILE *f, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(f, "\e[30m", format, args);
+    va_end(args);
+}
+void rprintk(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(stdout, "\e[30m", format, args);
+    va_end(args);
+}
+
+// Red
+void rprintrf(FILE *f, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(f, "\e[31m", format, args);
+    va_end(args);
+}
+void rprintr(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(stdout, "\e[31m", format, args);
+    va_end(args);
+}
+
+// Green
+void rprintgf(FILE *f, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(f, "\e[32m", format, args);
+    va_end(args);
+}
+void rprintg(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(stdout, "\e[32m", format, args);
+    va_end(args);
+}
+
+// Yellow
+void rprintyf(FILE *f, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(f, "\e[33m", format, args);
+    va_end(args);
+}
+void rprinty(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(stdout, "\e[33m", format, args);
+    va_end(args);
+}
+
+// Blue
+void rprintbf(FILE *f, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(f, "\e[34m", format, args);
+    va_end(args);
+}
+
+void rprintb(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(stdout, "\e[34m", format, args);
+    va_end(args);
+}
+
+// Magenta
+void rprintmf(FILE *f, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(f, "\e[35m", format, args);
+    va_end(args);
+}
+void rprintm(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(stdout, "\e[35m", format, args);
+    va_end(args);
+}
+
+// Cyan
+void rprintcf(FILE *f, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(f, "\e[36m", format, args);
+    va_end(args);
+}
+void rprintc(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(stdout, "\e[36m", format, args);
+    va_end(args);
+}
+
+// White
+void rprintwf(FILE *f, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(f, "\e[37m", format, args);
+    va_end(args);
+}
+void rprintw(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(stdout, "\e[37m", format, args);
+    va_end(args);
+}
+#endif
+#define debug(fmt, ...) printf("%s:%d: " fmt, __FILE__, __LINE__, __VA_ARGS__);
+
+char *rcurrent_banner;
+int rassert_count = 0;
+unsigned short rtest_is_first = 1;
+unsigned int rtest_fail_count = 0;
+
+int rtest_end(char *content) {
+    // Returns application exit code. 0 == success
+    printf("%s", content);
+    printf("\n@assertions: %d\n", rassert_count);
+    printf("@memory: %s\n", rmalloc_stats());
+
+    if (rmalloc_count != 0) {
+        printf("MEMORY ERROR\n");
+        return rtest_fail_count > 0;
+    }
+    return rtest_fail_count > 0;
+}
+
+void rtest_test_banner(char *content, char *file) {
+    if (rtest_is_first == 1) {
+        char delimiter[] = ".";
+        char *d = delimiter;
+        char f[2048];
+        strcpy(f, file);
+        printf("%s tests", strtok(f, d));
+        rtest_is_first = 0;
+        setvbuf(stdout, NULL, _IONBF, 0);
+    }
+    printf("\n - %s ", content);
+}
+
+bool rtest_test_true_silent(char *expr, int res, int line) {
+    rassert_count++;
+    if (res) {
+        return true;
+    }
+    rprintrf(stderr, "\nERROR on line %d: %s", line, expr);
+    rtest_fail_count++;
+    return false;
+}
+
+bool rtest_test_true(char *expr, int res, int line) {
+    rassert_count++;
+    if (res) {
+        fprintf(stdout, ".");
+        return true;
+    }
+    rprintrf(stderr, "\nERROR on line %d: %s", line, expr);
+    rtest_fail_count++;
+    return false;
+}
+bool rtest_test_false_silent(char *expr, int res, int line) {
+    return rtest_test_true_silent(expr, !res, line);
+}
+bool rtest_test_false(char *expr, int res, int line) {
+    return rtest_test_true(expr, !res, line);
+}
+void rtest_test_skip(char *expr, int line) {
+    rprintgf(stderr, "\n @skip(%s) on line %d\n", expr, line);
+}
+bool rtest_test_assert(char *expr, int res, int line) {
+    if (rtest_test_true(expr, res, line)) {
+        return true;
+    }
+    rtest_end("");
+    exit(40);
+}
+
+#define rtest_banner(content)                                                  \
+    rcurrent_banner = content;                                                 \
+    rtest_test_banner(content, __FILE__);
+#define rtest_true(expr) rtest_test_true(#expr, expr, __LINE__);
+#define rtest_assert(expr)                                                     \
+    {                                                                          \
+        int __valid = expr ? 1 : 0;                                            \
+        rtest_test_true(#expr, __valid, __LINE__);                             \
+    };                                                                         \
+    ;
+
+#define rassert(expr)                                                          \
+    {                                                                          \
+        int __valid = expr ? 1 : 0;                                            \
+        rtest_test_true(#expr, __valid, __LINE__);                             \
+    };                                                                         \
+    ;
+#define rtest_asserts(expr)                                                    \
+    {                                                                          \
+        int __valid = expr ? 1 : 0;                                            \
+        rtest_test_true_silent(#expr, __valid, __LINE__);                      \
+    };
+#define rasserts(expr)                                                         \
+    {                                                                          \
+        int __valid = expr ? 1 : 0;                                            \
+        rtest_test_true_silent(#expr, __valid, __LINE__);                      \
+    };
+#define rtest_false(expr)                                                      \
+    rprintf(" [%s]\t%s\t\n", expr == 0 ? "OK" : "NOK", #expr);                 \
+    assert_count++;                                                            \
+    assert(#expr);
+#define rtest_skip(expr) rtest_test_skip(#expr, __LINE__);
+
+FILE *rtest_create_file(char *path, char *content) {
+    FILE *fd = fopen(path, "wb");
+
+    char c;
+    int index = 0;
+
+    while ((c = content[index]) != 0) {
+        fputc(c, fd);
+        index++;
+    }
+    fclose(fd);
+    fd = fopen(path, "rb");
+    return fd;
+}
+
+void rtest_delete_file(char *path) { unlink(path); }
+#endif
+
+typedef struct rjson_t {
+    char *content;
+    size_t length;
+    size_t size;
+} rjson_t;
+
+rjson_t *rjson() {
+    rjson_t *json = rmalloc(sizeof(rjson_t));
+    json->size = 1024;
+    json->length = 0;
+    json->content = (char *)rmalloc(json->size);
+    json->content[0] = 0;
+    return json;
+}
+
+void rjson_write(rjson_t *rjs, char *content) {
+    size_t len = strlen(content);
+    while (rjs->size < rjs->length + len + 1) {
+        rjs->content = realloc(rjs->content, rjs->size + 1024);
+        rjs->size += 1024;
+    }
+    strcat(rjs->content, content);
+    rjs->length += len;
+}
+
+void rjson_object_start(rjson_t *rjs) {
+    if (rstrendswith(rjs->content, "}"))
+        rjson_write(rjs, ",");
+    rjson_write(rjs, "{");
+}
+void rjson_object_close(rjson_t *rjs) {
+    if (rstrendswith(rjs->content, ",")) {
+        rjs->content[rjs->length - 1] = 0;
+        rjs->length--;
+    }
+    rjson_write(rjs, "}");
+}
+void rjson_array_start(rjson_t *rjs) {
+    if (rjs->length &&
+        (rstrendswith(rjs->content, "}") || rstrendswith(rjs->content, "]")))
+        rjson_write(rjs, ",");
+    rjson_write(rjs, "[");
+}
+void rjson_array_close(rjson_t *rjs) {
+    if (rstrendswith(rjs->content, ",")) {
+        rjs->content[rjs->length - 1] = 0;
+        rjs->length--;
+    }
+    rjson_write(rjs, "]");
+}
+
+void rjson_kv_string(rjson_t *rjs, char *key, char *value) {
+    if (rjs->length && !rstrendswith(rjs->content, "{") &&
+        !rstrendswith(rjs->content, "[")) {
+        rjson_write(rjs, ",");
+    }
+    rjson_write(rjs, "\"");
+    rjson_write(rjs, key);
+    rjson_write(rjs, "\":\"");
+    rjson_write(rjs, value);
+    rjson_write(rjs, "\"");
+}
+
+void rjson_kv_int(rjson_t *rjs, char *key, ulonglong value) {
+    if (rjs->length && !rstrendswith(rjs->content, "{") &&
+        !rstrendswith(rjs->content, "[")) {
+        rjson_write(rjs, ",");
+    }
+    rjson_write(rjs, "\"");
+    rjson_write(rjs, key);
+    rjson_write(rjs, "\":");
+    char value_str[100] = {0};
+    sprintf(value_str, "%lld", value);
+    rjson_write(rjs, value_str);
+}
+void rjson_kv_number(rjson_t *rjs, char *key, ulonglong value) {
+    if (rjs->length && !rstrendswith(rjs->content, "{") &&
+        !rstrendswith(rjs->content, "[")) {
+        rjson_write(rjs, ",");
+    }
+    rjson_write(rjs, "\"");
+    rjson_write(rjs, key);
+    rjson_write(rjs, "\":");
+    rjson_write(rjs, "\"");
+
+    rjson_write(rjs, sbuf(rformat_number(value)));
+    rjson_write(rjs, "\"");
+}
+
+void rjson_kv_bool(rjson_t *rjs, char *key, int value) {
+    if (rjs->length && !rstrendswith(rjs->content, "{") &&
+        !rstrendswith(rjs->content, "[")) {
+        rjson_write(rjs, ",");
+    }
+    rjson_write(rjs, "\"");
+    rjson_write(rjs, key);
+    rjson_write(rjs, "\":");
+    rjson_write(rjs, value > 0 ? "true" : "false");
+}
+
+void rjson_kv_duration(rjson_t *rjs, char *key, nsecs_t value) {
+    if (rjs->length && !rstrendswith(rjs->content, "{") &&
+        !rstrendswith(rjs->content, "[")) {
+        rjson_write(rjs, ",");
+    }
+    rjson_write(rjs, "\"");
+    rjson_write(rjs, key);
+    rjson_write(rjs, "\":");
+    rjson_write(rjs, "\"");
+
+    rjson_write(rjs, sbuf(format_time(value)));
+    rjson_write(rjs, "\"");
+}
+void rjson_free(rjson_t *rsj) {
+    free(rsj->content);
+    free(rsj);
+}
+
+void rjson_key(rjson_t *rsj, char *key) {
+    rjson_write(rsj, "\"");
+    rjson_write(rsj, key);
+    rjson_write(rsj, "\":");
+}
+#endif
 #ifndef RAUTOCOMPLETE_H
 #define RAUTOCOMPLETE_H
 #define R4_DEBUG
@@ -1882,452 +2902,6 @@ char *rautocomplete_find(rstring_list_t *list, char *expr) {
     free(escaped);
     return NULL;
 }
-#endif
-#ifndef RPRINT_H
-#define RPRINT_H
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-
-long rpline_number = 0;
-nsecs_t rprtime = 0;
-
-int8_t _env_rdisable_colors = -1;
-bool _rprint_enable_colors = true;
-
-bool rprint_is_color_enabled() {
-    if (_env_rdisable_colors == -1) {
-        _env_rdisable_colors = getenv("RDISABLE_COLORS") != NULL;
-    }
-    if (_env_rdisable_colors) {
-        _rprint_enable_colors = false;
-    }
-    return _rprint_enable_colors;
-}
-
-void rprint_disable_colors() { _rprint_enable_colors = false; }
-void rprint_enable_colors() { _rprint_enable_colors = true; }
-void rprint_toggle_colors() { _rprint_enable_colors = !_rprint_enable_colors; }
-
-void rclear() { printf("\033[2J"); }
-
-void rprintpf(FILE *f, const char *prefix, const char *format, va_list args) {
-    char *pprefix = (char *)prefix;
-    char *pformat = (char *)format;
-    bool reset_color = false;
-    bool press_any_key = false;
-    char new_format[4096];
-    bool enable_color = rprint_is_color_enabled();
-    memset(new_format, 0, 4096);
-    int new_format_length = 0;
-    char temp[1000];
-    memset(temp, 0, 1000);
-    if (enable_color && pprefix[0]) {
-        strcat(new_format, pprefix);
-        new_format_length += strlen(pprefix);
-        reset_color = true;
-    }
-    while (true) {
-        if (pformat[0] == '\\' && pformat[1] == 'i') {
-            strcat(new_format, "\e[3m");
-            new_format_length += strlen("\e[3m");
-            reset_color = true;
-            pformat++;
-            pformat++;
-        } else if (pformat[0] == '\\' && pformat[1] == 'u') {
-            strcat(new_format, "\e[4m");
-            new_format_length += strlen("\e[4m");
-            reset_color = true;
-            pformat++;
-            pformat++;
-        } else if (pformat[0] == '\\' && pformat[1] == 'b') {
-            strcat(new_format, "\e[1m");
-            new_format_length += strlen("\e[1m");
-            reset_color = true;
-            pformat++;
-            pformat++;
-        } else if (pformat[0] == '\\' && pformat[1] == 'C') {
-            press_any_key = true;
-            rpline_number++;
-            pformat++;
-            pformat++;
-            reset_color = false;
-        } else if (pformat[0] == '\\' && pformat[1] == 'k') {
-            press_any_key = true;
-            rpline_number++;
-            pformat++;
-            pformat++;
-        } else if (pformat[0] == '\\' && pformat[1] == 'c') {
-            rpline_number++;
-            strcat(new_format, "\e[2J\e[H");
-            new_format_length += strlen("\e[2J\e[H");
-            pformat++;
-            pformat++;
-        } else if (pformat[0] == '\\' && pformat[1] == 'L') {
-            rpline_number++;
-            temp[0] = 0;
-            sprintf(temp, "%ld", rpline_number);
-            strcat(new_format, temp);
-            new_format_length += strlen(temp);
-            pformat++;
-            pformat++;
-        } else if (pformat[0] == '\\' && pformat[1] == 'l') {
-            rpline_number++;
-            temp[0] = 0;
-            sprintf(temp, "%.5ld", rpline_number);
-            strcat(new_format, temp);
-            new_format_length += strlen(temp);
-            pformat++;
-            pformat++;
-        } else if (pformat[0] == '\\' && pformat[1] == 'T') {
-            nsecs_t nsecs_now = nsecs();
-            nsecs_t end = rprtime ? nsecs_now - rprtime : 0;
-            temp[0] = 0;
-            sprintf(temp, "%s", format_time(end));
-            strcat(new_format, temp);
-            new_format_length += strlen(temp);
-            rprtime = nsecs_now;
-            pformat++;
-            pformat++;
-        } else if (pformat[0] == '\\' && pformat[1] == 't') {
-            rprtime = nsecs();
-            pformat++;
-            pformat++;
-        } else {
-            new_format[new_format_length] = *pformat;
-            new_format_length++;
-            if (!*pformat)
-                break;
-
-            // printf("%c",*pformat);
-            pformat++;
-        }
-    }
-    if (reset_color) {
-        strcat(new_format, "\e[0m");
-        new_format_length += strlen("\e[0m");
-    }
-
-    new_format[new_format_length] = 0;
-    vfprintf(f, new_format, args);
-
-    fflush(stdout);
-    if (press_any_key) {
-        nsecs_t s = nsecs();
-        fgetc(stdin);
-        rprtime += nsecs() - s;
-    }
-}
-
-void rprintp(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(stdout, "", format, args);
-    va_end(args);
-}
-
-void rprintf(FILE *f, const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(f, "", format, args);
-    va_end(args);
-}
-void rprint(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(stdout, "", format, args);
-    va_end(args);
-}
-#define printf rprint
-
-// Print line
-void rprintlf(FILE *f, const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(f, "\\l", format, args);
-    va_end(args);
-}
-void rprintl(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(stdout, "\\l", format, args);
-    va_end(args);
-}
-
-// Black
-void rprintkf(FILE *f, const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(f, "\e[30m", format, args);
-    va_end(args);
-}
-void rprintk(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(stdout, "\e[30m", format, args);
-    va_end(args);
-}
-
-// Red
-void rprintrf(FILE *f, const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(f, "\e[31m", format, args);
-    va_end(args);
-}
-void rprintr(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(stdout, "\e[31m", format, args);
-    va_end(args);
-}
-
-// Green
-void rprintgf(FILE *f, const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(f, "\e[32m", format, args);
-    va_end(args);
-}
-void rprintg(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(stdout, "\e[32m", format, args);
-    va_end(args);
-}
-
-// Yellow
-void rprintyf(FILE *f, const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(f, "\e[33m", format, args);
-    va_end(args);
-}
-void rprinty(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(stdout, "\e[33m", format, args);
-    va_end(args);
-}
-
-// Blue
-void rprintbf(FILE *f, const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(f, "\e[34m", format, args);
-    va_end(args);
-}
-
-void rprintb(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(stdout, "\e[34m", format, args);
-    va_end(args);
-}
-
-// Magenta
-void rprintmf(FILE *f, const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(f, "\e[35m", format, args);
-    va_end(args);
-}
-void rprintm(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(stdout, "\e[35m", format, args);
-    va_end(args);
-}
-
-// Cyan
-void rprintcf(FILE *f, const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(f, "\e[36m", format, args);
-    va_end(args);
-}
-void rprintc(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(stdout, "\e[36m", format, args);
-    va_end(args);
-}
-
-// White
-void rprintwf(FILE *f, const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(f, "\e[37m", format, args);
-    va_end(args);
-}
-void rprintw(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(stdout, "\e[37m", format, args);
-    va_end(args);
-}
-#endif
-#ifndef RMATH_H
-#define RMATH_H
-#include <math.h>
-
-#ifndef ceil
-double ceil(double x) {
-    if (x == (double)(long long)x) {
-        return x;
-    } else if (x > 0.0) {
-        return (double)(long long)x + 1.0;
-    } else {
-        return (double)(long long)x;
-    }
-}
-#endif
-
-#ifndef floor
-double floor(double x) {
-    if (x >= 0.0) {
-        return (double)(long long)x;
-    } else {
-        double result = (double)(long long)x;
-        return (result == x) ? result : result - 1.0;
-    }
-}
-#endif
-
-#ifndef modf
-double modf(double x, double *iptr) {
-    double int_part = (x >= 0.0) ? floor(x) : ceil(x);
-    *iptr = int_part;
-    return x - int_part;
-}
-#endif
-#endif
-#ifndef RTEST_H
-#define RTEST_H
-#include <stdbool.h>
-#include <stdio.h>
-#include <unistd.h>
-#define debug(fmt, ...) printf("%s:%d: " fmt, __FILE__, __LINE__, __VA_ARGS__);
-
-char *rcurrent_banner;
-int rassert_count = 0;
-unsigned short rtest_is_first = 1;
-unsigned int rtest_fail_count = 0;
-
-int rtest_end(char *content) {
-    // Returns application exit code. 0 == success
-    printf("%s", content);
-    printf("\n@assertions: %d\n", rassert_count);
-    printf("@memory: %s\n", rmalloc_stats());
-
-    if (rmalloc_count != 0) {
-        printf("MEMORY ERROR\n");
-        return rtest_fail_count > 0;
-    }
-    return rtest_fail_count > 0;
-}
-
-void rtest_test_banner(char *content, char *file) {
-    if (rtest_is_first == 1) {
-        char delimiter[] = ".";
-        char *d = delimiter;
-        char f[2048];
-        strcpy(f, file);
-        printf("%s tests", strtok(f, d));
-        rtest_is_first = 0;
-        setvbuf(stdout, NULL, _IONBF, 0);
-    }
-    printf("\n - %s ", content);
-}
-
-bool rtest_test_true_silent(char *expr, int res, int line) {
-    rassert_count++;
-    if (res) {
-        return true;
-    }
-    rprintrf(stderr, "\nERROR on line %d: %s", line, expr);
-    rtest_fail_count++;
-    return false;
-}
-
-bool rtest_test_true(char *expr, int res, int line) {
-    rassert_count++;
-    if (res) {
-        fprintf(stdout, ".");
-        return true;
-    }
-    rprintrf(stderr, "\nERROR on line %d: %s", line, expr);
-    rtest_fail_count++;
-    return false;
-}
-bool rtest_test_false_silent(char *expr, int res, int line) {
-    return rtest_test_true_silent(expr, !res, line);
-}
-bool rtest_test_false(char *expr, int res, int line) {
-    return rtest_test_true(expr, !res, line);
-}
-void rtest_test_skip(char *expr, int line) {
-    rprintgf(stderr, "\n @skip(%s) on line %d\n", expr, line);
-}
-bool rtest_test_assert(char *expr, int res, int line) {
-    if (rtest_test_true(expr, res, line)) {
-        return true;
-    }
-    rtest_end("");
-    exit(40);
-}
-
-#define rtest_banner(content)                                                  \
-    rcurrent_banner = content;                                                 \
-    rtest_test_banner(content, __FILE__);
-#define rtest_true(expr) rtest_test_true(#expr, expr, __LINE__);
-#define rtest_assert(expr)                                                     \
-    {                                                                          \
-        int __valid = expr ? 1 : 0;                                            \
-        rtest_test_true(#expr, __valid, __LINE__);                             \
-    };                                                                         \
-    ;
-
-#define rassert(expr)                                                          \
-    {                                                                          \
-        int __valid = expr ? 1 : 0;                                            \
-        rtest_test_true(#expr, __valid, __LINE__);                             \
-    };                                                                         \
-    ;
-#define rtest_asserts(expr)                                                    \
-    {                                                                          \
-        int __valid = expr ? 1 : 0;                                            \
-        rtest_test_true_silent(#expr, __valid, __LINE__);                      \
-    };
-#define rasserts(expr)                                                         \
-    {                                                                          \
-        int __valid = expr ? 1 : 0;                                            \
-        rtest_test_true_silent(#expr, __valid, __LINE__);                      \
-    };
-#define rtest_false(expr)                                                      \
-    rprintf(" [%s]\t%s\t\n", expr == 0 ? "OK" : "NOK", #expr);                 \
-    assert_count++;                                                            \
-    assert(#expr);
-#define rtest_skip(expr) rtest_test_skip(#expr, __LINE__);
-
-FILE *rtest_create_file(char *path, char *content) {
-    FILE *fd = fopen(path, "wb");
-
-    char c;
-    int index = 0;
-
-    while ((c = content[index]) != 0) {
-        fputc(c, fd);
-        index++;
-    }
-    fclose(fd);
-    fd = fopen(path, "rb");
-    return fd;
-}
-
-void rtest_delete_file(char *path) { unlink(path); }
 #endif
 #ifndef RKEYTABLE_H
 #define RKEYTABLE_H
@@ -3762,441 +4336,6 @@ void arena_free(arena_t *arena) {
 
 void arena_reset(arena_t *arena) { arena->pointer = 0; }
 #endif
-#ifndef RSTRING_H
-#define RSTRING_H
-#include <ctype.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-
-char *rstrtimestamp() {
-    time_t current_time;
-    time(&current_time);
-    struct tm *local_time = localtime(&current_time);
-    static char time_string[100];
-    time_string[0] = 0;
-    strftime(time_string, sizeof(time_string), "%Y-%m-%d %H:%M:%S", local_time);
-    return time_string;
-}
-
-ulonglong _r_generate_key_current = 0;
-
-char *_rcat_int_int(int a, int b) {
-    static char res[20];
-    res[0] = 0;
-    sprintf(res, "%d%d", a, b);
-    return res;
-}
-char *_rcat_int_double(int a, double b) {
-    static char res[20];
-    res[0] = 0;
-    sprintf(res, "%d%f", a, b);
-    return res;
-}
-
-char *_rcat_charp_int(char *a, int b) {
-    char res[20];
-    sprintf(res, "%c", b);
-    return strcat(a, res);
-}
-
-char *_rcat_charp_double(char *a, double b) {
-    char res[20];
-    sprintf(res, "%f", b);
-    return strcat(a, res);
-}
-
-char *_rcat_charp_charp(char *a, char *b) {
-    ;
-    return strcat(a, b);
-}
-char *_rcat_charp_char(char *a, char b) {
-    char extra[] = {b, 0};
-    return strcat(a, extra);
-}
-char *_rcat_charp_bool(char *a, bool *b) {
-    if (b) {
-        return strcat(a, "true");
-    } else {
-        return strcat(a, "false");
-    }
-}
-
-#define rcat(x, y)                                                             \
-    _Generic((x),                                                              \
-        int: _Generic((y),                                                     \
-        int: _rcat_int_int,                                                    \
-        double: _rcat_int_double,                                              \
-        char *: _rcat_charp_charp),                                            \
-        char *: _Generic((y),                                                  \
-        int: _rcat_charp_int,                                                  \
-        double: _rcat_charp_double,                                            \
-        char *: _rcat_charp_charp,                                             \
-        char: _rcat_charp_char,                                                \
-        bool: _rcat_charp_bool))((x), (y))
-
-char *rgenerate_key() {
-    _r_generate_key_current++;
-    static char key[100];
-    key[0] = 0;
-    sprintf(key, "%lld", _r_generate_key_current);
-    return key;
-}
-
-char *rformat_number(long long lnumber) {
-    static char formatted[1024];
-
-    char number[1024] = {0};
-    sprintf(number, "%lld", lnumber);
-
-    int len = strlen(number);
-    int commas_needed = (len - 1) / 3;
-    int new_len = len + commas_needed;
-
-    formatted[new_len] = '\0';
-
-    int i = len - 1;
-    int j = new_len - 1;
-    int count = 0;
-
-    while (i >= 0) {
-        if (count == 3) {
-            formatted[j--] = '.';
-            count = 0;
-        }
-        formatted[j--] = number[i--];
-        count++;
-    }
-    if (lnumber < 0)
-        formatted[j--] = '-';
-    return formatted;
-}
-
-bool rstrextractdouble(char *str, double *d1) {
-    for (size_t i = 0; i < strlen(str); i++) {
-        if (isdigit(str[i])) {
-            str += i;
-            sscanf(str, "%lf", d1);
-            return true;
-        }
-    }
-    return false;
-}
-
-void rstrstripslashes(const char *content, char *result) {
-    size_t content_length = strlen((char *)content);
-    unsigned int index = 0;
-    for (unsigned int i = 0; i < content_length; i++) {
-        char c = content[i];
-        if (c == '\\') {
-            i++;
-            c = content[i];
-            if (c == 'r') {
-                c = '\r';
-            } else if (c == 't') {
-                c = '\t';
-            } else if (c == 'b') {
-                c = '\b';
-            } else if (c == 'n') {
-                c = '\n';
-            } else if (c == 'f') {
-                c = '\f';
-            } else if (c == '\\') {
-                // No need tbh
-                c = '\\';
-            }
-        }
-        result[index] = c;
-        index++;
-    }
-    result[index] = 0;
-}
-
-int rstrstartswith(const char *s1, const char *s2) {
-    if (s1 == NULL)
-        return s2 == NULL;
-    if (s1 == s2 || s2 == NULL || *s2 == 0)
-        return true;
-    size_t len_s2 = strlen(s2);
-    size_t len_s1 = strlen(s1);
-    if (len_s2 > len_s1)
-        return false;
-    return !strncmp(s1, s2, len_s2);
-}
-
-bool rstrendswith(const char *s1, const char *s2) {
-    if (s1 == NULL)
-        return s2 == NULL;
-    if (s1 == s2 || s2 == NULL || *s2 == 0)
-        return true;
-    size_t len_s2 = strlen(s2);
-    size_t len_s1 = strlen(s1);
-    if (len_s2 > len_s1) {
-        return false;
-    }
-    s1 += len_s1 - len_s2;
-    return !strncmp(s1, s2, len_s2);
-}
-
-void rstraddslashes(const char *content, char *result) {
-    size_t content_length = strlen((char *)content);
-    unsigned int index = 0;
-    for (unsigned int i = 0; i < content_length; i++) {
-        if (content[i] == '\r') {
-            result[index] = '\\';
-            index++;
-            result[index] = 'r';
-            index++;
-            continue;
-        } else if (content[i] == '\t') {
-            result[index] = '\\';
-            index++;
-            result[index] = 't';
-            index++;
-            continue;
-        } else if (content[i] == '\n') {
-            result[index] = '\\';
-            index++;
-            result[index] = 'n';
-            index++;
-            continue;
-        } else if (content[i] == '\\') {
-            result[index] = '\\';
-            index++;
-            result[index] = '\\';
-            index++;
-            continue;
-        } else if (content[i] == '\b') {
-            result[index] = '\\';
-            index++;
-            result[index] = 'b';
-            index++;
-            continue;
-        } else if (content[i] == '\f') {
-            result[index] = '\\';
-            index++;
-            result[index] = 'f';
-            index++;
-            continue;
-        }
-        result[index] = content[i];
-        index++;
-    }
-    result[index] = 0;
-}
-
-int rstrip_whitespace(char *input, char *output) {
-    output[0] = 0;
-    int count = 0;
-    size_t len = strlen(input);
-    for (size_t i = 0; i < len; i++) {
-        if (input[i] == '\t' || input[i] == ' ' || input[i] == '\n') {
-            continue;
-        }
-        count = i;
-        size_t j;
-        for (j = 0; j < len - count; j++) {
-            output[j] = input[j + count];
-        }
-        output[j] = '\0';
-        break;
-    }
-    return count;
-}
-
-/*
- * Converts "pony" to \"pony\". Addslashes does not
- * Converts "pony\npony" to "pony\n"
- * 			    "pony"
- */
-void rstrtocstring(const char *input, char *output) {
-    int index = 0;
-    char clean_input[strlen(input) * 2];
-    char *iptr = clean_input;
-    rstraddslashes(input, clean_input);
-    output[index] = '"';
-    index++;
-    while (*iptr) {
-        if (*iptr == '"') {
-            output[index] = '\\';
-            output++;
-        } else if (*iptr == '\\' && *(iptr + 1) == 'n') {
-            output[index] = '\\';
-            output++;
-            output[index] = 'n';
-            output++;
-            output[index] = '"';
-            output++;
-            output[index] = '\n';
-            output++;
-            output[index] = '"';
-            output++;
-            iptr++;
-            iptr++;
-            continue;
-        }
-        output[index] = *iptr;
-        index++;
-        iptr++;
-    }
-    if (output[index - 1] == '"' && output[index - 2] == '\n') {
-        output[index - 1] = 0;
-    } else if (output[index - 1] != '"') {
-        output[index] = '"';
-        output[index + 1] = 0;
-    }
-}
-
-size_t rstrtokline(char *input, char *output, size_t offset, bool strip_nl) {
-
-    size_t len = strlen(input);
-    output[0] = 0;
-    size_t new_offset = 0;
-    size_t j;
-    size_t index = 0;
-
-    for (j = offset; j < len + offset; j++) {
-        if (input[j] == 0) {
-            index++;
-            break;
-        }
-        index = j - offset;
-        output[index] = input[j];
-
-        if (output[index] == '\n') {
-            index++;
-            break;
-        }
-    }
-    output[index] = 0;
-
-    new_offset = index + offset;
-
-    if (strip_nl) {
-        if (output[index - 1] == '\n') {
-            output[index - 1] = 0;
-        }
-    }
-    return new_offset;
-}
-
-void rstrjoin(char **lines, size_t count, char *glue, char *output) {
-    output[0] = 0;
-    for (size_t i = 0; i < count; i++) {
-        strcat(output, lines[i]);
-        if (i != count - 1)
-            strcat(output, glue);
-    }
-}
-
-int rstrsplit(char *input, char **lines) {
-    int index = 0;
-    size_t offset = 0;
-    char line[1024];
-    while ((offset = rstrtokline(input, line, offset, false)) && *line) {
-        if (!*line) {
-            break;
-        }
-        lines[index] = (char *)malloc(strlen(line) + 1);
-        strcpy(lines[index], line);
-        index++;
-    }
-    return index;
-}
-
-bool rstartswithnumber(char *str) { return isdigit(str[0]); }
-
-void rstrmove2(char *str, unsigned int start, size_t length,
-               unsigned int new_pos) {
-    size_t str_len = strlen(str);
-    char new_str[str_len + 1];
-    memset(new_str, 0, str_len);
-    if (start < new_pos) {
-        strncat(new_str, str + length, str_len - length - start);
-        new_str[new_pos] = 0;
-        strncat(new_str, str + start, length);
-        strcat(new_str, str + strlen(new_str));
-        memset(str, 0, str_len);
-        strcpy(str, new_str);
-    } else {
-        strncat(new_str, str + start, length);
-        strncat(new_str, str, start);
-        strncat(new_str, str + start + length, str_len - start);
-        memset(str, 0, str_len);
-        strcpy(str, new_str);
-    }
-    new_str[str_len] = 0;
-}
-
-void rstrmove(char *str, unsigned int start, size_t length,
-              unsigned int new_pos) {
-    size_t str_len = strlen(str);
-    if (start >= str_len || new_pos >= str_len || start + length > str_len) {
-        return;
-    }
-    char temp[length + 1];
-    strncpy(temp, str + start, length);
-    temp[length] = 0;
-    if (start < new_pos) {
-        memmove(str + start, str + start + length, new_pos - start);
-        strncpy(str + new_pos - length + 1, temp, length);
-    } else {
-        memmove(str + new_pos + length, str + new_pos, start - new_pos);
-        strncpy(str + new_pos, temp, length);
-    }
-}
-
-int cmp_line(const void *left, const void *right) {
-    char *l = *(char **)left;
-    char *r = *(char **)right;
-
-    char lstripped[strlen(l) + 1];
-    rstrip_whitespace(l, lstripped);
-    char rstripped[strlen(r) + 1];
-    rstrip_whitespace(r, rstripped);
-
-    double d1, d2;
-    bool found_d1 = rstrextractdouble(lstripped, &d1);
-    bool found_d2 = rstrextractdouble(rstripped, &d2);
-
-    if (found_d1 && found_d2) {
-        double frac_part1;
-        double int_part1;
-        frac_part1 = modf(d1, &int_part1);
-        double frac_part2;
-        double int_part2;
-        frac_part2 = modf(d2, &int_part2);
-        if (d1 == d2) {
-            return strcmp(lstripped, rstripped);
-        } else if (frac_part1 && frac_part2) {
-            return d1 > d2;
-        } else if (frac_part1 && !frac_part2) {
-            return 1;
-        } else if (frac_part2 && !frac_part1) {
-            return -1;
-        } else if (!frac_part1 && !frac_part2) {
-            return d1 > d2;
-        }
-    }
-    return 0;
-}
-
-int rstrsort(char *input, char *output) {
-    char **lines = (char **)malloc(strlen(input) * 10);
-    int line_count = rstrsplit(input, lines);
-    qsort(lines, line_count, sizeof(char *), cmp_line);
-    rstrjoin(lines, line_count, "", output);
-    for (int i = 0; i < line_count; i++) {
-        free(lines[i]);
-    }
-    free(lines);
-    return line_count;
-}
-
-#endif
-
 #ifndef RLIB_TERMINAL_H
 #define RLIB_TERMINAL_H
 

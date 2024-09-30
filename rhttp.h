@@ -36,12 +36,14 @@ typedef struct rhttp_header_t {
 typedef struct rhttp_request_t {
     int c;
     int closed;
+    nsecs_t start;
     char *raw;
     char *line;
     char *body;
     char *method;
     char *path;
     char *version;
+    void *context;
     unsigned int bytes_received;
     rhttp_header_t *headers;
 } rhttp_request_t;
@@ -109,6 +111,7 @@ void http_request_init(rhttp_request_t *r) {
     r->method = NULL;
     r->path = NULL;
     r->version = NULL;
+    r->start = 0;
     r->headers = NULL;
     r->bytes_received = 0;
     r->closed = 0;
@@ -192,7 +195,13 @@ void rhttp_print_request(rhttp_request_t *r) {
     if (rhttp_opt_debug)
         rhttp_print_headers(r->headers);
 }
-
+void rhttp_close(rhttp_request_t *r) {
+    if (!r)
+        return;
+    if (!r->closed)
+        close(r->c);
+    rhttp_free_request(r);
+}
 rhttp_request_t *rhttp_parse_request(int s) {
     rhttp_request_t *request =
         (rhttp_request_t *)malloc(sizeof(rhttp_request_t));
@@ -221,6 +230,7 @@ rhttp_request_t *rhttp_parse_request(int s) {
     char *version = strtok(NULL, " ");
     request->bytes_received = breceived;
     request->line = line;
+    request->start = nsecs();
     request->method = strdup(method);
     request->path = strdup(path);
     request->version = strdup(version);
@@ -270,7 +280,8 @@ size_t rhttp_send_drain(int s, void *tsend, size_t to_send_len) {
 typedef int (*rhttp_request_handler_t)(rhttp_request_t *r);
 
 void rhttp_serve(const char *host, int port, int backlog, int request_logging,
-                 int request_debug, rhttp_request_handler_t handler) {
+                 int request_debug, rhttp_request_handler_t handler,
+                 void *context) {
     at_quick_exit(rhttp_close_server);
     rhttp_sock = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in addr;
@@ -294,10 +305,11 @@ void rhttp_serve(const char *host, int port, int backlog, int request_logging,
                          (socklen_t *)&addrlen);
         rhttp_connections_handled++;
         rhttp_request_t *r = rhttp_parse_request(rhttp_c);
+        r->context = context;
         if (!r->closed) {
             handler(r);
         }
-        rhttp_free_request(r);
+        rhttp_close(r);
     }
 }
 
@@ -467,7 +479,7 @@ int rhttp_main(int argc, char *argv[]) {
         setvbuf(stdout, NULL, _IOFBF, BUFSIZ);
 
     rhttp_serve(rhttp_opt_host, rhttp_opt_port, 1024, rhttp_opt_request_logging,
-                rhttp_opt_debug, rhttp_default_request_handler);
+                rhttp_opt_debug, rhttp_default_request_handler, NULL);
 
     return 0;
 }

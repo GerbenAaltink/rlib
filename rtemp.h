@@ -8,7 +8,7 @@
 #endif
 byte _current_rtempc_slot = 0;
 char _rtempc_buffer[RTEMPC_SLOT_COUNT][RTEMPC_SLOT_SIZE];
-inline char *rtempc(char *data) {
+char *rtempc(char *data) {
 
     uint current_rtempc_slot = _current_rtempc_slot;
     _rtempc_buffer[current_rtempc_slot][0] = 0;

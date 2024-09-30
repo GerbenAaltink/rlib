@@ -19,7 +19,7 @@ rhttp_request_handler_t handler = request_handler;
 void *rhttp_serve_thread(void *port_arg) {
     int port = *(int *)port_arg;
     rhttp_serve(rhttp_opt_host, port, 1024, rhttp_opt_request_logging,
-                rhttp_opt_debug, handler);
+                rhttp_opt_debug, handler, NULL);
     return NULL;
 }
 
