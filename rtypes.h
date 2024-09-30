@@ -4,7 +4,7 @@
 #define ulonglong unsigned long long
 #endif
 #ifndef byte
-#define byte char
+#define byte unsigned char
 #endif
 #ifdef RTYPES_H_ALL
 #define RTYPES_H_ALL
