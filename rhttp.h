@@ -1,5 +1,6 @@
 #ifndef RHTTP_H
 #define RHTTP_H
+#include "rio.h"
 #include <arpa/inet.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -242,7 +243,7 @@ void rhttp_close_server() {
     exit(0);
 }
 
-size_t rhttp_send_drain(int s, char *tsend, size_t to_send_len) {
+size_t rhttp_send_drain(int s, char unsigned *tsend, size_t to_send_len) {
     if (to_send_len == 0 && *tsend) {
         to_send_len = strlen(tsend) + 1;
     }
@@ -316,6 +317,52 @@ unsigned int rhttp_calculate_number_char_count(unsigned int number) {
     return width;
 }
 
+int rhttp_file_response(rhttp_request_t *r, char *path) {
+    if (!*path)
+        return 0;
+    FILE *f = fopen(path, "rb");
+    if (f == NULL)
+        return 0;
+    size_t file_size = rfile_size(path);
+    char response[1024] = {0};
+    char content_type_header[100] = {0};
+    char *ext = strstr(path, ".");
+    char *text_extensions = ".h,.c,.html";
+    if (strstr(text_extensions, ext)) {
+        sprintf(content_type_header, "Content-Type: %s\r\n", "text/html");
+    }
+    sprintf(response, "HTTP/1.1 200 OK\r\n%sContent-Length:%ld\r\n\r\n",
+            content_type_header, file_size);
+    if (!rhttp_send_drain(r->c, response, 0)) {
+        rhttp_log_error("Error sending file: %s\n", path);
+    }
+    size_t bytes = 0;
+    size_t bytes_sent = 0;
+    unsigned char file_buff[1024];
+    while ((bytes = fread(file_buff, sizeof(char), sizeof(file_buff), f))) {
+        if (!rhttp_send_drain(r->c, file_buff, bytes)) {
+            rhttp_log_error("Error sending file during chunking: %s\n", path);
+        }
+        bytes_sent += bytes;
+    }
+    if (bytes_sent != file_size) {
+        rhttp_send_drain(r->c, file_buff, file_size - bytes_sent);
+    }
+    close(r->c);
+    fclose(f);
+    return 1;
+};
+
+int rhttp_file_request_handler(rhttp_request_t *r) {
+    char *path = r->path;
+    while (*path == '/' || *path == '.')
+        path++;
+    if (strstr(path, "..")) {
+        return 0;
+    }
+    return rhttp_file_response(r, path);
+};
+
 unsigned int counter = 100000000;
 int rhttp_counter_request_handler(rhttp_request_t *r) {
     if (!strncmp(r->path, "/counter", strlen("/counter"))) {
@@ -362,10 +409,10 @@ int rhttp_default_request_handler(rhttp_request_t *r) {
     } else if (rhttp_root_request_handler(r)) {
         // Root handler
         rhttp_log_info("Root handler found for: %s\n", r->path);
-
+    } else if (rhttp_file_request_handler(r)) {
+        rhttp_log_info("File %s sent\n", r->path);
     } else if (rhttp_error_404_handler(r)) {
         rhttp_log_warn("Error 404 for: %s\n", r->path);
-
         // Error handler
     } else {
         rhttp_log_warn("No handler found for: %s\n", r->path);

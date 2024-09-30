@@ -90,6 +90,10 @@ void rstring_test_rformat_number() {
     rassert(!strcmp(rformat_number(100001), "100.001"));
     rassert(!strcmp(rformat_number(1000001), "1.000.001"));
     rassert(!strcmp(rformat_number(1000000001), "1.000.000.001"));
+    rassert(!strcmp(rformat_number(1000000000001), "1.000.000.000.001"));
+    rassert(!strcmp(rformat_number(1000000000000001), "1.000.000.000.000.001"));
+    rassert(
+        !strcmp(rformat_number(-1000000000000001), "-1.000.000.000.000.001"));
 }
 
 void rstring_test_rstraddslashes() {
@@ -162,6 +166,33 @@ void rstring_test_rstrmove() {
     rassert(!strcmp(to_move_6, "abcaa?defg"));
 }
 
+char *classic(char *content) {
+    static char result[1024];
+    strcpy(result, content);
+    return result;
+}
+
+void rstring_test_rtempc() {
+    rtest_banner("rtempc");
+    char *res1 = rtempc("test1");
+    char *res2 = rtempc("test2");
+    char *res3 = rtempc("test3");
+    char *res4 = rtempc("test4");
+    char *res5 = rtempc("test5");
+    rassert(!strcmp(res5, "test5"));
+    rassert(!strcmp(res4, "test4"));
+    rassert(!strcmp(res3, "test3"));
+    rassert(!strcmp(res2, "test2"));
+    rassert(!strcmp(res1, "test1"));
+    char line[1024] = {0};
+    sprintf(line, "%s%s%s", rtempc("test1"), rtempc("test2"), rtempc("test3"));
+    rassert(!strcmp(line, "test1test2test3"));
+    line[0] = 0;
+    sprintf(line, "%s%s%s", classic("test1"), classic("test2"),
+            classic("test3"));
+    rassert(strcmp(line, "test1test2test3"));
+}
+
 int main() {
     rtest_banner("rstring");
     rstring_test_whitespace();
@@ -173,5 +204,6 @@ int main() {
     rstring_test_rstrstartswith();
     rstring_test_rstrendswith();
     rstring_test_rstrmove();
+    rstring_test_rtempc();
     return rtest_end("");
 }

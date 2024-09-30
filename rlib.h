@@ -1,4 +1,4 @@
-// RETOOR - Sep 29 2024
+// RETOOR - Sep 30 2024
 // MIT License
 // ===========
 
@@ -24,8 +24,236 @@
 #ifndef RLIB_H
 #define RLIB_H
 // BEGIN OF RLIB
+
+#ifndef RTYPES_H
+#define RTYPES_H
+#define ulonglong unsigned long long
+#endif
+#ifndef byte
+#define byte char
+#endif
+#ifdef RTYPES_H_ALL
+#define RTYPES_H_ALL
+#include <stdbool.h>
+#ifndef ulong
+#define ulong long long
+#endif
+#ifndef uint
+#define uint unsigned int
+#endif
+#endif
+
 #ifndef RHTTP_H
 #define RHTTP_H
+#ifndef RLIB_RIO
+#define RLIB_RIO
+#include <dirent.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/dir.h>
+#include <sys/select.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#ifndef RSTRING_LIST_H
+#define RSTRING_LIST_H
+#ifndef RMALLOC_H
+#define RMALLOC_H
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+static unsigned long long rmalloc_count = 0;
+static unsigned long long rmalloc_alloc_count = 0;
+static unsigned long long int rmalloc_free_count = 0;
+
+void *rstrdup(const char *s) {
+    rmalloc_count++;
+    rmalloc_alloc_count++;
+    return strdup(s);
+}
+void *rmalloc(size_t size) {
+    rmalloc_count++;
+    rmalloc_alloc_count++;
+    return malloc(size);
+}
+void *rrealloc(void *obj, size_t size) {
+    if (!obj) {
+        rmalloc_count++;
+        rmalloc_alloc_count++;
+    }
+    return realloc(obj, size);
+}
+void *rfree(void *obj) {
+    rmalloc_count--;
+    rmalloc_free_count++;
+    free(obj);
+    return NULL;
+}
+
+#define malloc rmalloc
+#define realloc rrealloc
+#define free rfree
+#define strdup rstrdup
+
+char *rmalloc_stats() {
+    static char res[200] = {0};
+    sprintf(res, "Memory usage: %lld allocated, %lld freed, %lld in use.",
+            rmalloc_alloc_count, rmalloc_free_count, rmalloc_count);
+    return res;
+}
+
+#endif
+
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct rstring_list_t {
+    unsigned int size;
+    unsigned int count;
+    char **strings;
+} rstring_list_t;
+
+rstring_list_t *rstring_list_new() {
+    rstring_list_t *rsl = (rstring_list_t *)malloc(sizeof(rstring_list_t));
+    memset(rsl, 0, sizeof(rstring_list_t));
+    return rsl;
+}
+
+void rstring_list_free(rstring_list_t *rsl) {
+    for (unsigned int i = 0; i < rsl->size; i++) {
+        free(rsl->strings[i]);
+    }
+    free(rsl);
+    rsl = NULL;
+}
+
+void rstring_list_add(rstring_list_t *rsl, char *str) {
+    if (rsl->count == rsl->size) {
+        rsl->size++;
+        rsl->strings =
+            (char **)realloc(rsl->strings, sizeof(char *) * rsl->size);
+    }
+    rsl->strings[rsl->count] = (char *)malloc(strlen(str) + 1);
+    strcpy(rsl->strings[rsl->count], str);
+    rsl->count++;
+}
+bool rstring_list_contains(rstring_list_t *rsl, char *str) {
+    for (unsigned int i = 0; i < rsl->count; i++) {
+        if (!strcmp(rsl->strings[i], str))
+            return true;
+    }
+    return false;
+}
+
+#endif
+
+bool rfile_exists(char *path) {
+    struct stat s;
+    return !stat(path, &s);
+}
+
+void rjoin_path(char *p1, char *p2, char *output) {
+    output[0] = 0;
+    strcpy(output, p1);
+
+    if (output[strlen(output) - 1] != '/') {
+        char slash[] = "/";
+        strcat(output, slash);
+    }
+    if (p2[0] == '/') {
+        p2++;
+    }
+    strcat(output, p2);
+}
+
+int risprivatedir(const char *path) {
+    struct stat statbuf;
+
+    if (stat(path, &statbuf) != 0) {
+        perror("stat");
+        return -1;
+    }
+
+    if (!S_ISDIR(statbuf.st_mode)) {
+        return -2;
+    }
+
+    if ((statbuf.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO)) == S_IRWXU) {
+        return 1; // Private (owner has all permissions, others have none)
+    }
+
+    return 0;
+}
+bool risdir(const char *path) { return !risprivatedir(path); }
+
+void rforfile(char *path, void callback(char *)) {
+    if (!rfile_exists(path))
+        return;
+    DIR *dir = opendir(path);
+    struct dirent *d;
+    while ((d = readdir(dir)) != NULL) {
+        if (!d)
+            break;
+
+        if ((d->d_name[0] == '.' && strlen(d->d_name) == 1) ||
+            d->d_name[1] == '.') {
+            continue;
+        }
+        char full_path[4096];
+        rjoin_path(path, d->d_name, full_path);
+
+        if (risdir(full_path)) {
+            callback(full_path);
+            rforfile(full_path, callback);
+        } else {
+            callback(full_path);
+        }
+    }
+    closedir(dir);
+}
+
+bool rfd_wait(int fd, int ms) {
+
+    fd_set read_fds;
+    struct timeval timeout;
+
+    FD_ZERO(&read_fds);
+    FD_SET(fd, &read_fds);
+
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 1000 * ms; // 100 milliseconds timeout
+
+    int ret = select(fd + 1, &read_fds, NULL, NULL, &timeout);
+    return ret > 0 && FD_ISSET(fd, &read_fds);
+}
+
+bool rfd_wait_forever(int fd) {
+    while ((!rfd_wait(fd, 10))) {
+    }
+    return true;
+}
+
+size_t rfile_size(char *path) {
+    struct stat s;
+    stat(path, &s);
+    return s.st_size;
+}
+
+size_t rfile_readb(char *path, void *data, size_t size) {
+    FILE *fd = fopen(path, "r");
+    if (!fd) {
+        return 0;
+    }
+    __attribute__((unused)) size_t bytes_read =
+        fread(data, size, sizeof(char), fd);
+
+    fclose(fd);
+    return size;
+}
+
+#endif
 #include <arpa/inet.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -268,7 +496,7 @@ void rhttp_close_server() {
     exit(0);
 }
 
-size_t rhttp_send_drain(int s, char *tsend, size_t to_send_len) {
+size_t rhttp_send_drain(int s, char unsigned *tsend, size_t to_send_len) {
     if (to_send_len == 0 && *tsend) {
         to_send_len = strlen(tsend) + 1;
     }
@@ -342,6 +570,52 @@ unsigned int rhttp_calculate_number_char_count(unsigned int number) {
     return width;
 }
 
+int rhttp_file_response(rhttp_request_t *r, char *path) {
+    if (!*path)
+        return 0;
+    FILE *f = fopen(path, "rb");
+    if (f == NULL)
+        return 0;
+    size_t file_size = rfile_size(path);
+    char response[1024] = {0};
+    char content_type_header[100] = {0};
+    char *ext = strstr(path, ".");
+    char *text_extensions = ".h,.c,.html";
+    if (strstr(text_extensions, ext)) {
+        sprintf(content_type_header, "Content-Type: %s\r\n", "text/html");
+    }
+    sprintf(response, "HTTP/1.1 200 OK\r\n%sContent-Length:%ld\r\n\r\n",
+            content_type_header, file_size);
+    if (!rhttp_send_drain(r->c, response, 0)) {
+        rhttp_log_error("Error sending file: %s\n", path);
+    }
+    size_t bytes = 0;
+    size_t bytes_sent = 0;
+    unsigned char file_buff[1024];
+    while ((bytes = fread(file_buff, sizeof(char), sizeof(file_buff), f))) {
+        if (!rhttp_send_drain(r->c, file_buff, bytes)) {
+            rhttp_log_error("Error sending file during chunking: %s\n", path);
+        }
+        bytes_sent += bytes;
+    }
+    if (bytes_sent != file_size) {
+        rhttp_send_drain(r->c, file_buff, file_size - bytes_sent);
+    }
+    close(r->c);
+    fclose(f);
+    return 1;
+};
+
+int rhttp_file_request_handler(rhttp_request_t *r) {
+    char *path = r->path;
+    while (*path == '/' || *path == '.')
+        path++;
+    if (strstr(path, "..")) {
+        return 0;
+    }
+    return rhttp_file_response(r, path);
+};
+
 unsigned int counter = 100000000;
 int rhttp_counter_request_handler(rhttp_request_t *r) {
     if (!strncmp(r->path, "/counter", strlen("/counter"))) {
@@ -388,10 +662,10 @@ int rhttp_default_request_handler(rhttp_request_t *r) {
     } else if (rhttp_root_request_handler(r)) {
         // Root handler
         rhttp_log_info("Root handler found for: %s\n", r->path);
-
+    } else if (rhttp_file_request_handler(r)) {
+        rhttp_log_info("File %s sent\n", r->path);
     } else if (rhttp_error_404_handler(r)) {
         rhttp_log_warn("Error 404 for: %s\n", r->path);
-
         // Error handler
     } else {
         rhttp_log_warn("No handler found for: %s\n", r->path);
@@ -561,100 +835,6 @@ char *rhttp_client_get(const char *host, int port, const char *path) {
     return http_response;
 }
 /*END CLIENT CODE */
-#endif
-
-#ifndef RSTRING_LIST_H
-#define RSTRING_LIST_H
-#ifndef RMALLOC_H
-#define RMALLOC_H
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-static unsigned long long rmalloc_count = 0;
-static unsigned long long rmalloc_alloc_count = 0;
-static unsigned long long int rmalloc_free_count = 0;
-
-void *rstrdup(const char *s) {
-    rmalloc_count++;
-    rmalloc_alloc_count++;
-    return strdup(s);
-}
-void *rmalloc(size_t size) {
-    rmalloc_count++;
-    rmalloc_alloc_count++;
-    return malloc(size);
-}
-void *rrealloc(void *obj, size_t size) {
-    if (!obj) {
-        rmalloc_count++;
-        rmalloc_alloc_count++;
-    }
-    return realloc(obj, size);
-}
-void *rfree(void *obj) {
-    rmalloc_count--;
-    rmalloc_free_count++;
-    free(obj);
-    return NULL;
-}
-
-#define malloc rmalloc
-#define realloc rrealloc
-#define free rfree
-#define strdup rstrdup
-
-char *rmalloc_stats() {
-    static char res[200] = {0};
-    sprintf(res, "Memory usage: %lld allocated, %lld freed, %lld in use.",
-            rmalloc_alloc_count, rmalloc_free_count, rmalloc_count);
-    return res;
-}
-
-#endif
-
-#include <stdbool.h>
-#include <stdlib.h>
-#include <string.h>
-
-typedef struct rstring_list_t {
-    unsigned int size;
-    unsigned int count;
-    char **strings;
-} rstring_list_t;
-
-rstring_list_t *rstring_list_new() {
-    rstring_list_t *rsl = (rstring_list_t *)malloc(sizeof(rstring_list_t));
-    memset(rsl, 0, sizeof(rstring_list_t));
-    return rsl;
-}
-
-void rstring_list_free(rstring_list_t *rsl) {
-    for (unsigned int i = 0; i < rsl->size; i++) {
-        free(rsl->strings[i]);
-    }
-    free(rsl);
-    rsl = NULL;
-}
-
-void rstring_list_add(rstring_list_t *rsl, char *str) {
-    if (rsl->count == rsl->size) {
-        rsl->size++;
-        rsl->strings =
-            (char **)realloc(rsl->strings, sizeof(char *) * rsl->size);
-    }
-    rsl->strings[rsl->count] = (char *)malloc(strlen(str) + 1);
-    strcpy(rsl->strings[rsl->count], str);
-    rsl->count++;
-}
-bool rstring_list_contains(rstring_list_t *rsl, char *str) {
-    for (unsigned int i = 0; i < rsl->count; i++) {
-        if (!strcmp(rsl->strings[i], str))
-            return true;
-    }
-    return false;
-}
-
 #endif
 
 #ifndef RAUTOCOMPLETE_H
@@ -3511,122 +3691,6 @@ void arena_free(arena_t *arena) {
 
 void arena_reset(arena_t *arena) { arena->pointer = 0; }
 #endif
-#ifndef RLIB_RIO
-#define RLIB_RIO
-#include <dirent.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/dir.h>
-#include <sys/select.h>
-#include <sys/stat.h>
-#include <unistd.h>
-
-bool rfile_exists(char *path) {
-    struct stat s;
-    return !stat(path, &s);
-}
-
-void rjoin_path(char *p1, char *p2, char *output) {
-    output[0] = 0;
-    strcpy(output, p1);
-
-    if (output[strlen(output) - 1] != '/') {
-        char slash[] = "/";
-        strcat(output, slash);
-    }
-    if (p2[0] == '/') {
-        p2++;
-    }
-    strcat(output, p2);
-}
-
-int risprivatedir(const char *path) {
-    struct stat statbuf;
-
-    if (stat(path, &statbuf) != 0) {
-        perror("stat");
-        return -1;
-    }
-
-    if (!S_ISDIR(statbuf.st_mode)) {
-        return -2;
-    }
-
-    if ((statbuf.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO)) == S_IRWXU) {
-        return 1; // Private (owner has all permissions, others have none)
-    }
-
-    return 0;
-}
-bool risdir(const char *path) { return !risprivatedir(path); }
-
-void rforfile(char *path, void callback(char *)) {
-    if (!rfile_exists(path))
-        return;
-    DIR *dir = opendir(path);
-    struct dirent *d;
-    while ((d = readdir(dir)) != NULL) {
-        if (!d)
-            break;
-
-        if ((d->d_name[0] == '.' && strlen(d->d_name) == 1) ||
-            d->d_name[1] == '.') {
-            continue;
-        }
-        char full_path[4096];
-        rjoin_path(path, d->d_name, full_path);
-
-        if (risdir(full_path)) {
-            callback(full_path);
-            rforfile(full_path, callback);
-        } else {
-            callback(full_path);
-        }
-    }
-    closedir(dir);
-}
-
-bool rfd_wait(int fd, int ms) {
-
-    fd_set read_fds;
-    struct timeval timeout;
-
-    FD_ZERO(&read_fds);
-    FD_SET(fd, &read_fds);
-
-    timeout.tv_sec = 0;
-    timeout.tv_usec = 1000 * ms; // 100 milliseconds timeout
-
-    int ret = select(fd + 1, &read_fds, NULL, NULL, &timeout);
-    return ret > 0 && FD_ISSET(fd, &read_fds);
-}
-
-bool rfd_wait_forever(int fd) {
-    while ((!rfd_wait(fd, 10))) {
-    }
-    return true;
-}
-
-size_t rfile_size(char *path) {
-    struct stat s;
-    stat(path, &s);
-    return s.st_size;
-}
-
-size_t rfile_readb(char *path, void *data, size_t size) {
-    FILE *fd = fopen(path, "r");
-    if (!fd) {
-        return 0;
-    }
-    __attribute__((unused)) size_t bytes_read =
-        fread(data, size, sizeof(char), fd);
-
-    fclose(fd);
-    return size;
-}
-
-#endif
 #ifndef RSTRING_H
 #define RSTRING_H
 #include <ctype.h>
@@ -3635,7 +3699,7 @@ size_t rfile_readb(char *path, void *data, size_t size) {
 #include <stdlib.h>
 #include <string.h>
 
-unsigned long _r_generate_key_current = 0;
+ulonglong _r_generate_key_current = 0;
 
 char *_rcat_int_int(int a, int b) {
     static char res[20];
@@ -3691,19 +3755,38 @@ char *_rcat_charp_bool(char *a, bool *b) {
         char: _rcat_charp_char,                                                \
         bool: _rcat_charp_bool))((x), (y))
 
+#ifndef RTEMPC_SLOT_COUNT
+#define RTEMPC_SLOT_COUNT 20
+#endif
+#ifndef RTEMPC_SLOT_SIZE
+#define RTEMPC_SLOT_SIZE 1024 * 64
+#endif
+uint _current_rtempc_slot = 0;
+char *rtempc(char *data) {
+    static char buffer[RTEMPC_SLOT_COUNT][RTEMPC_SLOT_SIZE];
+    uint current_rtempc_slot = _current_rtempc_slot;
+    buffer[current_rtempc_slot][0] = 0;
+    strcpy(buffer[current_rtempc_slot], data);
+    _current_rtempc_slot++;
+    if (_current_rtempc_slot == RTEMPC_SLOT_COUNT) {
+        _current_rtempc_slot = 0;
+    }
+    return buffer[current_rtempc_slot];
+}
+
 char *rgenerate_key() {
     _r_generate_key_current++;
     static char key[100];
     key[0] = 0;
-    sprintf(key, "%ld", _r_generate_key_current);
+    sprintf(key, "%lld", _r_generate_key_current);
     return key;
 }
 
-char *rformat_number(long lnumber) {
+char *rformat_number(long long lnumber) {
     static char formatted[1024];
 
-    char number[1024];
-    sprintf(number, "%ld", lnumber);
+    char number[1024] = {0};
+    sprintf(number, "%lld", lnumber);
 
     int len = strlen(number);
     int commas_needed = (len - 1) / 3;
@@ -3723,6 +3806,8 @@ char *rformat_number(long lnumber) {
         formatted[j--] = number[i--];
         count++;
     }
+    if (lnumber < 0)
+        formatted[j--] = '-';
     return formatted;
 }
 
