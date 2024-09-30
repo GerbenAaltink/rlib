@@ -1,5 +1,6 @@
 #ifndef RHTTP_H
 #define RHTTP_H
+#include "rmalloc.h"
 #include "rio.h"
 #include <arpa/inet.h>
 #include <stdarg.h>
@@ -569,8 +570,10 @@ char *rhttp_client_get(const char *host, int port, const char *path) {
     static char http_response[1024 * 1024];
     memset(http_response, 0, sizeof(http_response));
     rhttp_client_request_t *r = rhttp_create_request(host, port, path);
-    if (!rhttp_execute_request(r))
+    if (!rhttp_execute_request(r)) {
+        rhttp_free_client_request(r);
         return NULL;
+    }
     r->is_done = true;
     char *body = strstr(r->response, "\r\n\r\n");
     if (body) {

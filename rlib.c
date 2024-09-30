@@ -45,19 +45,6 @@
 
 #ifndef RHTTP_H
 #define RHTTP_H
-#ifndef RLIB_RIO
-#define RLIB_RIO
-#include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <sys/select.h>
-#include <dirent.h>
-#include <sys/dir.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#ifndef RSTRING_LIST_H
-#define RSTRING_LIST_H
 #ifndef RMALLOC_H
 #define RMALLOC_H
 #include <stdio.h>
@@ -106,6 +93,19 @@ char *rmalloc_stats() {
 
 #endif
 
+#ifndef RLIB_RIO
+#define RLIB_RIO
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/select.h>
+#include <dirent.h>
+#include <sys/dir.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#ifndef RSTRING_LIST_H
+#define RSTRING_LIST_H
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -823,8 +823,10 @@ char *rhttp_client_get(const char *host, int port, const char *path) {
     static char http_response[1024 * 1024];
     memset(http_response, 0, sizeof(http_response));
     rhttp_client_request_t *r = rhttp_create_request(host, port, path);
-    if (!rhttp_execute_request(r))
+    if (!rhttp_execute_request(r)) {
+        rhttp_free_client_request(r);
         return NULL;
+    }
     r->is_done = true;
     char *body = strstr(r->response, "\r\n\r\n");
     if (body) {
