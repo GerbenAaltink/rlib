@@ -3,6 +3,7 @@
 #define RLIB_H
 // BEGIN OF RLIB
 #include "rtypes.h"
+#include "rtemp.h"
 #include "rhttp.h"
 #include "rstring_list.h"
 #include "rautocomplete.h"

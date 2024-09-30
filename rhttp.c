@@ -57,15 +57,8 @@ int main(int argc, char *argv[]) {
     pthread_t st;
     pthread_create(&st, 0, rhttp_serve_thread, (void *)&port);
 
-    char *response = NULL;
-    int attempts = 0;
-    while (response == NULL) {
-        attempts++;
-        response = rhttp_client_get("127.0.0.1", port, "/");
-        if (attempts > 1) {
-            // printf("Http request attempt: %d\n",attempts);
-        }
-    }
+    char *response = rhttp_client_get("127.0.0.1", port, "/");
+
     if (do_test) {
         rassert(!strcmp(response, "Ok!"));
         pthread_cancel(st);

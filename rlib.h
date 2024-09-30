@@ -27,50 +27,98 @@
 
 #ifndef RTYPES_H
 #define RTYPES_H
+#include <stdbool.h>
+#include <stdint.h> // uint
+#include <string.h>
+#include <sys/types.h> // ulong
 #define ulonglong unsigned long long
+#ifndef uint
+typedef unsigned int uint;
 #endif
 #ifndef byte
-#define byte unsigned char
-#endif
-#ifdef RTYPES_H_ALL
-#define RTYPES_H_ALL
-#include <stdbool.h>
-#ifndef ulong
-#define ulong long long
-#endif
-#ifndef uint
-#define uint unsigned int
+typedef unsigned char byte;
 #endif
 #endif
+
+#ifndef RTEMPC_SLOT_COUNT
+#define RTEMPC_SLOT_COUNT 20
+#endif
+#ifndef RTEMPC_SLOT_SIZE
+#define RTEMPC_SLOT_SIZE 1024 * 64
+#endif
+byte _current_rtempc_slot = 0;
+char _rtempc_buffer[RTEMPC_SLOT_COUNT][RTEMPC_SLOT_SIZE];
+inline char *rtempc(char *data) {
+
+    uint current_rtempc_slot = _current_rtempc_slot;
+    _rtempc_buffer[current_rtempc_slot][0] = 0;
+    strcpy(_rtempc_buffer[current_rtempc_slot], data);
+    _current_rtempc_slot++;
+    if (_current_rtempc_slot == RTEMPC_SLOT_COUNT) {
+        _current_rtempc_slot = 0;
+    }
+    return _rtempc_buffer[current_rtempc_slot];
+}
+
+#define sstring(_pname, _psize)                                                \
+    static char _##_pname[_psize];                                             \
+    _##_pname[0] = 0;                                                          \
+    char *_pname = _##_pname;
+
+#define string(_pname, _psize)                                                 \
+    char _##_pname[_psize];                                                    \
+    _##_pname[0] = 0;                                                          \
+    char *_pname = _##_pname;
+
+#define sreset(_pname, _psize) _pname = _##_pname;
+
+#define sbuf(val) rtempc(val)
 
 #ifndef RHTTP_H
 #define RHTTP_H
 #ifndef RMALLOC_H
 #define RMALLOC_H
+#ifndef RMALLOC_OVERRIDE
+#define RMALLOC_OVERRIDE 1
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-static unsigned long long rmalloc_count = 0;
-static unsigned long long rmalloc_alloc_count = 0;
-static unsigned long long int rmalloc_free_count = 0;
+ulonglong rmalloc_count = 0;
+ulonglong rmalloc_alloc_count = 0;
+ulonglong rmalloc_free_count = 0;
 
-void *rstrdup(const char *s) {
+char *rstrdup(const char *s) {
+    if (!s)
+        return NULL;
+    char *result;
     rmalloc_count++;
     rmalloc_alloc_count++;
-    return strdup(s);
+    while (!(result = strdup(s))) {
+        fprintf(stderr, "Warning: strdup failed, trying again.\n");
+    }
+    return result;
 }
 void *rmalloc(size_t size) {
     rmalloc_count++;
     rmalloc_alloc_count++;
-    return malloc(size);
+    void *result;
+    while (!(result = malloc(size))) {
+        fprintf(stderr, "Warning: malloc failed, trying again.\n");
+    }
+    return result;
 }
 void *rrealloc(void *obj, size_t size) {
     if (!obj) {
         rmalloc_count++;
         rmalloc_alloc_count++;
     }
-    return realloc(obj, size);
+    void *result;
+    while (!(result = realloc(obj, size))) {
+        fprintf(stderr, "Warning: realloc failed, trying again.\n");
+    }
+    return result;
 }
 void *rfree(void *obj) {
     rmalloc_count--;
@@ -79,13 +127,16 @@ void *rfree(void *obj) {
     return NULL;
 }
 
+#if RMALLOC_OVERRIDE
 #define malloc rmalloc
 #define realloc rrealloc
 #define free rfree
 #define strdup rstrdup
+#endif
 
 char *rmalloc_stats() {
-    static char res[200] = {0};
+    static char res[200];
+    res[0] = 0;
     sprintf(res, "Memory usage: %lld allocated, %lld freed, %lld in use.",
             rmalloc_alloc_count, rmalloc_free_count, rmalloc_count);
     return res;
@@ -254,6 +305,167 @@ size_t rfile_readb(char *path, void *data, size_t size) {
 }
 
 #endif
+
+#ifndef RLIB_TIME
+#define RLIB_TIME
+
+#include <errno.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/time.h>
+#include <time.h>
+
+#ifndef CLOCK_MONOTONIC
+#define CLOCK_MONOTONIC 1
+#endif
+
+typedef uint64_t nsecs_t;
+void nsleep(nsecs_t nanoseconds);
+
+void tick() { nsleep(1); }
+
+typedef unsigned long long msecs_t;
+
+nsecs_t nsecs() {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (int64_t)ts.tv_sec * 1000000000LL + (int64_t)ts.tv_nsec;
+}
+
+msecs_t rnsecs_to_msecs(nsecs_t nsecs) { return nsecs / 1000 / 1000; }
+
+nsecs_t rmsecs_to_nsecs(msecs_t msecs) { return msecs * 1000 * 1000; }
+
+msecs_t usecs() {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (long long)(tv.tv_sec) * 1000000 + (long long)(tv.tv_usec);
+}
+
+msecs_t msecs() {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (long long)(tv.tv_sec) * 1000 + (tv.tv_usec / 1000);
+}
+char *msecs_strs(msecs_t ms) {
+    static char str[22];
+    str[0] = 0;
+    sprintf(str, "%f", ms * 0.001);
+    for (int i = strlen(str); i > 0; i--) {
+        if (str[i] > '0')
+            break;
+        str[i] = 0;
+    }
+    return str;
+}
+char *msecs_strms(msecs_t ms) {
+    static char str[22];
+    str[0] = 0;
+    sprintf(str, "%lld", ms);
+    return str;
+}
+char *msecs_str(long long ms) {
+    static char result[30];
+    result[0] = 0;
+    if (ms > 999) {
+        char *s = msecs_strs(ms);
+        sprintf(result, "%ss", s);
+    } else {
+        char *s = msecs_strms(ms);
+        sprintf(result, "%sMs", s);
+    }
+    return result;
+}
+
+void nsleep(nsecs_t nanoseconds) {
+    long seconds = 0;
+    int factor = 0;
+    while (nanoseconds > 1000000000) {
+        factor++;
+        nanoseconds = nanoseconds / 10;
+    }
+    if (factor) {
+        seconds = 1;
+        factor--;
+        while (factor) {
+            seconds = seconds * 10;
+            factor--;
+        }
+    }
+
+    struct timespec req = {seconds, nanoseconds};
+    struct timespec rem;
+
+    if (nanosleep(&req, &rem) == -1) {
+        if (errno == EINTR) {
+            printf("Sleep was interrupted. Remaining time: %ld.%09ld seconds\n",
+                   rem.tv_sec, rem.tv_nsec);
+        } else {
+            perror("nanosleep");
+        }
+    } else {
+        // printf("Slept for %ld.%09ld seconds\n", req.tv_sec, req.tv_nsec);
+    }
+}
+
+void ssleep(double s) {
+    long nanoseconds = (long)(1000000000 * s);
+
+    long seconds = 0;
+
+    struct timespec req = {seconds, nanoseconds};
+    struct timespec rem;
+
+    if (nanosleep(&req, &rem) == -1) {
+        if (errno == EINTR) {
+            printf("Sleep was interrupted. Remaining time: %ld.%09ld seconds\n",
+                   rem.tv_sec, rem.tv_nsec);
+        } else {
+            perror("nanosleep");
+        }
+    } else {
+        // printf("Slept for %ld.%09ld seconds\n", req.tv_sec, req.tv_nsec);
+    }
+}
+void msleep(long miliseonds) {
+    long nanoseconds = miliseonds * 1000000;
+    nsleep(nanoseconds);
+}
+
+char *format_time(int64_t nanoseconds) {
+    static char output[1024];
+    size_t output_size = sizeof(output);
+    output[0] = 0;
+    if (nanoseconds < 1000) {
+        // Less than 1 microsecond
+        snprintf(output, output_size, "%ldns", nanoseconds);
+    } else if (nanoseconds < 1000000) {
+        // Less than 1 millisecond
+        double us = nanoseconds / 1000.0;
+        snprintf(output, output_size, "%.2fµs", us);
+    } else if (nanoseconds < 1000000000) {
+        // Less than 1 second
+        double ms = nanoseconds / 1000000.0;
+        snprintf(output, output_size, "%.2fms", ms);
+    } else {
+        // 1 second or more
+        double s = nanoseconds / 1000000000.0;
+        if (s > 60 * 60) {
+            s = s / 60 / 60;
+            snprintf(output, output_size, "%.2fh", s);
+        } else if (s > 60) {
+            s = s / 60;
+            snprintf(output, output_size, "%.2fm", s);
+        } else {
+            snprintf(output, output_size, "%.2fs", s);
+        }
+    }
+    return output;
+}
+
+#endif
+
 #include <arpa/inet.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -488,12 +700,12 @@ void rhttp_close_server() {
     exit(0);
 }
 
-size_t rhttp_send_drain(int s, char unsigned *tsend, size_t to_send_len) {
-    if (to_send_len == 0 && *tsend) {
+size_t rhttp_send_drain(int s, void *tsend, size_t to_send_len) {
+    if (to_send_len == 0 && *(unsigned char *)tsend) {
         to_send_len = strlen(tsend) + 1;
     }
-    char *to_send = (char *)malloc(to_send_len);
-    char *to_send_original = to_send;
+    unsigned char *to_send = (unsigned char *)malloc(to_send_len);
+    unsigned char *to_send_original = to_send;
 
     memcpy(to_send, tsend, to_send_len);
     // to_send[to_send_len] = '\0';
@@ -764,12 +976,15 @@ rhttp_client_request_t *rhttp_create_request(const char *host, int port,
 int rhttp_execute_request(rhttp_client_request_t *r) {
     int s = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in addr;
+
     addr.sin_family = AF_INET;
     addr.sin_port = htons(r->port);
     addr.sin_addr.s_addr = inet_addr(r->host);
+
     if (connect(s, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         return 0;
     }
+
     send(s, r->request, strlen(r->request), 0);
     char buf[1024 * 1024] = {0};
     int ret = recv(s, buf, 1024 * 1024, 0);
@@ -812,14 +1027,23 @@ void rhttp_client_bench(int workers, int times, const char *host, int port,
 }
 char *rhttp_client_get(const char *host, int port, const char *path) {
     static char http_response[1024 * 1024];
-    memset(http_response, 0, sizeof(http_response));
+    http_response[0] = 0;
     rhttp_client_request_t *r = rhttp_create_request(host, port, path);
-    if (!rhttp_execute_request(r)) {
-        rhttp_free_client_request(r);
-        return NULL;
+    unsigned int reconnects = 0;
+    unsigned int reconnects_max = 100;
+    while (!rhttp_execute_request(r)) {
+        reconnects++;
+        tick();
+        if (reconnects == reconnects_max) {
+            fprintf(stderr, "Maxium reconnects exceeded for %s:%d\n", host,
+                    port);
+            rhttp_free_client_request(r);
+            return NULL;
+        }
     }
     r->is_done = true;
-    char *body = strstr(r->response, "\r\n\r\n");
+    char *body = r->response ? strstr(r->response, "\r\n\r\n") : NULL;
+
     if (body) {
         strcpy(http_response, body + 4);
     } else {
@@ -1660,154 +1884,6 @@ char *rautocomplete_find(rstring_list_t *list, char *expr) {
 #endif
 #ifndef RPRINT_H
 #define RPRINT_H
-
-#ifndef RLIB_TIME
-#define RLIB_TIME
-
-#include <errno.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/time.h>
-#include <time.h>
-
-#ifndef CLOCK_MONOTONIC
-#define CLOCK_MONOTONIC 1
-#endif
-
-typedef unsigned long long msecs_t;
-typedef uint64_t nsecs_t;
-
-nsecs_t nsecs() {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (int64_t)ts.tv_sec * 1000000000LL + (int64_t)ts.tv_nsec;
-}
-
-msecs_t rnsecs_to_msecs(nsecs_t nsecs) { return nsecs / 1000 / 1000; }
-
-nsecs_t rmsecs_to_nsecs(msecs_t msecs) { return msecs * 1000 * 1000; }
-
-msecs_t usecs() {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (long long)(tv.tv_sec) * 1000000 + (long long)(tv.tv_usec);
-}
-
-msecs_t msecs() {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (long long)(tv.tv_sec) * 1000 + (tv.tv_usec / 1000);
-}
-char *msecs_strs(msecs_t ms) {
-    static char str[22];
-    str[0] = 0;
-    sprintf(str, "%f", ms * 0.001);
-    for (int i = strlen(str); i > 0; i--) {
-        if (str[i] > '0')
-            break;
-        str[i] = 0;
-    }
-    return str;
-}
-char *msecs_strms(msecs_t ms) {
-    static char str[22];
-    str[0] = 0;
-    sprintf(str, "%lld", ms);
-    return str;
-}
-char *msecs_str(long long ms) {
-    static char result[30];
-    result[0] = 0;
-    if (ms > 999) {
-        char *s = msecs_strs(ms);
-        sprintf(result, "%ss", s);
-    } else {
-        char *s = msecs_strms(ms);
-        sprintf(result, "%sMs", s);
-    }
-    return result;
-}
-
-void nsleep(nsecs_t nanoseconds) {
-    long seconds = 0;
-    int factor = 0;
-    while (nanoseconds > 1000000000) {
-        factor++;
-        nanoseconds = nanoseconds / 10;
-    }
-    if (factor) {
-        seconds = 1;
-        factor--;
-        while (factor) {
-            seconds = seconds * 10;
-            factor--;
-        }
-    }
-
-    struct timespec req = {seconds, nanoseconds};
-    struct timespec rem;
-
-    if (nanosleep(&req, &rem) == -1) {
-        if (errno == EINTR) {
-            printf("Sleep was interrupted. Remaining time: %ld.%09ld seconds\n",
-                   rem.tv_sec, rem.tv_nsec);
-        } else {
-            perror("nanosleep");
-        }
-    } else {
-        // printf("Slept for %ld.%09ld seconds\n", req.tv_sec, req.tv_nsec);
-    }
-}
-
-void ssleep(double s) {
-    long nanoseconds = (long)(1000000000 * s);
-
-    long seconds = 0;
-
-    struct timespec req = {seconds, nanoseconds};
-    struct timespec rem;
-
-    if (nanosleep(&req, &rem) == -1) {
-        if (errno == EINTR) {
-            printf("Sleep was interrupted. Remaining time: %ld.%09ld seconds\n",
-                   rem.tv_sec, rem.tv_nsec);
-        } else {
-            perror("nanosleep");
-        }
-    } else {
-        // printf("Slept for %ld.%09ld seconds\n", req.tv_sec, req.tv_nsec);
-    }
-}
-void msleep(long miliseonds) {
-    long nanoseconds = miliseonds * 1000000;
-    nsleep(nanoseconds);
-}
-
-char *format_time(int64_t nanoseconds) {
-    static char output[1024];
-    size_t output_size = sizeof(output);
-    output[0] = 0;
-    if (nanoseconds < 1000) {
-        // Less than 1 microsecond
-        snprintf(output, output_size, "%ldns", nanoseconds);
-    } else if (nanoseconds < 1000000) {
-        // Less than 1 millisecond
-        double us = nanoseconds / 1000.0;
-        snprintf(output, output_size, "%.2fµs", us);
-    } else if (nanoseconds < 1000000000) {
-        // Less than 1 second
-        double ms = nanoseconds / 1000000.0;
-        snprintf(output, output_size, "%.2fms", ms);
-    } else {
-        // 1 second or more
-        double s = nanoseconds / 1000000000.0;
-        snprintf(output, output_size, "%.2fs", s);
-    }
-    return output;
-}
-
-#endif
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -3759,25 +3835,6 @@ char *_rcat_charp_bool(char *a, bool *b) {
         char *: _rcat_charp_charp,                                             \
         char: _rcat_charp_char,                                                \
         bool: _rcat_charp_bool))((x), (y))
-
-#ifndef RTEMPC_SLOT_COUNT
-#define RTEMPC_SLOT_COUNT 20
-#endif
-#ifndef RTEMPC_SLOT_SIZE
-#define RTEMPC_SLOT_SIZE 1024 * 64
-#endif
-uint _current_rtempc_slot = 0;
-char *rtempc(char *data) {
-    static char buffer[RTEMPC_SLOT_COUNT][RTEMPC_SLOT_SIZE];
-    uint current_rtempc_slot = _current_rtempc_slot;
-    buffer[current_rtempc_slot][0] = 0;
-    strcpy(buffer[current_rtempc_slot], data);
-    _current_rtempc_slot++;
-    if (_current_rtempc_slot == RTEMPC_SLOT_COUNT) {
-        _current_rtempc_slot = 0;
-    }
-    return buffer[current_rtempc_slot];
-}
 
 char *rgenerate_key() {
     _r_generate_key_current++;

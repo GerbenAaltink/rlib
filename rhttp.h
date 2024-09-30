@@ -2,6 +2,7 @@
 #define RHTTP_H
 #include "rmalloc.h"
 #include "rio.h"
+#include "rtime.h"
 #include <arpa/inet.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -236,12 +237,12 @@ void rhttp_close_server() {
     exit(0);
 }
 
-size_t rhttp_send_drain(int s, char unsigned *tsend, size_t to_send_len) {
-    if (to_send_len == 0 && *tsend) {
+size_t rhttp_send_drain(int s, void *tsend, size_t to_send_len) {
+    if (to_send_len == 0 && *(unsigned char *)tsend) {
         to_send_len = strlen(tsend) + 1;
     }
-    char *to_send = (char *)malloc(to_send_len);
-    char *to_send_original = to_send;
+    unsigned char *to_send = (unsigned char *)malloc(to_send_len);
+    unsigned char *to_send_original = to_send;
 
     memcpy(to_send, tsend, to_send_len);
     // to_send[to_send_len] = '\0';
@@ -512,12 +513,15 @@ rhttp_client_request_t *rhttp_create_request(const char *host, int port,
 int rhttp_execute_request(rhttp_client_request_t *r) {
     int s = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in addr;
+
     addr.sin_family = AF_INET;
     addr.sin_port = htons(r->port);
     addr.sin_addr.s_addr = inet_addr(r->host);
+
     if (connect(s, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         return 0;
     }
+
     send(s, r->request, strlen(r->request), 0);
     char buf[1024 * 1024] = {0};
     int ret = recv(s, buf, 1024 * 1024, 0);
@@ -560,14 +564,23 @@ void rhttp_client_bench(int workers, int times, const char *host, int port,
 }
 char *rhttp_client_get(const char *host, int port, const char *path) {
     static char http_response[1024 * 1024];
-    memset(http_response, 0, sizeof(http_response));
+    http_response[0] = 0;
     rhttp_client_request_t *r = rhttp_create_request(host, port, path);
-    if (!rhttp_execute_request(r)) {
-        rhttp_free_client_request(r);
-        return NULL;
+    unsigned int reconnects = 0;
+    unsigned int reconnects_max = 100;
+    while (!rhttp_execute_request(r)) {
+        reconnects++;
+        tick();
+        if (reconnects == reconnects_max) {
+            fprintf(stderr, "Maxium reconnects exceeded for %s:%d\n", host,
+                    port);
+            rhttp_free_client_request(r);
+            return NULL;
+        }
     }
     r->is_done = true;
-    char *body = strstr(r->response, "\r\n\r\n");
+    char *body = r->response ? strstr(r->response, "\r\n\r\n") : NULL;
+
     if (body) {
         strcpy(http_response, body + 4);
     } else {

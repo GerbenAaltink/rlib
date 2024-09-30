@@ -1,18 +1,15 @@
 
 #ifndef RTYPES_H
 #define RTYPES_H
+#include <stdbool.h>
+#include <stdint.h>    // uint
+#include <sys/types.h> // ulong
+#include <string.h>
 #define ulonglong unsigned long long
+#ifndef uint
+typedef unsigned int uint;
 #endif
 #ifndef byte
-#define byte unsigned char
-#endif
-#ifdef RTYPES_H_ALL
-#define RTYPES_H_ALL
-#include <stdbool.h>
-#ifndef ulong
-#define ulong long long
-#endif
-#ifndef uint
-#define uint unsigned int
+typedef unsigned char byte;
 #endif
 #endif

@@ -76,25 +76,6 @@ char *_rcat_charp_bool(char *a, bool *b) {
         char: _rcat_charp_char,                                                \
         bool: _rcat_charp_bool))((x), (y))
 
-#ifndef RTEMPC_SLOT_COUNT
-#define RTEMPC_SLOT_COUNT 20
-#endif
-#ifndef RTEMPC_SLOT_SIZE
-#define RTEMPC_SLOT_SIZE 1024 * 64
-#endif
-uint _current_rtempc_slot = 0;
-char *rtempc(char *data) {
-    static char buffer[RTEMPC_SLOT_COUNT][RTEMPC_SLOT_SIZE];
-    uint current_rtempc_slot = _current_rtempc_slot;
-    buffer[current_rtempc_slot][0] = 0;
-    strcpy(buffer[current_rtempc_slot], data);
-    _current_rtempc_slot++;
-    if (_current_rtempc_slot == RTEMPC_SLOT_COUNT) {
-        _current_rtempc_slot = 0;
-    }
-    return buffer[current_rtempc_slot];
-}
-
 char *rgenerate_key() {
     _r_generate_key_current++;
     static char key[100];

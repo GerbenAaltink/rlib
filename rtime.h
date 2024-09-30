@@ -13,8 +13,12 @@
 #define CLOCK_MONOTONIC 1
 #endif
 
-typedef unsigned long long msecs_t;
 typedef uint64_t nsecs_t;
+void nsleep(nsecs_t nanoseconds);
+
+void tick() { nsleep(1); }
+
+typedef unsigned long long msecs_t;
 
 nsecs_t nsecs() {
     struct timespec ts;
@@ -140,7 +144,15 @@ char *format_time(int64_t nanoseconds) {
     } else {
         // 1 second or more
         double s = nanoseconds / 1000000000.0;
-        snprintf(output, output_size, "%.2fs", s);
+        if (s > 60 * 60) {
+            s = s / 60 / 60;
+            snprintf(output, output_size, "%.2fh", s);
+        } else if (s > 60) {
+            s = s / 60;
+            snprintf(output, output_size, "%.2fm", s);
+        } else {
+            snprintf(output, output_size, "%.2fs", s);
+        }
     }
     return output;
 }
