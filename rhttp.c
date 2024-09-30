@@ -69,6 +69,7 @@ int main(int argc, char *argv[]) {
     if (do_test) {
         rassert(!strcmp(response, "Ok!"));
         pthread_cancel(st);
+        // cleanup
     } else {
         pthread_join(st, NULL);
     }

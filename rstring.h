@@ -8,6 +8,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+
+char *rstrtimestamp() {
+    time_t current_time;
+    time(&current_time);
+    struct tm *local_time = localtime(&current_time);
+    static char time_string[100];
+    time_string[0] = 0;
+    strftime(time_string, sizeof(time_string), "%Y-%m-%d %H:%M:%S", local_time);
+    return time_string;
+}
 
 ulonglong _r_generate_key_current = 0;
 

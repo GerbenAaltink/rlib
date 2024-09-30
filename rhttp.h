@@ -46,19 +46,11 @@ typedef struct rhttp_request_t {
 } rhttp_request_t;
 
 char *rhttp_current_timestamp() {
-    // Create a time_t object to hold the current time
     time_t current_time;
-    // Get the current time
     time(&current_time);
-
-    // Convert the time to local time (struct tm)
     struct tm *local_time = localtime(&current_time);
-
-    // Create a buffer to hold the formatted date/time string
     static char time_string[100];
     time_string[0] = 0;
-
-    // Format the time as "YYYY-MM-DD HH:MM:SS"
     strftime(time_string, sizeof(time_string), "%Y-%m-%d %H:%M:%S", local_time);
 
     return time_string;
@@ -283,7 +275,7 @@ void rhttp_serve(const char *host, int port, int backlog, int request_logging,
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
-    addr.sin_addr.s_addr = inet_addr(host);
+    addr.sin_addr.s_addr = inet_addr(host ? host : "0.0.0.0");
     rhttp_opt_debug = request_debug;
     rhttp_opt_request_logging = request_logging;
     int opt = 1;
