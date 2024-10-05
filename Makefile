@@ -1,12 +1,12 @@
 # Compiler
-CC = tcc
+CC = gcc
 
 # Compiler flags
-CFLAGS = -Wall -Wextra -Ofast
+CFLAGS = -Wall -Wextra -Werror -Ofast
 LDFLAGS = -lm
  
 
-all: clear test_rmalloc test_rtemp test_rjson test_rrex4 test_rstring_list test_rhttp test_rtime test_arena test_rtree test_rstring test_rlexer test_rrex3 test_rio test_rhashtable test_rkeytable test_rterminal test_rmerge run_rmerge format_all build format_all 
+all: clear test_rmalloc test_rtemp test_rjson test_rrex4 test_rstring_list test_rhttp test_rtime test_arena test_rtree test_rstring test_rlexer test_rrex3 test_rio test_rhashtable test_rkeytable test_rterminal test_rmerge run_rmerge format_all build format_all test_rlib 
 
 
 
@@ -99,7 +99,6 @@ build_rmerge:
 run_rmerge:
 	./build/rmerge _rlib.h > ./build/rlib.h
 	cp ./build/rlib.h ./rlib.h
-	cp ./build/rlib.h ./rlib.c
 
 test_rprint: build_rprint run_rprint
 build_rprint:
@@ -150,6 +149,12 @@ build_arena:
 run_arena:
 	./build/arena
 
+test_rlib: build_rlib run_rlib
+build_rlib:
+	$(CC) $(CFLAGS) rlib.c -o ./build/rlib
+run_rlib:
+	./build/rlib test
+
 test_rtree: build_rtree run_rtree
 build_rtree:
 	$(CC) $(CFLAGS) rtree.c -o ./build/rtree
@@ -170,7 +175,8 @@ run_rkeytable:
 
 build: format_rlib_h
 	cp ./clean build/clean
-	@gcc rlib.c -fPIC -shared -o ./build/librlib.so -O2
+	cp rlib.h rlibrlibso.c
+	@gcc rlibrlibso.c -fPIC -shared -o ./build/librlib.so -O2
 	@echo "Built a new rlib.so"
 	@gcc rlibso.c -L./build -Wl,-rpath=. -lrlib -o  ./build/rlibso -O2
 	@cd ./build && ./rlibso
@@ -180,6 +186,7 @@ install:
 	sudo cp ./build/rmerge /usr/bin/rmerge
 	sudo cp ./build/clean /usr/bin/clean
 	sudo cp ./build/rlib.h /usr/include/rlib.h
+	sudo cp ./build/rlib /usr/bin/rlib
 
 publish:
 	brz add 

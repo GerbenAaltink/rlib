@@ -66,7 +66,10 @@ void rjson_kv_string(rjson_t *rjs, char *key, char *value) {
     rjson_write(rjs, "\"");
     rjson_write(rjs, key);
     rjson_write(rjs, "\":\"");
-    rjson_write(rjs, value);
+    char *value_str = (char *)rmalloc(strlen(value) + 4096);
+    rstraddslashes(value, value_str);
+    rjson_write(rjs, value_str);
+    free(value_str);
     rjson_write(rjs, "\"");
 }
 

@@ -249,7 +249,7 @@ void rhttp_close_server() {
 
 size_t rhttp_send_drain(int s, void *tsend, size_t to_send_len) {
     if (to_send_len == 0 && *(unsigned char *)tsend) {
-        to_send_len = strlen(tsend) + 1;
+        to_send_len = strlen(tsend);
     }
     unsigned char *to_send = (unsigned char *)malloc(to_send_len);
     unsigned char *to_send_original = to_send;
@@ -282,7 +282,6 @@ typedef int (*rhttp_request_handler_t)(rhttp_request_t *r);
 void rhttp_serve(const char *host, int port, int backlog, int request_logging,
                  int request_debug, rhttp_request_handler_t handler,
                  void *context) {
-    at_quick_exit(rhttp_close_server);
     rhttp_sock = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;

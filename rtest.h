@@ -67,9 +67,9 @@ bool rtest_test_false(char *expr, int res, int line) {
 void rtest_test_skip(char *expr, int line) {
     rprintgf(stderr, "\n @skip(%s) on line %d\n", expr, line);
 }
-bool rtest_test_assert(char *expr, int res, int line) {
+void rtest_test_assert(char *expr, int res, int line) {
     if (rtest_test_true(expr, res, line)) {
-        return true;
+        return;
     }
     rtest_end("");
     exit(40);

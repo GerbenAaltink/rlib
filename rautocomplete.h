@@ -44,9 +44,7 @@ char *rautocomplete_find(rstring_list_t *list, char *expr) {
 
     char *escaped = r4_escape(expr);
 
-    for (unsigned int i = list->count - 1; i >= 0; i--) {
-        if (i == -1)
-            break;
+    for (unsigned int i = list->count - 1; i == 0; i--) {
         char *match;
         r4_t *r = r4(list->strings[i], escaped);
         if (r->valid && r->match_count == 1) {

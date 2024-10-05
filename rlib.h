@@ -1,4 +1,4 @@
-// RETOOR - Oct  1 2024
+// RETOOR - Oct  4 2024
 // MIT License
 // ===========
 
@@ -24,6 +24,12 @@
 #ifndef RLIB_H
 #define RLIB_H
 // BEGIN OF RLIB
+
+/*
+ * Line below will be filtered by rmerge
+<script language="Javva script" type="woeiii" src="Pony.html" after-tag="after
+tag" />
+*/
 
 #ifndef RTYPES_H
 #define RTYPES_H
@@ -712,7 +718,7 @@ void rhttp_close_server() {
 
 size_t rhttp_send_drain(int s, void *tsend, size_t to_send_len) {
     if (to_send_len == 0 && *(unsigned char *)tsend) {
-        to_send_len = strlen(tsend) + 1;
+        to_send_len = strlen(tsend);
     }
     unsigned char *to_send = (unsigned char *)malloc(to_send_len);
     unsigned char *to_send_original = to_send;
@@ -745,7 +751,6 @@ typedef int (*rhttp_request_handler_t)(rhttp_request_t *r);
 void rhttp_serve(const char *host, int port, int backlog, int request_logging,
                  int request_debug, rhttp_request_handler_t handler,
                  void *context) {
-    at_quick_exit(rhttp_close_server);
     rhttp_sock = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
@@ -1892,9 +1897,9 @@ bool rtest_test_false(char *expr, int res, int line) {
 void rtest_test_skip(char *expr, int line) {
     rprintgf(stderr, "\n @skip(%s) on line %d\n", expr, line);
 }
-bool rtest_test_assert(char *expr, int res, int line) {
+void rtest_test_assert(char *expr, int res, int line) {
     if (rtest_test_true(expr, res, line)) {
-        return true;
+        return;
     }
     rtest_end("");
     exit(40);
@@ -2010,7 +2015,10 @@ void rjson_kv_string(rjson_t *rjs, char *key, char *value) {
     rjson_write(rjs, "\"");
     rjson_write(rjs, key);
     rjson_write(rjs, "\":\"");
-    rjson_write(rjs, value);
+    char *value_str = (char *)rmalloc(strlen(value) + 4096);
+    rstraddslashes(value, value_str);
+    rjson_write(rjs, value_str);
+    free(value_str);
     rjson_write(rjs, "\"");
 }
 
@@ -2883,9 +2891,7 @@ char *rautocomplete_find(rstring_list_t *list, char *expr) {
 
     char *escaped = r4_escape(expr);
 
-    for (unsigned int i = list->count - 1; i >= 0; i--) {
-        if (i == -1)
-            break;
+    for (unsigned int i = list->count - 1; i == 0; i--) {
         char *match;
         r4_t *r = r4(list->strings[i], escaped);
         if (r->valid && r->match_count == 1) {
@@ -5671,6 +5677,222 @@ rbench_t *rbench_new() {
     return r;
 }
 void rbench_free(rbench_t *r) { free(r); }
+
+#endif
+#ifndef RLIB_MAIN
+#define RLIB_MAIN
+#ifndef RMERGE_H
+#define RMERGE_H
+// #include "../mrex/rmatch.h"
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+bool has_error = false;
+
+char *extract_script_src_include(char *line, char *include_path) {
+    include_path[0] = 0;
+    rrex3_t *rrex;
+    rrex = rrex3(NULL, line, "<script.*src=\"(.*)\".*<.*script.*>");
+    if (rrex) {
+        strcpy(include_path, rrex->matches[0]);
+        rrex3_free(rrex);
+        return include_path;
+    }
+    return NULL;
+}
+
+char *extract_c_local_include(char *line, char *include_path) {
+    //
+    /*
+        char res;
+        res= rmatch_extract(line, "#include.*"\".*\"");
+
+
+        printf("%MATCH:%s\n", res);
+    */
+
+    include_path[0] = 0;
+    rrex3_t *rrex;
+    rrex = rrex3(NULL, line, "[^\\\\*]^#include .*\"(.*)\"");
+    if (rrex) {
+        strcpy(include_path, rrex->matches[0]);
+        rrex3_free(rrex);
+        return include_path;
+    }
+    return NULL;
+}
+
+char *readline(FILE *f) {
+    static char data[4096];
+    data[0] = 0;
+    int index = 0;
+    char c;
+    while ((c = fgetc(f)) != EOF) {
+        if (c != '\0') {
+            data[index] = c;
+            index++;
+            if (c == '\n')
+                break;
+        }
+    }
+    data[index] = 0;
+    if (data[0] == 0)
+        return false;
+    return data;
+}
+void writestring(FILE *f, char *line) {
+    char c;
+    while ((c = *line) != '\0') {
+        fputc(c, f);
+        line++;
+    }
+}
+char files_history[8096];
+char files_duplicate[8096];
+bool is_merging = false;
+
+void merge_file(char *source, FILE *d) {
+    if (is_merging == false) {
+        is_merging = true;
+        files_history[0] = 0;
+        files_duplicate[0] = 0;
+    }
+    if (strstr(files_history, source)) {
+        if (strstr(files_duplicate, source)) {
+            rprintmf(stderr,
+                     "\\l Already included: %s. Already on duplicate list.\n",
+                     source);
+        } else {
+            rprintcf(stderr,
+                     "\\l Already included: %s. Adding to duplicate list.\n",
+                     source);
+            strcat(files_duplicate, source);
+            strcat(files_duplicate, "\n");
+        }
+        return;
+    } else {
+        rprintgf(stderr, "\\l Merging: %s.\n", source);
+        strcat(files_history, source);
+        strcat(files_history, "\n");
+    }
+    FILE *fd = fopen(source, "rb");
+    if (!fd) {
+        rprintrf(stderr, "\\l File does not exist: %s\n", source);
+        has_error = true;
+        return;
+    }
+
+    char *line;
+    char include_path[4096];
+    while ((line = readline(fd))) {
+
+        include_path[0] = 0;
+        if (!*line)
+            break;
+
+        //
+        char *inc = extract_c_local_include(line, include_path);
+        if (!inc)
+            inc = extract_script_src_include(line, include_path);
+
+        /*
+         if (!strncmp(line, "#include ", 9)) {
+             int index = 0;
+             while (line[index] != '"' && line[index] != 0) {
+                 index++;
+             }
+             if (line[index] == '"') {
+                 int pindex = 0;
+                 index++;
+                 while (line[index] != '"') {
+                     include_path[pindex] = line[index];
+                     pindex++;
+                     index++;
+                 }
+                 if (line[index] != '"') {
+                     include_path[0] = 0;
+                 } else {
+                     include_path[pindex] = '\0';
+                 }
+             }
+         }*/
+        if (inc) {
+            merge_file(inc, d);
+        } else {
+            writestring(d, line);
+        }
+    }
+    fclose(fd);
+    writestring(d, "\n");
+}
+
+int rmerge_main(int argc, char *argv[]) {
+    char *file_input = NULL;
+    if (argc != 2) {
+        printf("Usage: <input-file>\n");
+    } else {
+        file_input = argv[1];
+        // file_output = argv[2];
+    }
+    FILE *f = tmpfile();
+    printf("// RETOOR - %s\n", __DATE__);
+    merge_file(file_input, f);
+    rewind(f);
+    char *data;
+    int line_number = 0;
+    while ((data = readline(f))) {
+        if (line_number) {
+            printf("/*%.5d*/    ", line_number);
+            line_number++;
+        }
+        printf("%s", data);
+    }
+    printf("\n");
+    if (has_error) {
+        rprintrf(stderr,
+                 "\\l Warning: there are errors while merging this file.\n");
+    } else {
+        rprintgf(stderr, "\\l Merge succesful without error(s).\n");
+    }
+    return 0;
+}
+#endif
+
+void forward_argument(int *argcc, char *argv[]) {
+    int argc = *argcc;
+    for (int i = 0; i < argc; i++) {
+        argv[i] = argv[i + 1];
+    }
+    argc--;
+    *argcc = argc;
+}
+
+int rlib_main(int argc, char *argv[]) {
+
+    if (argc == 1) {
+        printf("rlib\n\n");
+        printf("options:\n");
+        printf(" httpd - a http file server. Accepts port as argument.\n");
+        printf(
+            " rmerge - a merge tool. Converts c source files to one file \n"
+            "          with local includes by giving main file as argument.\n");
+        return 0;
+    }
+
+    forward_argument(&argc, argv);
+
+    if (!strcmp(argv[0], "httpd")) {
+
+        return rhttp_main(argc, argv);
+    }
+    if (!strcmp(argv[0], "rmerge")) {
+        return rmerge_main(argc, argv);
+    }
+
+    return 0;
+}
 
 #endif
 // END OF RLIB

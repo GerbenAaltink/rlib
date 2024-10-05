@@ -2,6 +2,13 @@
 #ifndef RLIB_H
 #define RLIB_H
 // BEGIN OF RLIB
+
+/*
+ * Line below will be filtered by rmerge
+<script language="Javva script" type="woeiii" src="Pony.html" after-tag="after
+tag" />
+*/
+
 #include "rtypes.h"
 #include "rtemp.h"
 #include "rhttp.h"
@@ -26,5 +33,6 @@
 #include "rtree.h"
 #include "rlexer.h"
 #include "rbench.h"
+#include "main.h"
 // END OF RLIB
 #endif
