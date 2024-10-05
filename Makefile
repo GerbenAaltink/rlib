@@ -183,10 +183,10 @@ build: format_rlib_h
 	@echo "Build succesful"
 
 install:
-	sudo cp ./build/rmerge /usr/bin/rmerge
-	sudo cp ./build/clean /usr/bin/clean
 	sudo cp ./build/rlib.h /usr/include/rlib.h
-	sudo cp ./build/rlib /usr/bin/rlib
+	sudo cp ./build/rmerge /usr/local/bin/rmerge
+	sudo cp ./build/clean /usr/local/bin/clean
+	sudo cp ./build/rlib /usr/local/bin/rlib
 
 publish:
 	brz add 
