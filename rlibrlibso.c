@@ -57,7 +57,7 @@ typedef unsigned char byte;
 bool _rtempc_initialized = 0;
 pthread_mutex_t _rtempc_thread_lock;
 bool rtempc_use_mutex = true;
-byte _current_rtempc_slot = 0;
+byte _current_rtempc_slot = 1;
 char _rtempc_buffer[RTEMPC_SLOT_COUNT][RTEMPC_SLOT_SIZE];
 char *rtempc(char *data) {
 
@@ -114,12 +114,15 @@ ulonglong rmalloc_free_count = 0;
 char *rstrdup(const char *s) {
     if (!s)
         return NULL;
+
     char *result;
     rmalloc_count++;
     rmalloc_alloc_count++;
-    while (!(result = strdup(s))) {
+    size_t size = strlen(s) + 1;
+    while (!(result = (char *)malloc(size))) {
         fprintf(stderr, "Warning: strdup failed, trying again.\n");
     }
+    memcpy(result, s, size);
     return result;
 }
 void *rmalloc(size_t size) {
@@ -331,13 +334,19 @@ size_t rfile_readb(char *path, void *data, size_t size) {
 #ifndef RLIB_TIME
 #define RLIB_TIME
 
+#ifndef _POSIX_C_SOURCE_199309L
+
+#define _POSIX_C_SOURCE_199309L
+#endif
+
+#include <sys/time.h>
+
+#include <time.h>
+
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/time.h>
-#include <time.h>
-
 #ifndef CLOCK_MONOTONIC
 #define CLOCK_MONOTONIC 1
 #endif
@@ -350,9 +359,9 @@ void tick() { nsleep(1); }
 typedef unsigned long long msecs_t;
 
 nsecs_t nsecs() {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (int64_t)ts.tv_sec * 1000000000LL + (int64_t)ts.tv_nsec;
+    unsigned int lo, hi;
+    __asm__ volatile("rdtsc" : "=a"(lo), "=d"(hi));
+    return ((uint64_t)hi << 32) | lo;
 }
 
 msecs_t rnsecs_to_msecs(nsecs_t nsecs) { return nsecs / 1000 / 1000; }
@@ -419,36 +428,18 @@ void nsleep(nsecs_t nanoseconds) {
     struct timespec req = {seconds, nanoseconds};
     struct timespec rem;
 
-    if (nanosleep(&req, &rem) == -1) {
-        if (errno == EINTR) {
-            printf("Sleep was interrupted. Remaining time: %ld.%09ld seconds\n",
-                   rem.tv_sec, rem.tv_nsec);
-        } else {
-            perror("nanosleep");
-        }
-    } else {
-        // printf("Slept for %ld.%09ld seconds\n", req.tv_sec, req.tv_nsec);
-    }
+    nanosleep(&req, &rem);
 }
 
 void ssleep(double s) {
     long nanoseconds = (long)(1000000000 * s);
 
-    long seconds = 0;
+    // long seconds = 0;
 
-    struct timespec req = {seconds, nanoseconds};
-    struct timespec rem;
+    // struct timespec req = {seconds, nanoseconds};
+    // struct timespec rem;
 
-    if (nanosleep(&req, &rem) == -1) {
-        if (errno == EINTR) {
-            printf("Sleep was interrupted. Remaining time: %ld.%09ld seconds\n",
-                   rem.tv_sec, rem.tv_nsec);
-        } else {
-            perror("nanosleep");
-        }
-    } else {
-        // printf("Slept for %ld.%09ld seconds\n", req.tv_sec, req.tv_nsec);
-    }
+    nsleep(nanoseconds);
 }
 void msleep(long miliseonds) {
     long nanoseconds = miliseonds * 1000000;
@@ -2991,11 +2982,13 @@ rnklist *rkset(char *name, char *defn) {
     return np;
 }
 #endif
+
 #ifndef RHASHTABLE_H
 #define RHASHTABLE_H
 /*
     ORIGINAL SOURCE IS FROM K&R
  */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -3056,6 +3049,7 @@ struct rnlist *rset(char *name, char *defn) {
     return np;
 }
 #endif
+
 #ifndef RREX3_H
 #define RREX3_H
 #include <assert.h>

@@ -15,12 +15,15 @@ ulonglong rmalloc_free_count = 0;
 char *rstrdup(const char *s) {
     if (!s)
         return NULL;
+
     char *result;
     rmalloc_count++;
     rmalloc_alloc_count++;
-    while (!(result = strdup(s))) {
+    size_t size = strlen(s) + 1;
+    while (!(result = (char *)malloc(size))) {
         fprintf(stderr, "Warning: strdup failed, trying again.\n");
     }
+    memcpy(result, s, size);
     return result;
 }
 void *rmalloc(size_t size) {

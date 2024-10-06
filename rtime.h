@@ -2,13 +2,19 @@
 #ifndef RLIB_TIME
 #define RLIB_TIME
 
+#ifndef _POSIX_C_SOURCE_199309L
+
+#define _POSIX_C_SOURCE_199309L
+#endif
+
+#include <sys/time.h>
+
+#include <time.h>
+
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/time.h>
-#include <time.h>
-
 #ifndef CLOCK_MONOTONIC
 #define CLOCK_MONOTONIC 1
 #endif
@@ -21,9 +27,9 @@ void tick() { nsleep(1); }
 typedef unsigned long long msecs_t;
 
 nsecs_t nsecs() {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (int64_t)ts.tv_sec * 1000000000LL + (int64_t)ts.tv_nsec;
+    unsigned int lo, hi;
+    __asm__ volatile("rdtsc" : "=a"(lo), "=d"(hi));
+    return ((uint64_t)hi << 32) | lo;
 }
 
 msecs_t rnsecs_to_msecs(nsecs_t nsecs) { return nsecs / 1000 / 1000; }
@@ -90,36 +96,18 @@ void nsleep(nsecs_t nanoseconds) {
     struct timespec req = {seconds, nanoseconds};
     struct timespec rem;
 
-    if (nanosleep(&req, &rem) == -1) {
-        if (errno == EINTR) {
-            printf("Sleep was interrupted. Remaining time: %ld.%09ld seconds\n",
-                   rem.tv_sec, rem.tv_nsec);
-        } else {
-            perror("nanosleep");
-        }
-    } else {
-        // printf("Slept for %ld.%09ld seconds\n", req.tv_sec, req.tv_nsec);
-    }
+    nanosleep(&req, &rem);
 }
 
 void ssleep(double s) {
     long nanoseconds = (long)(1000000000 * s);
 
-    long seconds = 0;
+    // long seconds = 0;
 
-    struct timespec req = {seconds, nanoseconds};
-    struct timespec rem;
+    // struct timespec req = {seconds, nanoseconds};
+    // struct timespec rem;
 
-    if (nanosleep(&req, &rem) == -1) {
-        if (errno == EINTR) {
-            printf("Sleep was interrupted. Remaining time: %ld.%09ld seconds\n",
-                   rem.tv_sec, rem.tv_nsec);
-        } else {
-            perror("nanosleep");
-        }
-    } else {
-        // printf("Slept for %ld.%09ld seconds\n", req.tv_sec, req.tv_nsec);
-    }
+    nsleep(nanoseconds);
 }
 void msleep(long miliseonds) {
     long nanoseconds = miliseonds * 1000000;

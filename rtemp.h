@@ -10,7 +10,7 @@
 bool _rtempc_initialized = 0;
 pthread_mutex_t _rtempc_thread_lock;
 bool rtempc_use_mutex = true;
-byte _current_rtempc_slot = 0;
+byte _current_rtempc_slot = 1;
 char _rtempc_buffer[RTEMPC_SLOT_COUNT][RTEMPC_SLOT_SIZE];
 char *rtempc(char *data) {
 

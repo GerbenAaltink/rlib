@@ -3,6 +3,8 @@
 /*
     ORIGINAL SOURCE IS FROM K&R
  */
+
+#include "rmalloc.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
