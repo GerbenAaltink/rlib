@@ -10,6 +10,8 @@ tag" />
 */
 
 #include "rtypes.h"
+#include "rcat.h"
+#include "rcov.h"
 #include "rtemp.h"
 #include "rhttp.h"
 #include "rjson.h"

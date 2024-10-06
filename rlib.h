@@ -46,6 +46,38 @@ typedef unsigned char byte;
 #endif
 #endif
 
+#ifndef RCAT_H
+#define RCAT_H
+#include <stdio.h>
+#include <stdlib.h>
+
+void rcat(char *filename) {
+    FILE *f = fopen(filename, "rb");
+    if (!f) {
+        printf("rcat: couldn't open \"%s\" for read.\n", filename);
+        return;
+    }
+    unsigned char c;
+    while ((c = fgetc(f)) && !feof(f)) {
+        printf("%c", c);
+    }
+    fclose(f);
+    fflush(stdout);
+}
+
+int rcat_main(int argc, char *argv[]) {
+    if (argc < 2) {
+        printf("Usage: [filename]\n");
+        return 1;
+    }
+    rcat(argv[1]);
+    return 0;
+}
+
+#endif
+
+#ifndef RCOV_H
+#define RCOV_H
 #include <pthread.h>
 #ifndef RTEMPC_SLOT_COUNT
 #define RTEMPC_SLOT_COUNT 20
@@ -96,8 +128,459 @@ char *rtempc(char *data) {
 
 #define sbuf(val) rtempc(val)
 
-#ifndef RHTTP_H
-#define RHTTP_H
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#ifndef RBENCH_H
+#define RBENCH_H
+
+#ifndef RPRINT_H
+#define RPRINT_H
+
+#ifndef RLIB_TIME
+#define RLIB_TIME
+
+#ifndef _POSIX_C_SOURCE_199309L
+
+#define _POSIX_C_SOURCE_199309L
+#endif
+
+#include <sys/time.h>
+
+#include <time.h>
+
+#include <errno.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#ifndef CLOCK_MONOTONIC
+#define CLOCK_MONOTONIC 1
+#endif
+
+typedef uint64_t nsecs_t;
+void nsleep(nsecs_t nanoseconds);
+
+void tick() { nsleep(1); }
+
+typedef unsigned long long msecs_t;
+
+nsecs_t nsecs() {
+    unsigned int lo, hi;
+    __asm__ volatile("rdtsc" : "=a"(lo), "=d"(hi));
+    return ((uint64_t)hi << 32) | lo;
+}
+
+msecs_t rnsecs_to_msecs(nsecs_t nsecs) { return nsecs / 1000 / 1000; }
+
+nsecs_t rmsecs_to_nsecs(msecs_t msecs) { return msecs * 1000 * 1000; }
+
+msecs_t usecs() {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (long long)(tv.tv_sec) * 1000000 + (long long)(tv.tv_usec);
+}
+
+msecs_t msecs() {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (long long)(tv.tv_sec) * 1000 + (tv.tv_usec / 1000);
+}
+char *msecs_strs(msecs_t ms) {
+    static char str[22];
+    str[0] = 0;
+    sprintf(str, "%f", ms * 0.001);
+    for (int i = strlen(str); i > 0; i--) {
+        if (str[i] > '0')
+            break;
+        str[i] = 0;
+    }
+    return str;
+}
+char *msecs_strms(msecs_t ms) {
+    static char str[22];
+    str[0] = 0;
+    sprintf(str, "%lld", ms);
+    return str;
+}
+char *msecs_str(long long ms) {
+    static char result[30];
+    result[0] = 0;
+    if (ms > 999) {
+        char *s = msecs_strs(ms);
+        sprintf(result, "%ss", s);
+    } else {
+        char *s = msecs_strms(ms);
+        sprintf(result, "%sMs", s);
+    }
+    return result;
+}
+
+void nsleep(nsecs_t nanoseconds) {
+    long seconds = 0;
+    int factor = 0;
+    while (nanoseconds > 1000000000) {
+        factor++;
+        nanoseconds = nanoseconds / 10;
+    }
+    if (factor) {
+        seconds = 1;
+        factor--;
+        while (factor) {
+            seconds = seconds * 10;
+            factor--;
+        }
+    }
+
+    struct timespec req = {seconds, nanoseconds};
+    struct timespec rem;
+
+    nanosleep(&req, &rem);
+}
+
+void ssleep(double s) {
+    long nanoseconds = (long)(1000000000 * s);
+
+    // long seconds = 0;
+
+    // struct timespec req = {seconds, nanoseconds};
+    // struct timespec rem;
+
+    nsleep(nanoseconds);
+}
+void msleep(long miliseonds) {
+    long nanoseconds = miliseonds * 1000000;
+    nsleep(nanoseconds);
+}
+
+char *format_time(int64_t nanoseconds) {
+    static char output[1024];
+    size_t output_size = sizeof(output);
+    output[0] = 0;
+    if (nanoseconds < 1000) {
+        // Less than 1 microsecond
+        snprintf(output, output_size, "%ldns", nanoseconds);
+    } else if (nanoseconds < 1000000) {
+        // Less than 1 millisecond
+        double us = nanoseconds / 1000.0;
+        snprintf(output, output_size, "%.2fµs", us);
+    } else if (nanoseconds < 1000000000) {
+        // Less than 1 second
+        double ms = nanoseconds / 1000000.0;
+        snprintf(output, output_size, "%.2fms", ms);
+    } else {
+        // 1 second or more
+        double s = nanoseconds / 1000000000.0;
+        if (s > 60 * 60) {
+            s = s / 60 / 60;
+            snprintf(output, output_size, "%.2fh", s);
+        } else if (s > 60) {
+            s = s / 60;
+            snprintf(output, output_size, "%.2fm", s);
+        } else {
+            snprintf(output, output_size, "%.2fs", s);
+        }
+    }
+    return output;
+}
+
+#endif
+
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+long rpline_number = 0;
+nsecs_t rprtime = 0;
+
+int8_t _env_rdisable_colors = -1;
+bool _rprint_enable_colors = true;
+
+bool rprint_is_color_enabled() {
+    if (_env_rdisable_colors == -1) {
+        _env_rdisable_colors = getenv("RDISABLE_COLORS") != NULL;
+    }
+    if (_env_rdisable_colors) {
+        _rprint_enable_colors = false;
+    }
+    return _rprint_enable_colors;
+}
+
+void rprint_disable_colors() { _rprint_enable_colors = false; }
+void rprint_enable_colors() { _rprint_enable_colors = true; }
+void rprint_toggle_colors() { _rprint_enable_colors = !_rprint_enable_colors; }
+
+void rclear() { printf("\033[2J"); }
+
+void rprintpf(FILE *f, const char *prefix, const char *format, va_list args) {
+    char *pprefix = (char *)prefix;
+    char *pformat = (char *)format;
+    bool reset_color = false;
+    bool press_any_key = false;
+    char new_format[4096];
+    bool enable_color = rprint_is_color_enabled();
+    memset(new_format, 0, 4096);
+    int new_format_length = 0;
+    char temp[1000];
+    memset(temp, 0, 1000);
+    if (enable_color && pprefix[0]) {
+        strcat(new_format, pprefix);
+        new_format_length += strlen(pprefix);
+        reset_color = true;
+    }
+    while (true) {
+        if (pformat[0] == '\\' && pformat[1] == 'i') {
+            strcat(new_format, "\e[3m");
+            new_format_length += strlen("\e[3m");
+            reset_color = true;
+            pformat++;
+            pformat++;
+        } else if (pformat[0] == '\\' && pformat[1] == 'u') {
+            strcat(new_format, "\e[4m");
+            new_format_length += strlen("\e[4m");
+            reset_color = true;
+            pformat++;
+            pformat++;
+        } else if (pformat[0] == '\\' && pformat[1] == 'b') {
+            strcat(new_format, "\e[1m");
+            new_format_length += strlen("\e[1m");
+            reset_color = true;
+            pformat++;
+            pformat++;
+        } else if (pformat[0] == '\\' && pformat[1] == 'C') {
+            press_any_key = true;
+            rpline_number++;
+            pformat++;
+            pformat++;
+            reset_color = false;
+        } else if (pformat[0] == '\\' && pformat[1] == 'k') {
+            press_any_key = true;
+            rpline_number++;
+            pformat++;
+            pformat++;
+        } else if (pformat[0] == '\\' && pformat[1] == 'c') {
+            rpline_number++;
+            strcat(new_format, "\e[2J\e[H");
+            new_format_length += strlen("\e[2J\e[H");
+            pformat++;
+            pformat++;
+        } else if (pformat[0] == '\\' && pformat[1] == 'L') {
+            rpline_number++;
+            temp[0] = 0;
+            sprintf(temp, "%ld", rpline_number);
+            strcat(new_format, temp);
+            new_format_length += strlen(temp);
+            pformat++;
+            pformat++;
+        } else if (pformat[0] == '\\' && pformat[1] == 'l') {
+            rpline_number++;
+            temp[0] = 0;
+            sprintf(temp, "%.5ld", rpline_number);
+            strcat(new_format, temp);
+            new_format_length += strlen(temp);
+            pformat++;
+            pformat++;
+        } else if (pformat[0] == '\\' && pformat[1] == 'T') {
+            nsecs_t nsecs_now = nsecs();
+            nsecs_t end = rprtime ? nsecs_now - rprtime : 0;
+            temp[0] = 0;
+            sprintf(temp, "%s", format_time(end));
+            strcat(new_format, temp);
+            new_format_length += strlen(temp);
+            rprtime = nsecs_now;
+            pformat++;
+            pformat++;
+        } else if (pformat[0] == '\\' && pformat[1] == 't') {
+            rprtime = nsecs();
+            pformat++;
+            pformat++;
+        } else {
+            new_format[new_format_length] = *pformat;
+            new_format_length++;
+            if (!*pformat)
+                break;
+
+            // printf("%c",*pformat);
+            pformat++;
+        }
+    }
+    if (reset_color) {
+        strcat(new_format, "\e[0m");
+        new_format_length += strlen("\e[0m");
+    }
+
+    new_format[new_format_length] = 0;
+    vfprintf(f, new_format, args);
+
+    fflush(stdout);
+    if (press_any_key) {
+        nsecs_t s = nsecs();
+        fgetc(stdin);
+        rprtime += nsecs() - s;
+    }
+}
+
+void rprintp(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(stdout, "", format, args);
+    va_end(args);
+}
+
+void rprintf(FILE *f, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(f, "", format, args);
+    va_end(args);
+}
+void rprint(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(stdout, "", format, args);
+    va_end(args);
+}
+#define printf rprint
+
+// Print line
+void rprintlf(FILE *f, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(f, "\\l", format, args);
+    va_end(args);
+}
+void rprintl(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(stdout, "\\l", format, args);
+    va_end(args);
+}
+
+// Black
+void rprintkf(FILE *f, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(f, "\e[30m", format, args);
+    va_end(args);
+}
+void rprintk(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(stdout, "\e[30m", format, args);
+    va_end(args);
+}
+
+// Red
+void rprintrf(FILE *f, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(f, "\e[31m", format, args);
+    va_end(args);
+}
+void rprintr(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(stdout, "\e[31m", format, args);
+    va_end(args);
+}
+
+// Green
+void rprintgf(FILE *f, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(f, "\e[32m", format, args);
+    va_end(args);
+}
+void rprintg(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(stdout, "\e[32m", format, args);
+    va_end(args);
+}
+
+// Yellow
+void rprintyf(FILE *f, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(f, "\e[33m", format, args);
+    va_end(args);
+}
+void rprinty(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(stdout, "\e[33m", format, args);
+    va_end(args);
+}
+
+// Blue
+void rprintbf(FILE *f, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(f, "\e[34m", format, args);
+    va_end(args);
+}
+
+void rprintb(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(stdout, "\e[34m", format, args);
+    va_end(args);
+}
+
+// Magenta
+void rprintmf(FILE *f, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(f, "\e[35m", format, args);
+    va_end(args);
+}
+void rprintm(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(stdout, "\e[35m", format, args);
+    va_end(args);
+}
+
+// Cyan
+void rprintcf(FILE *f, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(f, "\e[36m", format, args);
+    va_end(args);
+}
+void rprintc(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(stdout, "\e[36m", format, args);
+    va_end(args);
+}
+
+// White
+void rprintwf(FILE *f, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(f, "\e[37m", format, args);
+    va_end(args);
+}
+void rprintw(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    rprintpf(stdout, "\e[37m", format, args);
+    va_end(args);
+}
+#endif
+#include <errno.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/time.h>
+#include <time.h>
+
+#ifndef RSTRING_H
+#define RSTRING_H
 #ifndef RMALLOC_H
 #define RMALLOC_H
 #ifndef RMALLOC_OVERRIDE
@@ -169,6 +652,1233 @@ char *rmalloc_stats() {
 
 #endif
 
+#ifndef RMATH_H
+#define RMATH_H
+#include <math.h>
+
+#ifndef ceil
+double ceil(double x) {
+    if (x == (double)(long long)x) {
+        return x;
+    } else if (x > 0.0) {
+        return (double)(long long)x + 1.0;
+    } else {
+        return (double)(long long)x;
+    }
+}
+#endif
+
+#ifndef floor
+double floor(double x) {
+    if (x >= 0.0) {
+        return (double)(long long)x;
+    } else {
+        double result = (double)(long long)x;
+        return (result == x) ? result : result - 1.0;
+    }
+}
+#endif
+
+#ifndef modf
+double modf(double x, double *iptr) {
+    double int_part = (x >= 0.0) ? floor(x) : ceil(x);
+    *iptr = int_part;
+    return x - int_part;
+}
+#endif
+#endif
+#include <ctype.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+char *rstrtimestamp() {
+    time_t current_time;
+    time(&current_time);
+    struct tm *local_time = localtime(&current_time);
+    static char time_string[100];
+    time_string[0] = 0;
+    strftime(time_string, sizeof(time_string), "%Y-%m-%d %H:%M:%S", local_time);
+    return time_string;
+}
+
+ulonglong _r_generate_key_current = 0;
+
+char *_rcat_int_int(int a, int b) {
+    static char res[20];
+    res[0] = 0;
+    sprintf(res, "%d%d", a, b);
+    return res;
+}
+char *_rcat_int_double(int a, double b) {
+    static char res[20];
+    res[0] = 0;
+    sprintf(res, "%d%f", a, b);
+    return res;
+}
+
+char *_rcat_charp_int(char *a, int b) {
+    char res[20];
+    sprintf(res, "%c", b);
+    return strcat(a, res);
+}
+
+char *_rcat_charp_double(char *a, double b) {
+    char res[20];
+    sprintf(res, "%f", b);
+    return strcat(a, res);
+}
+
+char *_rcat_charp_charp(char *a, char *b) {
+    ;
+    return strcat(a, b);
+}
+char *_rcat_charp_char(char *a, char b) {
+    char extra[] = {b, 0};
+    return strcat(a, extra);
+}
+char *_rcat_charp_bool(char *a, bool *b) {
+    if (b) {
+        return strcat(a, "true");
+    } else {
+        return strcat(a, "false");
+    }
+}
+
+#define rcat(x, y)                                                             \
+    _Generic((x),                                                              \
+        int: _Generic((y),                                                     \
+        int: _rcat_int_int,                                                    \
+        double: _rcat_int_double,                                              \
+        char *: _rcat_charp_charp),                                            \
+        char *: _Generic((y),                                                  \
+        int: _rcat_charp_int,                                                  \
+        double: _rcat_charp_double,                                            \
+        char *: _rcat_charp_charp,                                             \
+        char: _rcat_charp_char,                                                \
+        bool: _rcat_charp_bool))((x), (y))
+
+char *rgenerate_key() {
+    _r_generate_key_current++;
+    static char key[100];
+    key[0] = 0;
+    sprintf(key, "%lld", _r_generate_key_current);
+    return key;
+}
+
+char *rformat_number(long long lnumber) {
+    static char formatted[1024];
+
+    char number[1024] = {0};
+    sprintf(number, "%lld", lnumber);
+
+    int len = strlen(number);
+    int commas_needed = (len - 1) / 3;
+    int new_len = len + commas_needed;
+
+    formatted[new_len] = '\0';
+
+    int i = len - 1;
+    int j = new_len - 1;
+    int count = 0;
+
+    while (i >= 0) {
+        if (count == 3) {
+            formatted[j--] = '.';
+            count = 0;
+        }
+        formatted[j--] = number[i--];
+        count++;
+    }
+    if (lnumber < 0)
+        formatted[j--] = '-';
+    return formatted;
+}
+
+bool rstrextractdouble(char *str, double *d1) {
+    for (size_t i = 0; i < strlen(str); i++) {
+        if (isdigit(str[i])) {
+            str += i;
+            sscanf(str, "%lf", d1);
+            return true;
+        }
+    }
+    return false;
+}
+
+void rstrstripslashes(const char *content, char *result) {
+    size_t content_length = strlen((char *)content);
+    unsigned int index = 0;
+    for (unsigned int i = 0; i < content_length; i++) {
+        char c = content[i];
+        if (c == '\\') {
+            i++;
+            c = content[i];
+            if (c == 'r') {
+                c = '\r';
+            } else if (c == 't') {
+                c = '\t';
+            } else if (c == 'b') {
+                c = '\b';
+            } else if (c == 'n') {
+                c = '\n';
+            } else if (c == 'f') {
+                c = '\f';
+            } else if (c == '\\') {
+                // No need tbh
+                c = '\\';
+            }
+        }
+        result[index] = c;
+        index++;
+    }
+    result[index] = 0;
+}
+
+int rstrstartswith(const char *s1, const char *s2) {
+    if (s1 == NULL)
+        return s2 == NULL;
+    if (s1 == s2 || s2 == NULL || *s2 == 0)
+        return true;
+    size_t len_s2 = strlen(s2);
+    size_t len_s1 = strlen(s1);
+    if (len_s2 > len_s1)
+        return false;
+    return !strncmp(s1, s2, len_s2);
+}
+
+bool rstrendswith(const char *s1, const char *s2) {
+    if (s1 == NULL)
+        return s2 == NULL;
+    if (s1 == s2 || s2 == NULL || *s2 == 0)
+        return true;
+    size_t len_s2 = strlen(s2);
+    size_t len_s1 = strlen(s1);
+    if (len_s2 > len_s1) {
+        return false;
+    }
+    s1 += len_s1 - len_s2;
+    return !strncmp(s1, s2, len_s2);
+}
+
+void rstraddslashes(const char *content, char *result) {
+    size_t content_length = strlen((char *)content);
+    unsigned int index = 0;
+    for (unsigned int i = 0; i < content_length; i++) {
+        if (content[i] == '\r') {
+            result[index] = '\\';
+            index++;
+            result[index] = 'r';
+            index++;
+            continue;
+        } else if (content[i] == '\t') {
+            result[index] = '\\';
+            index++;
+            result[index] = 't';
+            index++;
+            continue;
+        } else if (content[i] == '\n') {
+            result[index] = '\\';
+            index++;
+            result[index] = 'n';
+            index++;
+            continue;
+        } else if (content[i] == '\\') {
+            result[index] = '\\';
+            index++;
+            result[index] = '\\';
+            index++;
+            continue;
+        } else if (content[i] == '\b') {
+            result[index] = '\\';
+            index++;
+            result[index] = 'b';
+            index++;
+            continue;
+        } else if (content[i] == '\f') {
+            result[index] = '\\';
+            index++;
+            result[index] = 'f';
+            index++;
+            continue;
+        }
+        result[index] = content[i];
+        index++;
+    }
+    result[index] = 0;
+}
+
+int rstrip_whitespace(char *input, char *output) {
+    output[0] = 0;
+    int count = 0;
+    size_t len = strlen(input);
+    for (size_t i = 0; i < len; i++) {
+        if (input[i] == '\t' || input[i] == ' ' || input[i] == '\n') {
+            continue;
+        }
+        count = i;
+        size_t j;
+        for (j = 0; j < len - count; j++) {
+            output[j] = input[j + count];
+        }
+        output[j] = '\0';
+        break;
+    }
+    return count;
+}
+
+/*
+ * Converts "pony" to \"pony\". Addslashes does not
+ * Converts "pony\npony" to "pony\n"
+ * 			    "pony"
+ */
+void rstrtocstring(const char *input, char *output) {
+    int index = 0;
+    char clean_input[strlen(input) * 2];
+    char *iptr = clean_input;
+    rstraddslashes(input, clean_input);
+    output[index] = '"';
+    index++;
+    while (*iptr) {
+        if (*iptr == '"') {
+            output[index] = '\\';
+            output++;
+        } else if (*iptr == '\\' && *(iptr + 1) == 'n') {
+            output[index] = '\\';
+            output++;
+            output[index] = 'n';
+            output++;
+            output[index] = '"';
+            output++;
+            output[index] = '\n';
+            output++;
+            output[index] = '"';
+            output++;
+            iptr++;
+            iptr++;
+            continue;
+        }
+        output[index] = *iptr;
+        index++;
+        iptr++;
+    }
+    if (output[index - 1] == '"' && output[index - 2] == '\n') {
+        output[index - 1] = 0;
+    } else if (output[index - 1] != '"') {
+        output[index] = '"';
+        output[index + 1] = 0;
+    }
+}
+
+size_t rstrtokline(char *input, char *output, size_t offset, bool strip_nl) {
+
+    size_t len = strlen(input);
+    output[0] = 0;
+    size_t new_offset = 0;
+    size_t j;
+    size_t index = 0;
+
+    for (j = offset; j < len + offset; j++) {
+        if (input[j] == 0) {
+            index++;
+            break;
+        }
+        index = j - offset;
+        output[index] = input[j];
+
+        if (output[index] == '\n') {
+            index++;
+            break;
+        }
+    }
+    output[index] = 0;
+
+    new_offset = index + offset;
+
+    if (strip_nl) {
+        if (output[index - 1] == '\n') {
+            output[index - 1] = 0;
+        }
+    }
+    return new_offset;
+}
+
+void rstrjoin(char **lines, size_t count, char *glue, char *output) {
+    output[0] = 0;
+    for (size_t i = 0; i < count; i++) {
+        strcat(output, lines[i]);
+        if (i != count - 1)
+            strcat(output, glue);
+    }
+}
+
+int rstrsplit(char *input, char **lines) {
+    int index = 0;
+    size_t offset = 0;
+    char line[1024];
+    while ((offset = rstrtokline(input, line, offset, false)) && *line) {
+        if (!*line) {
+            break;
+        }
+        lines[index] = (char *)malloc(strlen(line) + 1);
+        strcpy(lines[index], line);
+        index++;
+    }
+    return index;
+}
+
+bool rstartswithnumber(char *str) { return isdigit(str[0]); }
+
+void rstrmove2(char *str, unsigned int start, size_t length,
+               unsigned int new_pos) {
+    size_t str_len = strlen(str);
+    char new_str[str_len + 1];
+    memset(new_str, 0, str_len);
+    if (start < new_pos) {
+        strncat(new_str, str + length, str_len - length - start);
+        new_str[new_pos] = 0;
+        strncat(new_str, str + start, length);
+        strcat(new_str, str + strlen(new_str));
+        memset(str, 0, str_len);
+        strcpy(str, new_str);
+    } else {
+        strncat(new_str, str + start, length);
+        strncat(new_str, str, start);
+        strncat(new_str, str + start + length, str_len - start);
+        memset(str, 0, str_len);
+        strcpy(str, new_str);
+    }
+    new_str[str_len] = 0;
+}
+
+void rstrmove(char *str, unsigned int start, size_t length,
+              unsigned int new_pos) {
+    size_t str_len = strlen(str);
+    if (start >= str_len || new_pos >= str_len || start + length > str_len) {
+        return;
+    }
+    char temp[length + 1];
+    strncpy(temp, str + start, length);
+    temp[length] = 0;
+    if (start < new_pos) {
+        memmove(str + start, str + start + length, new_pos - start);
+        strncpy(str + new_pos - length + 1, temp, length);
+    } else {
+        memmove(str + new_pos + length, str + new_pos, start - new_pos);
+        strncpy(str + new_pos, temp, length);
+    }
+}
+
+int cmp_line(const void *left, const void *right) {
+    char *l = *(char **)left;
+    char *r = *(char **)right;
+
+    char lstripped[strlen(l) + 1];
+    rstrip_whitespace(l, lstripped);
+    char rstripped[strlen(r) + 1];
+    rstrip_whitespace(r, rstripped);
+
+    double d1, d2;
+    bool found_d1 = rstrextractdouble(lstripped, &d1);
+    bool found_d2 = rstrextractdouble(rstripped, &d2);
+
+    if (found_d1 && found_d2) {
+        double frac_part1;
+        double int_part1;
+        frac_part1 = modf(d1, &int_part1);
+        double frac_part2;
+        double int_part2;
+        frac_part2 = modf(d2, &int_part2);
+        if (d1 == d2) {
+            return strcmp(lstripped, rstripped);
+        } else if (frac_part1 && frac_part2) {
+            return d1 > d2;
+        } else if (frac_part1 && !frac_part2) {
+            return 1;
+        } else if (frac_part2 && !frac_part1) {
+            return -1;
+        } else if (!frac_part1 && !frac_part2) {
+            return d1 > d2;
+        }
+    }
+    return 0;
+}
+
+int rstrsort(char *input, char *output) {
+    char **lines = (char **)malloc(strlen(input) * 10);
+    int line_count = rstrsplit(input, lines);
+    qsort(lines, line_count, sizeof(char *), cmp_line);
+    rstrjoin(lines, line_count, "", output);
+    for (int i = 0; i < line_count; i++) {
+        free(lines[i]);
+    }
+    free(lines);
+    return line_count;
+}
+
+#endif
+
+#ifndef RLIB_TERMINAL_H
+#define RLIB_TERMINAL_H
+
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#ifndef RTEST_H
+#define RTEST_H
+#include <stdbool.h>
+#include <stdio.h>
+#include <unistd.h>
+#define debug(fmt, ...) printf("%s:%d: " fmt, __FILE__, __LINE__, __VA_ARGS__);
+
+char *rcurrent_banner;
+int rassert_count = 0;
+unsigned short rtest_is_first = 1;
+unsigned int rtest_fail_count = 0;
+
+int rtest_end(char *content) {
+    // Returns application exit code. 0 == success
+    printf("%s", content);
+    printf("\n@assertions: %d\n", rassert_count);
+    printf("@memory: %s\n", rmalloc_stats());
+
+    if (rmalloc_count != 0) {
+        printf("MEMORY ERROR\n");
+        return rtest_fail_count > 0;
+    }
+    return rtest_fail_count > 0;
+}
+
+void rtest_test_banner(char *content, char *file) {
+    if (rtest_is_first == 1) {
+        char delimiter[] = ".";
+        char *d = delimiter;
+        char f[2048];
+        strcpy(f, file);
+        printf("%s tests", strtok(f, d));
+        rtest_is_first = 0;
+        setvbuf(stdout, NULL, _IONBF, 0);
+    }
+    printf("\n - %s ", content);
+}
+
+bool rtest_test_true_silent(char *expr, int res, int line) {
+    rassert_count++;
+    if (res) {
+        return true;
+    }
+    rprintrf(stderr, "\nERROR on line %d: %s", line, expr);
+    rtest_fail_count++;
+    return false;
+}
+
+bool rtest_test_true(char *expr, int res, int line) {
+    rassert_count++;
+    if (res) {
+        fprintf(stdout, ".");
+        return true;
+    }
+    rprintrf(stderr, "\nERROR on line %d: %s", line, expr);
+    rtest_fail_count++;
+    return false;
+}
+bool rtest_test_false_silent(char *expr, int res, int line) {
+    return rtest_test_true_silent(expr, !res, line);
+}
+bool rtest_test_false(char *expr, int res, int line) {
+    return rtest_test_true(expr, !res, line);
+}
+void rtest_test_skip(char *expr, int line) {
+    rprintgf(stderr, "\n @skip(%s) on line %d\n", expr, line);
+}
+void rtest_test_assert(char *expr, int res, int line) {
+    if (rtest_test_true(expr, res, line)) {
+        return;
+    }
+    rtest_end("");
+    exit(40);
+}
+
+#define rtest_banner(content)                                                  \
+    rcurrent_banner = content;                                                 \
+    rtest_test_banner(content, __FILE__);
+#define rtest_true(expr) rtest_test_true(#expr, expr, __LINE__);
+#define rtest_assert(expr)                                                     \
+    {                                                                          \
+        int __valid = expr ? 1 : 0;                                            \
+        rtest_test_true(#expr, __valid, __LINE__);                             \
+    };                                                                         \
+    ;
+
+#define rassert(expr)                                                          \
+    {                                                                          \
+        int __valid = expr ? 1 : 0;                                            \
+        rtest_test_true(#expr, __valid, __LINE__);                             \
+    };                                                                         \
+    ;
+#define rtest_asserts(expr)                                                    \
+    {                                                                          \
+        int __valid = expr ? 1 : 0;                                            \
+        rtest_test_true_silent(#expr, __valid, __LINE__);                      \
+    };
+#define rasserts(expr)                                                         \
+    {                                                                          \
+        int __valid = expr ? 1 : 0;                                            \
+        rtest_test_true_silent(#expr, __valid, __LINE__);                      \
+    };
+#define rtest_false(expr)                                                      \
+    rprintf(" [%s]\t%s\t\n", expr == 0 ? "OK" : "NOK", #expr);                 \
+    assert_count++;                                                            \
+    assert(#expr);
+#define rtest_skip(expr) rtest_test_skip(#expr, __LINE__);
+
+FILE *rtest_create_file(char *path, char *content) {
+    FILE *fd = fopen(path, "wb");
+
+    char c;
+    int index = 0;
+
+    while ((c = content[index]) != 0) {
+        fputc(c, fd);
+        index++;
+    }
+    fclose(fd);
+    fd = fopen(path, "rb");
+    return fd;
+}
+
+void rtest_delete_file(char *path) { unlink(path); }
+#endif
+
+char *rfcaptured = NULL;
+
+void rfcapture(FILE *f, char *buff, size_t size) {
+    rfcaptured = buff;
+    setvbuf(f, rfcaptured, _IOFBF, size);
+}
+void rfstopcapture(FILE *f) { setvbuf(f, 0, _IOFBF, 0); }
+
+bool _r_disable_stdout_toggle = false;
+
+FILE *_r_original_stdout = NULL;
+
+bool rr_enable_stdout() {
+    if (_r_disable_stdout_toggle)
+        return false;
+    if (!_r_original_stdout) {
+        stdout = fopen("/dev/null", "rb");
+        return false;
+    }
+    if (_r_original_stdout && _r_original_stdout != stdout) {
+        fclose(stdout);
+    }
+    stdout = _r_original_stdout;
+    return true;
+}
+bool rr_disable_stdout() {
+    if (_r_disable_stdout_toggle) {
+        return false;
+    }
+    if (_r_original_stdout == NULL) {
+        _r_original_stdout = stdout;
+    }
+    if (stdout == _r_original_stdout) {
+        stdout = fopen("/dev/null", "rb");
+        return true;
+    }
+    return false;
+}
+bool rr_toggle_stdout() {
+    if (!_r_original_stdout) {
+        rr_disable_stdout();
+        return true;
+    } else if (stdout != _r_original_stdout) {
+        rr_enable_stdout();
+        return true;
+    } else {
+        rr_disable_stdout();
+        return true;
+    }
+}
+
+typedef struct rprogressbar_t {
+    unsigned long current_value;
+    unsigned long min_value;
+    unsigned long max_value;
+    unsigned int length;
+    bool changed;
+    double percentage;
+    unsigned int width;
+    unsigned long draws;
+    FILE *fout;
+} rprogressbar_t;
+
+rprogressbar_t *rprogressbar_new(long min_value, long max_value,
+                                 unsigned int width, FILE *fout) {
+    rprogressbar_t *pbar = (rprogressbar_t *)malloc(sizeof(rprogressbar_t));
+    pbar->min_value = min_value;
+    pbar->max_value = max_value;
+    pbar->current_value = min_value;
+    pbar->width = width;
+    pbar->draws = 0;
+    pbar->length = 0;
+    pbar->changed = false;
+    pbar->fout = fout ? fout : stdout;
+    return pbar;
+}
+
+void rprogressbar_free(rprogressbar_t *pbar) { free(pbar); }
+
+void rprogressbar_draw(rprogressbar_t *pbar) {
+    if (!pbar->changed) {
+        return;
+    } else {
+        pbar->changed = false;
+    }
+    pbar->draws++;
+    char draws_text[22];
+    draws_text[0] = 0;
+    sprintf(draws_text, "%ld", pbar->draws);
+    char *draws_textp = draws_text;
+    // bool draws_text_len = strlen(draws_text);
+    char bar_begin_char = ' ';
+    char bar_progress_char = ' ';
+    char bar_empty_char = ' ';
+    char bar_end_char = ' ';
+    char content[4096] = {0};
+    char bar_content[1024];
+    char buff[2048] = {0};
+    bar_content[0] = '\r';
+    bar_content[1] = bar_begin_char;
+    unsigned int index = 2;
+    for (unsigned long i = 0; i < pbar->length; i++) {
+        if (*draws_textp) {
+            bar_content[index] = *draws_textp;
+            draws_textp++;
+        } else {
+            bar_content[index] = bar_progress_char;
+        }
+        index++;
+    }
+    char infix[] = "\033[0m";
+    for (unsigned long i = 0; i < strlen(infix); i++) {
+        bar_content[index] = infix[i];
+        index++;
+    }
+    for (unsigned long i = 0; i < pbar->width - pbar->length; i++) {
+        bar_content[index] = bar_empty_char;
+        index++;
+    }
+    bar_content[index] = bar_end_char;
+    bar_content[index + 1] = '\0';
+    sprintf(buff, "\033[43m%s\033[0m \033[33m%.2f%%\033[0m ", bar_content,
+            pbar->percentage * 100);
+    strcat(content, buff);
+    if (pbar->width == pbar->length) {
+        strcat(content, "\r");
+        for (unsigned long i = 0; i < pbar->width + 10; i++) {
+            strcat(content, " ");
+        }
+        strcat(content, "\r");
+    }
+    fprintf(pbar->fout, "%s", content);
+    fflush(pbar->fout);
+}
+
+bool rprogressbar_update(rprogressbar_t *pbar, unsigned long value) {
+    if (value == pbar->current_value) {
+        return false;
+    }
+    pbar->current_value = value;
+    pbar->percentage = (double)pbar->current_value /
+                       (double)(pbar->max_value - pbar->min_value);
+    unsigned long new_length = (unsigned long)(pbar->percentage * pbar->width);
+    pbar->changed = new_length != pbar->length;
+    if (pbar->changed) {
+        pbar->length = new_length;
+        rprogressbar_draw(pbar);
+        return true;
+    }
+    return false;
+}
+
+size_t rreadline(char *data, size_t len, bool strip_ln) {
+    __attribute__((unused)) char *unused = fgets(data, len, stdin);
+    size_t length = strlen(data);
+    if (length && strip_ln)
+        data[length - 1] = 0;
+    return length;
+}
+
+void rlib_test_progressbar() {
+    rtest_banner("Progress bar");
+    rprogressbar_t *pbar = rprogressbar_new(0, 1000, 10, stderr);
+    rprogressbar_draw(pbar);
+    // No draws executed, nothing to show
+    rassert(pbar->draws == 0);
+    rprogressbar_update(pbar, 500);
+    rassert(pbar->percentage == 0.5);
+    rprogressbar_update(pbar, 500);
+    rprogressbar_update(pbar, 501);
+    rprogressbar_update(pbar, 502);
+    // Should only have drawn one time since value did change, but percentage
+    // did not
+    rassert(pbar->draws == 1);
+    // Changed is false because update function calls draw
+    rassert(pbar->changed == false);
+    rprogressbar_update(pbar, 777);
+    rassert(pbar->percentage == 0.777);
+    rprogressbar_update(pbar, 1000);
+    rassert(pbar->percentage == 1);
+}
+
+#endif
+
+#define RBENCH(times, action)                                                  \
+    {                                                                          \
+        unsigned long utimes = (unsigned long)times;                           \
+        nsecs_t start = nsecs();                                               \
+        for (unsigned long i = 0; i < utimes; i++) {                           \
+            {                                                                  \
+                action;                                                        \
+            }                                                                  \
+        }                                                                      \
+        nsecs_t end = nsecs();                                                 \
+        printf("%s\n", format_time(end - start));                              \
+    }
+
+#define RBENCHP(times, action)                                                 \
+    {                                                                          \
+        printf("\n");                                                          \
+        nsecs_t start = nsecs();                                               \
+        unsigned int prev_percentage = 0;                                      \
+        unsigned long utimes = (unsigned long)times;                           \
+        for (unsigned long i = 0; i < utimes; i++) {                           \
+            unsigned int percentage =                                          \
+                ((long double)i / (long double)times) * 100;                   \
+            int percentage_changed = percentage != prev_percentage;            \
+            __attribute__((unused)) int first = i == 0;                        \
+            __attribute__((unused)) int last = i == utimes - 1;                \
+            { action; };                                                       \
+            if (percentage_changed) {                                          \
+                printf("\r%d%%", percentage);                                  \
+                fflush(stdout);                                                \
+                                                                               \
+                prev_percentage = percentage;                                  \
+            }                                                                  \
+        }                                                                      \
+        nsecs_t end = nsecs();                                                 \
+        printf("\r%s\n", format_time(end - start));                            \
+    }
+
+struct rbench_t;
+
+typedef struct rbench_function_t {
+#ifdef __cplusplus
+    void (*call)();
+#else
+    void(*call);
+#endif
+    char name[256];
+    char group[256];
+    void *arg;
+    void *data;
+    bool first;
+    bool last;
+    int argc;
+    unsigned long times_executed;
+
+    nsecs_t average_execution_time;
+    nsecs_t total_execution_time;
+} rbench_function_t;
+
+typedef struct rbench_t {
+    unsigned int function_count;
+    rbench_function_t functions[100];
+    rbench_function_t *current;
+    rprogressbar_t *progress_bar;
+    bool show_progress;
+    int winner;
+    bool stdout;
+    unsigned long times;
+    bool silent;
+    nsecs_t execution_time;
+#ifdef __cplusplus
+    void (*add_function)(struct rbench_t *r, const char *name,
+                         const char *group, void (*)());
+#else
+    void (*add_function)(struct rbench_t *r, const char *name,
+                         const char *group, void *);
+#endif
+    void (*rbench_reset)(struct rbench_t *r);
+    struct rbench_t *(*execute)(struct rbench_t *r, long times);
+    struct rbench_t *(*execute1)(struct rbench_t *r, long times, void *arg1);
+    struct rbench_t *(*execute2)(struct rbench_t *r, long times, void *arg1,
+                                 void *arg2);
+    struct rbench_t *(*execute3)(struct rbench_t *r, long times, void *arg1,
+                                 void *arg2, void *arg3);
+
+} rbench_t;
+
+FILE *_rbench_stdout = NULL;
+FILE *_rbench_stdnull = NULL;
+
+void rbench_toggle_stdout(rbench_t *r) {
+    if (!r->stdout) {
+        if (_rbench_stdout == NULL) {
+            _rbench_stdout = stdout;
+        }
+        if (_rbench_stdnull == NULL) {
+            _rbench_stdnull = fopen("/dev/null", "wb");
+        }
+        if (stdout == _rbench_stdout) {
+            stdout = _rbench_stdnull;
+        } else {
+            stdout = _rbench_stdout;
+        }
+    }
+}
+void rbench_restore_stdout(rbench_t *r) {
+    if (r->stdout)
+        return;
+    if (_rbench_stdout) {
+        stdout = _rbench_stdout;
+    }
+    if (_rbench_stdnull) {
+        fclose(_rbench_stdnull);
+        _rbench_stdnull = NULL;
+    }
+}
+
+rbench_t *rbench_new();
+
+rbench_t *_rbench = NULL;
+rbench_function_t *rbf;
+rbench_t *rbench() {
+    if (_rbench == NULL) {
+        _rbench = rbench_new();
+    }
+    return _rbench;
+}
+
+typedef void *(*rbench_call)();
+typedef void *(*rbench_call1)(void *);
+typedef void *(*rbench_call2)(void *, void *);
+typedef void *(*rbench_call3)(void *, void *, void *);
+
+#ifdef __cplusplus
+void rbench_add_function(rbench_t *rp, const char *name, const char *group,
+                         void (*call)()) {
+#else
+void rbench_add_function(rbench_t *rp, const char *name, const char *group,
+                         void *call) {
+#endif
+    rbench_function_t *f = &rp->functions[rp->function_count];
+    rp->function_count++;
+    f->average_execution_time = 0;
+    f->total_execution_time = 0;
+    f->times_executed = 0;
+    f->call = call;
+    strcpy(f->name, name);
+    strcpy(f->group, group);
+}
+
+void rbench_reset_function(rbench_function_t *f) {
+    f->average_execution_time = 0;
+    f->times_executed = 0;
+    f->total_execution_time = 0;
+}
+
+void rbench_reset(rbench_t *rp) {
+    for (unsigned int i = 0; i < rp->function_count; i++) {
+        rbench_reset_function(&rp->functions[i]);
+    }
+}
+int rbench_get_winner_index(rbench_t *r) {
+    int winner = 0;
+    nsecs_t time = 0;
+    for (unsigned int i = 0; i < r->function_count; i++) {
+        if (time == 0 || r->functions[i].total_execution_time < time) {
+            winner = i;
+            time = r->functions[i].total_execution_time;
+        }
+    }
+    return winner;
+}
+bool rbench_was_last_function(rbench_t *r) {
+    for (unsigned int i = 0; i < r->function_count; i++) {
+        if (i == r->function_count - 1 && r->current == &r->functions[i])
+            return true;
+    }
+    return false;
+}
+
+rbench_function_t *rbench_execute_prepare(rbench_t *r, int findex, long times,
+                                          int argc) {
+    rbench_toggle_stdout(r);
+    if (findex == 0) {
+        r->execution_time = 0;
+    }
+    rbench_function_t *rf = &r->functions[findex];
+    rf->argc = argc;
+    rbf = rf;
+    r->current = rf;
+    if (r->show_progress)
+        r->progress_bar = rprogressbar_new(0, times, 20, stderr);
+    r->times = times;
+    // printf("   %s:%s gets executed for %ld times with %d
+    // arguments.\n",rf->group, rf->name, times,argc);
+    rbench_reset_function(rf);
+
+    return rf;
+}
+void rbench_execute_finish(rbench_t *r) {
+    rbench_toggle_stdout(r);
+    if (r->progress_bar) {
+        free(r->progress_bar);
+        r->progress_bar = NULL;
+    }
+    r->current->average_execution_time =
+        r->current->total_execution_time / r->current->times_executed;
+    ;
+    // printf("   %s:%s finished executing in
+    // %s\n",r->current->group,r->current->name,
+    // format_time(r->current->total_execution_time));
+    // rbench_show_results_function(r->current);
+    if (rbench_was_last_function(r)) {
+        rbench_restore_stdout(r);
+        unsigned int winner_index = rbench_get_winner_index(r);
+        r->winner = winner_index + 1;
+        if (!r->silent)
+            rprintgf(stderr, "Benchmark results:\n");
+        nsecs_t total_time = 0;
+
+        for (unsigned int i = 0; i < r->function_count; i++) {
+            rbf = &r->functions[i];
+            total_time += rbf->total_execution_time;
+            bool is_winner = winner_index == i;
+            if (is_winner) {
+                if (!r->silent)
+                    rprintyf(stderr, " > %s:%s:%s\n",
+                             format_time(rbf->total_execution_time), rbf->group,
+                             rbf->name);
+            } else {
+                if (!r->silent)
+                    rprintbf(stderr, "   %s:%s:%s\n",
+                             format_time(rbf->total_execution_time), rbf->group,
+                             rbf->name);
+            }
+        }
+        if (!r->silent)
+            rprintgf(stderr, "Total execution time: %s\n",
+                     format_time(total_time));
+    }
+    rbench_restore_stdout(r);
+    rbf = NULL;
+    r->current = NULL;
+}
+struct rbench_t *rbench_execute(rbench_t *r, long times) {
+
+    for (unsigned int i = 0; i < r->function_count; i++) {
+
+        rbench_function_t *f = rbench_execute_prepare(r, i, times, 0);
+        rbench_call c = (rbench_call)f->call;
+        nsecs_t start = nsecs();
+        f->first = true;
+        c();
+        f->first = false;
+        f->last = false;
+        f->times_executed++;
+        for (int j = 1; j < times; j++) {
+            c();
+            f->times_executed++;
+            f->last = f->times_executed == r->times - 1;
+            if (r->progress_bar) {
+                rprogressbar_update(r->progress_bar, f->times_executed);
+            }
+        }
+        f->total_execution_time = nsecs() - start;
+        r->execution_time += f->total_execution_time;
+        rbench_execute_finish(r);
+    }
+    return r;
+}
+
+struct rbench_t *rbench_execute1(rbench_t *r, long times, void *arg1) {
+
+    for (unsigned int i = 0; i < r->function_count; i++) {
+        rbench_function_t *f = rbench_execute_prepare(r, i, times, 1);
+        rbench_call1 c = (rbench_call1)f->call;
+        nsecs_t start = nsecs();
+        f->first = true;
+        c(arg1);
+        f->first = false;
+        f->last = false;
+        f->times_executed++;
+        for (int j = 1; j < times; j++) {
+            c(arg1);
+            f->times_executed++;
+            f->last = f->times_executed == r->times - 1;
+            if (r->progress_bar) {
+                rprogressbar_update(r->progress_bar, f->times_executed);
+            }
+        }
+        f->total_execution_time = nsecs() - start;
+        r->execution_time += f->total_execution_time;
+        rbench_execute_finish(r);
+    }
+    return r;
+}
+
+struct rbench_t *rbench_execute2(rbench_t *r, long times, void *arg1,
+                                 void *arg2) {
+
+    for (unsigned int i = 0; i < r->function_count; i++) {
+        rbench_function_t *f = rbench_execute_prepare(r, i, times, 2);
+        rbench_call2 c = (rbench_call2)f->call;
+        nsecs_t start = nsecs();
+        f->first = true;
+        c(arg1, arg2);
+        f->first = false;
+        f->last = false;
+        f->times_executed++;
+        for (int j = 1; j < times; j++) {
+            c(arg1, arg2);
+            f->times_executed++;
+            f->last = f->times_executed == r->times - 1;
+            if (r->progress_bar) {
+                rprogressbar_update(r->progress_bar, f->times_executed);
+            }
+        }
+        f->total_execution_time = nsecs() - start;
+        r->execution_time += f->total_execution_time;
+        rbench_execute_finish(r);
+    }
+    return r;
+}
+
+struct rbench_t *rbench_execute3(rbench_t *r, long times, void *arg1,
+                                 void *arg2, void *arg3) {
+
+    for (unsigned int i = 0; i < r->function_count; i++) {
+        rbench_function_t *f = rbench_execute_prepare(r, i, times, 3);
+
+        rbench_call3 c = (rbench_call3)f->call;
+        nsecs_t start = nsecs();
+        f->first = true;
+        c(arg1, arg2, arg3);
+        f->first = false;
+        f->last = false;
+        f->times_executed++;
+        for (int j = 1; j < times; j++) {
+            c(arg1, arg2, arg3);
+            f->times_executed++;
+            f->last = f->times_executed == r->times - 1;
+            if (r->progress_bar) {
+                rprogressbar_update(r->progress_bar, f->times_executed);
+            }
+        }
+        f->total_execution_time = nsecs() - start;
+        rbench_execute_finish(r);
+    }
+    return r;
+}
+
+rbench_t *rbench_new() {
+
+    rbench_t *r = (rbench_t *)malloc(sizeof(rbench_t));
+    memset(r, 0, sizeof(rbench_t));
+    r->add_function = rbench_add_function;
+    r->rbench_reset = rbench_reset;
+    r->execute1 = rbench_execute1;
+    r->execute2 = rbench_execute2;
+    r->execute3 = rbench_execute3;
+    r->execute = rbench_execute;
+    r->stdout = true;
+    r->silent = false;
+    r->winner = 0;
+    r->show_progress = true;
+    return r;
+}
+void rbench_free(rbench_t *r) { free(r); }
+
+#endif
+bool check_lcov() {
+    char buffer[1024 * 64];
+    FILE *fp;
+    fp = popen("lcov --help", "r");
+    if (fp == NULL) {
+        return false;
+    }
+    if (fgets(buffer, sizeof(buffer), fp) == NULL) {
+        return false;
+    }
+    pclose(fp);
+    return strstr(buffer, "lcov: not found") ? false : true;
+}
+
+int rcov_main(int argc, char *argv[]) {
+    if (argc < 2) {
+        printf("Usage: [source.c]\n");
+        return 1;
+    }
+    char argstr[4096] = {0};
+    for (int i = 2; i < argc; i++) {
+        strcat(argstr, argv[i]);
+        strcat(argstr, " ");
+    }
+    if (!check_lcov()) {
+
+        printf(
+            "lcov is not installed. Please execute `sudo apt install lcov`.\n");
+        return 1;
+    }
+    char *source_file = argv[1];
+    char *commands[] = {
+        "rm -f *.gcda   2>/dev/null",
+        "rm -f *.gcno   2>/dev/null",
+        "rm -f %s.coverage.info   2>/dev/null",
+        "gcc -pg -fprofile-arcs -ftest-coverage -g -o %s_coverage.o %s",
+        "./%s_coverage.o",
+        "lcov --capture --directory . --output-file %s.coverage.info",
+        "genhtml %s.coverage.info --output-directory /tmp/%s.coverage",
+        "rm -f *.gcda   2>/dev/null",
+        "rm -f *.gcno   2>/dev/null",
+        "rm -f %s.coverage.info   2>/dev/null", //"cat gmon.out",
+
+        "gprof %s_coverage.o gmon.out > output.rcov_analysis",
+
+        "rm -f gmon.out",
+        "cat output.rcov_analysis",
+        "rm output.rcov_analysis",
+        "rm -f %s_coverage.o",
+
+        "google-chrome /tmp/%s.coverage/index.html"};
+    uint command_count = sizeof(commands) / sizeof(commands[0]);
+    RBENCH(1,{
+        for (uint i = 0; i < command_count; i++) {
+            char *formatted_command = sbuf("");
+            sprintf(formatted_command, commands[i], source_file, source_file);
+            // printf("%s\n", formatted_command);
+            if (formatted_command[0] == '.' && formatted_command[1] == '/') {
+                strcat(formatted_command, " ");
+                strcat(formatted_command, argstr);
+            }
+
+            if (system(formatted_command)) {
+                printf("`%s` returned non-zero code.\n", formatted_command);
+            }
+        });
+    }
+    return 0;
+}
+#endif
+
+#ifndef RHTTP_H
+#define RHTTP_H
 #ifndef RLIB_RIO
 #define RLIB_RIO
 #include <dirent.h>
@@ -330,155 +2040,6 @@ size_t rfile_readb(char *path, void *data, size_t size) {
 }
 
 #endif
-
-#ifndef RLIB_TIME
-#define RLIB_TIME
-
-#ifndef _POSIX_C_SOURCE_199309L
-
-#define _POSIX_C_SOURCE_199309L
-#endif
-
-#include <sys/time.h>
-
-#include <time.h>
-
-#include <errno.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-#ifndef CLOCK_MONOTONIC
-#define CLOCK_MONOTONIC 1
-#endif
-
-typedef uint64_t nsecs_t;
-void nsleep(nsecs_t nanoseconds);
-
-void tick() { nsleep(1); }
-
-typedef unsigned long long msecs_t;
-
-nsecs_t nsecs() {
-    unsigned int lo, hi;
-    __asm__ volatile("rdtsc" : "=a"(lo), "=d"(hi));
-    return ((uint64_t)hi << 32) | lo;
-}
-
-msecs_t rnsecs_to_msecs(nsecs_t nsecs) { return nsecs / 1000 / 1000; }
-
-nsecs_t rmsecs_to_nsecs(msecs_t msecs) { return msecs * 1000 * 1000; }
-
-msecs_t usecs() {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (long long)(tv.tv_sec) * 1000000 + (long long)(tv.tv_usec);
-}
-
-msecs_t msecs() {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (long long)(tv.tv_sec) * 1000 + (tv.tv_usec / 1000);
-}
-char *msecs_strs(msecs_t ms) {
-    static char str[22];
-    str[0] = 0;
-    sprintf(str, "%f", ms * 0.001);
-    for (int i = strlen(str); i > 0; i--) {
-        if (str[i] > '0')
-            break;
-        str[i] = 0;
-    }
-    return str;
-}
-char *msecs_strms(msecs_t ms) {
-    static char str[22];
-    str[0] = 0;
-    sprintf(str, "%lld", ms);
-    return str;
-}
-char *msecs_str(long long ms) {
-    static char result[30];
-    result[0] = 0;
-    if (ms > 999) {
-        char *s = msecs_strs(ms);
-        sprintf(result, "%ss", s);
-    } else {
-        char *s = msecs_strms(ms);
-        sprintf(result, "%sMs", s);
-    }
-    return result;
-}
-
-void nsleep(nsecs_t nanoseconds) {
-    long seconds = 0;
-    int factor = 0;
-    while (nanoseconds > 1000000000) {
-        factor++;
-        nanoseconds = nanoseconds / 10;
-    }
-    if (factor) {
-        seconds = 1;
-        factor--;
-        while (factor) {
-            seconds = seconds * 10;
-            factor--;
-        }
-    }
-
-    struct timespec req = {seconds, nanoseconds};
-    struct timespec rem;
-
-    nanosleep(&req, &rem);
-}
-
-void ssleep(double s) {
-    long nanoseconds = (long)(1000000000 * s);
-
-    // long seconds = 0;
-
-    // struct timespec req = {seconds, nanoseconds};
-    // struct timespec rem;
-
-    nsleep(nanoseconds);
-}
-void msleep(long miliseonds) {
-    long nanoseconds = miliseonds * 1000000;
-    nsleep(nanoseconds);
-}
-
-char *format_time(int64_t nanoseconds) {
-    static char output[1024];
-    size_t output_size = sizeof(output);
-    output[0] = 0;
-    if (nanoseconds < 1000) {
-        // Less than 1 microsecond
-        snprintf(output, output_size, "%ldns", nanoseconds);
-    } else if (nanoseconds < 1000000) {
-        // Less than 1 millisecond
-        double us = nanoseconds / 1000.0;
-        snprintf(output, output_size, "%.2fµs", us);
-    } else if (nanoseconds < 1000000000) {
-        // Less than 1 second
-        double ms = nanoseconds / 1000000.0;
-        snprintf(output, output_size, "%.2fms", ms);
-    } else {
-        // 1 second or more
-        double s = nanoseconds / 1000000000.0;
-        if (s > 60 * 60) {
-            s = s / 60 / 60;
-            snprintf(output, output_size, "%.2fh", s);
-        } else if (s > 60) {
-            s = s / 60;
-            snprintf(output, output_size, "%.2fm", s);
-        } else {
-            snprintf(output, output_size, "%.2fs", s);
-        }
-    }
-    return output;
-}
-
-#endif
-
 #include <arpa/inet.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -1081,887 +2642,6 @@ char *rhttp_client_get(const char *host, int port, const char *path) {
 
 #ifndef RJSON_H
 #define RJSON_H
-#ifndef RSTRING_H
-#define RSTRING_H
-#ifndef RMATH_H
-#define RMATH_H
-#include <math.h>
-
-#ifndef ceil
-double ceil(double x) {
-    if (x == (double)(long long)x) {
-        return x;
-    } else if (x > 0.0) {
-        return (double)(long long)x + 1.0;
-    } else {
-        return (double)(long long)x;
-    }
-}
-#endif
-
-#ifndef floor
-double floor(double x) {
-    if (x >= 0.0) {
-        return (double)(long long)x;
-    } else {
-        double result = (double)(long long)x;
-        return (result == x) ? result : result - 1.0;
-    }
-}
-#endif
-
-#ifndef modf
-double modf(double x, double *iptr) {
-    double int_part = (x >= 0.0) ? floor(x) : ceil(x);
-    *iptr = int_part;
-    return x - int_part;
-}
-#endif
-#endif
-#include <ctype.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-
-char *rstrtimestamp() {
-    time_t current_time;
-    time(&current_time);
-    struct tm *local_time = localtime(&current_time);
-    static char time_string[100];
-    time_string[0] = 0;
-    strftime(time_string, sizeof(time_string), "%Y-%m-%d %H:%M:%S", local_time);
-    return time_string;
-}
-
-ulonglong _r_generate_key_current = 0;
-
-char *_rcat_int_int(int a, int b) {
-    static char res[20];
-    res[0] = 0;
-    sprintf(res, "%d%d", a, b);
-    return res;
-}
-char *_rcat_int_double(int a, double b) {
-    static char res[20];
-    res[0] = 0;
-    sprintf(res, "%d%f", a, b);
-    return res;
-}
-
-char *_rcat_charp_int(char *a, int b) {
-    char res[20];
-    sprintf(res, "%c", b);
-    return strcat(a, res);
-}
-
-char *_rcat_charp_double(char *a, double b) {
-    char res[20];
-    sprintf(res, "%f", b);
-    return strcat(a, res);
-}
-
-char *_rcat_charp_charp(char *a, char *b) {
-    ;
-    return strcat(a, b);
-}
-char *_rcat_charp_char(char *a, char b) {
-    char extra[] = {b, 0};
-    return strcat(a, extra);
-}
-char *_rcat_charp_bool(char *a, bool *b) {
-    if (b) {
-        return strcat(a, "true");
-    } else {
-        return strcat(a, "false");
-    }
-}
-
-#define rcat(x, y)                                                             \
-    _Generic((x),                                                              \
-        int: _Generic((y),                                                     \
-        int: _rcat_int_int,                                                    \
-        double: _rcat_int_double,                                              \
-        char *: _rcat_charp_charp),                                            \
-        char *: _Generic((y),                                                  \
-        int: _rcat_charp_int,                                                  \
-        double: _rcat_charp_double,                                            \
-        char *: _rcat_charp_charp,                                             \
-        char: _rcat_charp_char,                                                \
-        bool: _rcat_charp_bool))((x), (y))
-
-char *rgenerate_key() {
-    _r_generate_key_current++;
-    static char key[100];
-    key[0] = 0;
-    sprintf(key, "%lld", _r_generate_key_current);
-    return key;
-}
-
-char *rformat_number(long long lnumber) {
-    static char formatted[1024];
-
-    char number[1024] = {0};
-    sprintf(number, "%lld", lnumber);
-
-    int len = strlen(number);
-    int commas_needed = (len - 1) / 3;
-    int new_len = len + commas_needed;
-
-    formatted[new_len] = '\0';
-
-    int i = len - 1;
-    int j = new_len - 1;
-    int count = 0;
-
-    while (i >= 0) {
-        if (count == 3) {
-            formatted[j--] = '.';
-            count = 0;
-        }
-        formatted[j--] = number[i--];
-        count++;
-    }
-    if (lnumber < 0)
-        formatted[j--] = '-';
-    return formatted;
-}
-
-bool rstrextractdouble(char *str, double *d1) {
-    for (size_t i = 0; i < strlen(str); i++) {
-        if (isdigit(str[i])) {
-            str += i;
-            sscanf(str, "%lf", d1);
-            return true;
-        }
-    }
-    return false;
-}
-
-void rstrstripslashes(const char *content, char *result) {
-    size_t content_length = strlen((char *)content);
-    unsigned int index = 0;
-    for (unsigned int i = 0; i < content_length; i++) {
-        char c = content[i];
-        if (c == '\\') {
-            i++;
-            c = content[i];
-            if (c == 'r') {
-                c = '\r';
-            } else if (c == 't') {
-                c = '\t';
-            } else if (c == 'b') {
-                c = '\b';
-            } else if (c == 'n') {
-                c = '\n';
-            } else if (c == 'f') {
-                c = '\f';
-            } else if (c == '\\') {
-                // No need tbh
-                c = '\\';
-            }
-        }
-        result[index] = c;
-        index++;
-    }
-    result[index] = 0;
-}
-
-int rstrstartswith(const char *s1, const char *s2) {
-    if (s1 == NULL)
-        return s2 == NULL;
-    if (s1 == s2 || s2 == NULL || *s2 == 0)
-        return true;
-    size_t len_s2 = strlen(s2);
-    size_t len_s1 = strlen(s1);
-    if (len_s2 > len_s1)
-        return false;
-    return !strncmp(s1, s2, len_s2);
-}
-
-bool rstrendswith(const char *s1, const char *s2) {
-    if (s1 == NULL)
-        return s2 == NULL;
-    if (s1 == s2 || s2 == NULL || *s2 == 0)
-        return true;
-    size_t len_s2 = strlen(s2);
-    size_t len_s1 = strlen(s1);
-    if (len_s2 > len_s1) {
-        return false;
-    }
-    s1 += len_s1 - len_s2;
-    return !strncmp(s1, s2, len_s2);
-}
-
-void rstraddslashes(const char *content, char *result) {
-    size_t content_length = strlen((char *)content);
-    unsigned int index = 0;
-    for (unsigned int i = 0; i < content_length; i++) {
-        if (content[i] == '\r') {
-            result[index] = '\\';
-            index++;
-            result[index] = 'r';
-            index++;
-            continue;
-        } else if (content[i] == '\t') {
-            result[index] = '\\';
-            index++;
-            result[index] = 't';
-            index++;
-            continue;
-        } else if (content[i] == '\n') {
-            result[index] = '\\';
-            index++;
-            result[index] = 'n';
-            index++;
-            continue;
-        } else if (content[i] == '\\') {
-            result[index] = '\\';
-            index++;
-            result[index] = '\\';
-            index++;
-            continue;
-        } else if (content[i] == '\b') {
-            result[index] = '\\';
-            index++;
-            result[index] = 'b';
-            index++;
-            continue;
-        } else if (content[i] == '\f') {
-            result[index] = '\\';
-            index++;
-            result[index] = 'f';
-            index++;
-            continue;
-        }
-        result[index] = content[i];
-        index++;
-    }
-    result[index] = 0;
-}
-
-int rstrip_whitespace(char *input, char *output) {
-    output[0] = 0;
-    int count = 0;
-    size_t len = strlen(input);
-    for (size_t i = 0; i < len; i++) {
-        if (input[i] == '\t' || input[i] == ' ' || input[i] == '\n') {
-            continue;
-        }
-        count = i;
-        size_t j;
-        for (j = 0; j < len - count; j++) {
-            output[j] = input[j + count];
-        }
-        output[j] = '\0';
-        break;
-    }
-    return count;
-}
-
-/*
- * Converts "pony" to \"pony\". Addslashes does not
- * Converts "pony\npony" to "pony\n"
- * 			    "pony"
- */
-void rstrtocstring(const char *input, char *output) {
-    int index = 0;
-    char clean_input[strlen(input) * 2];
-    char *iptr = clean_input;
-    rstraddslashes(input, clean_input);
-    output[index] = '"';
-    index++;
-    while (*iptr) {
-        if (*iptr == '"') {
-            output[index] = '\\';
-            output++;
-        } else if (*iptr == '\\' && *(iptr + 1) == 'n') {
-            output[index] = '\\';
-            output++;
-            output[index] = 'n';
-            output++;
-            output[index] = '"';
-            output++;
-            output[index] = '\n';
-            output++;
-            output[index] = '"';
-            output++;
-            iptr++;
-            iptr++;
-            continue;
-        }
-        output[index] = *iptr;
-        index++;
-        iptr++;
-    }
-    if (output[index - 1] == '"' && output[index - 2] == '\n') {
-        output[index - 1] = 0;
-    } else if (output[index - 1] != '"') {
-        output[index] = '"';
-        output[index + 1] = 0;
-    }
-}
-
-size_t rstrtokline(char *input, char *output, size_t offset, bool strip_nl) {
-
-    size_t len = strlen(input);
-    output[0] = 0;
-    size_t new_offset = 0;
-    size_t j;
-    size_t index = 0;
-
-    for (j = offset; j < len + offset; j++) {
-        if (input[j] == 0) {
-            index++;
-            break;
-        }
-        index = j - offset;
-        output[index] = input[j];
-
-        if (output[index] == '\n') {
-            index++;
-            break;
-        }
-    }
-    output[index] = 0;
-
-    new_offset = index + offset;
-
-    if (strip_nl) {
-        if (output[index - 1] == '\n') {
-            output[index - 1] = 0;
-        }
-    }
-    return new_offset;
-}
-
-void rstrjoin(char **lines, size_t count, char *glue, char *output) {
-    output[0] = 0;
-    for (size_t i = 0; i < count; i++) {
-        strcat(output, lines[i]);
-        if (i != count - 1)
-            strcat(output, glue);
-    }
-}
-
-int rstrsplit(char *input, char **lines) {
-    int index = 0;
-    size_t offset = 0;
-    char line[1024];
-    while ((offset = rstrtokline(input, line, offset, false)) && *line) {
-        if (!*line) {
-            break;
-        }
-        lines[index] = (char *)malloc(strlen(line) + 1);
-        strcpy(lines[index], line);
-        index++;
-    }
-    return index;
-}
-
-bool rstartswithnumber(char *str) { return isdigit(str[0]); }
-
-void rstrmove2(char *str, unsigned int start, size_t length,
-               unsigned int new_pos) {
-    size_t str_len = strlen(str);
-    char new_str[str_len + 1];
-    memset(new_str, 0, str_len);
-    if (start < new_pos) {
-        strncat(new_str, str + length, str_len - length - start);
-        new_str[new_pos] = 0;
-        strncat(new_str, str + start, length);
-        strcat(new_str, str + strlen(new_str));
-        memset(str, 0, str_len);
-        strcpy(str, new_str);
-    } else {
-        strncat(new_str, str + start, length);
-        strncat(new_str, str, start);
-        strncat(new_str, str + start + length, str_len - start);
-        memset(str, 0, str_len);
-        strcpy(str, new_str);
-    }
-    new_str[str_len] = 0;
-}
-
-void rstrmove(char *str, unsigned int start, size_t length,
-              unsigned int new_pos) {
-    size_t str_len = strlen(str);
-    if (start >= str_len || new_pos >= str_len || start + length > str_len) {
-        return;
-    }
-    char temp[length + 1];
-    strncpy(temp, str + start, length);
-    temp[length] = 0;
-    if (start < new_pos) {
-        memmove(str + start, str + start + length, new_pos - start);
-        strncpy(str + new_pos - length + 1, temp, length);
-    } else {
-        memmove(str + new_pos + length, str + new_pos, start - new_pos);
-        strncpy(str + new_pos, temp, length);
-    }
-}
-
-int cmp_line(const void *left, const void *right) {
-    char *l = *(char **)left;
-    char *r = *(char **)right;
-
-    char lstripped[strlen(l) + 1];
-    rstrip_whitespace(l, lstripped);
-    char rstripped[strlen(r) + 1];
-    rstrip_whitespace(r, rstripped);
-
-    double d1, d2;
-    bool found_d1 = rstrextractdouble(lstripped, &d1);
-    bool found_d2 = rstrextractdouble(rstripped, &d2);
-
-    if (found_d1 && found_d2) {
-        double frac_part1;
-        double int_part1;
-        frac_part1 = modf(d1, &int_part1);
-        double frac_part2;
-        double int_part2;
-        frac_part2 = modf(d2, &int_part2);
-        if (d1 == d2) {
-            return strcmp(lstripped, rstripped);
-        } else if (frac_part1 && frac_part2) {
-            return d1 > d2;
-        } else if (frac_part1 && !frac_part2) {
-            return 1;
-        } else if (frac_part2 && !frac_part1) {
-            return -1;
-        } else if (!frac_part1 && !frac_part2) {
-            return d1 > d2;
-        }
-    }
-    return 0;
-}
-
-int rstrsort(char *input, char *output) {
-    char **lines = (char **)malloc(strlen(input) * 10);
-    int line_count = rstrsplit(input, lines);
-    qsort(lines, line_count, sizeof(char *), cmp_line);
-    rstrjoin(lines, line_count, "", output);
-    for (int i = 0; i < line_count; i++) {
-        free(lines[i]);
-    }
-    free(lines);
-    return line_count;
-}
-
-#endif
-
-#ifndef RTEST_H
-#define RTEST_H
-#include <stdbool.h>
-#include <stdio.h>
-#include <unistd.h>
-#ifndef RPRINT_H
-#define RPRINT_H
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-
-long rpline_number = 0;
-nsecs_t rprtime = 0;
-
-int8_t _env_rdisable_colors = -1;
-bool _rprint_enable_colors = true;
-
-bool rprint_is_color_enabled() {
-    if (_env_rdisable_colors == -1) {
-        _env_rdisable_colors = getenv("RDISABLE_COLORS") != NULL;
-    }
-    if (_env_rdisable_colors) {
-        _rprint_enable_colors = false;
-    }
-    return _rprint_enable_colors;
-}
-
-void rprint_disable_colors() { _rprint_enable_colors = false; }
-void rprint_enable_colors() { _rprint_enable_colors = true; }
-void rprint_toggle_colors() { _rprint_enable_colors = !_rprint_enable_colors; }
-
-void rclear() { printf("\033[2J"); }
-
-void rprintpf(FILE *f, const char *prefix, const char *format, va_list args) {
-    char *pprefix = (char *)prefix;
-    char *pformat = (char *)format;
-    bool reset_color = false;
-    bool press_any_key = false;
-    char new_format[4096];
-    bool enable_color = rprint_is_color_enabled();
-    memset(new_format, 0, 4096);
-    int new_format_length = 0;
-    char temp[1000];
-    memset(temp, 0, 1000);
-    if (enable_color && pprefix[0]) {
-        strcat(new_format, pprefix);
-        new_format_length += strlen(pprefix);
-        reset_color = true;
-    }
-    while (true) {
-        if (pformat[0] == '\\' && pformat[1] == 'i') {
-            strcat(new_format, "\e[3m");
-            new_format_length += strlen("\e[3m");
-            reset_color = true;
-            pformat++;
-            pformat++;
-        } else if (pformat[0] == '\\' && pformat[1] == 'u') {
-            strcat(new_format, "\e[4m");
-            new_format_length += strlen("\e[4m");
-            reset_color = true;
-            pformat++;
-            pformat++;
-        } else if (pformat[0] == '\\' && pformat[1] == 'b') {
-            strcat(new_format, "\e[1m");
-            new_format_length += strlen("\e[1m");
-            reset_color = true;
-            pformat++;
-            pformat++;
-        } else if (pformat[0] == '\\' && pformat[1] == 'C') {
-            press_any_key = true;
-            rpline_number++;
-            pformat++;
-            pformat++;
-            reset_color = false;
-        } else if (pformat[0] == '\\' && pformat[1] == 'k') {
-            press_any_key = true;
-            rpline_number++;
-            pformat++;
-            pformat++;
-        } else if (pformat[0] == '\\' && pformat[1] == 'c') {
-            rpline_number++;
-            strcat(new_format, "\e[2J\e[H");
-            new_format_length += strlen("\e[2J\e[H");
-            pformat++;
-            pformat++;
-        } else if (pformat[0] == '\\' && pformat[1] == 'L') {
-            rpline_number++;
-            temp[0] = 0;
-            sprintf(temp, "%ld", rpline_number);
-            strcat(new_format, temp);
-            new_format_length += strlen(temp);
-            pformat++;
-            pformat++;
-        } else if (pformat[0] == '\\' && pformat[1] == 'l') {
-            rpline_number++;
-            temp[0] = 0;
-            sprintf(temp, "%.5ld", rpline_number);
-            strcat(new_format, temp);
-            new_format_length += strlen(temp);
-            pformat++;
-            pformat++;
-        } else if (pformat[0] == '\\' && pformat[1] == 'T') {
-            nsecs_t nsecs_now = nsecs();
-            nsecs_t end = rprtime ? nsecs_now - rprtime : 0;
-            temp[0] = 0;
-            sprintf(temp, "%s", format_time(end));
-            strcat(new_format, temp);
-            new_format_length += strlen(temp);
-            rprtime = nsecs_now;
-            pformat++;
-            pformat++;
-        } else if (pformat[0] == '\\' && pformat[1] == 't') {
-            rprtime = nsecs();
-            pformat++;
-            pformat++;
-        } else {
-            new_format[new_format_length] = *pformat;
-            new_format_length++;
-            if (!*pformat)
-                break;
-
-            // printf("%c",*pformat);
-            pformat++;
-        }
-    }
-    if (reset_color) {
-        strcat(new_format, "\e[0m");
-        new_format_length += strlen("\e[0m");
-    }
-
-    new_format[new_format_length] = 0;
-    vfprintf(f, new_format, args);
-
-    fflush(stdout);
-    if (press_any_key) {
-        nsecs_t s = nsecs();
-        fgetc(stdin);
-        rprtime += nsecs() - s;
-    }
-}
-
-void rprintp(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(stdout, "", format, args);
-    va_end(args);
-}
-
-void rprintf(FILE *f, const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(f, "", format, args);
-    va_end(args);
-}
-void rprint(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(stdout, "", format, args);
-    va_end(args);
-}
-#define printf rprint
-
-// Print line
-void rprintlf(FILE *f, const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(f, "\\l", format, args);
-    va_end(args);
-}
-void rprintl(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(stdout, "\\l", format, args);
-    va_end(args);
-}
-
-// Black
-void rprintkf(FILE *f, const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(f, "\e[30m", format, args);
-    va_end(args);
-}
-void rprintk(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(stdout, "\e[30m", format, args);
-    va_end(args);
-}
-
-// Red
-void rprintrf(FILE *f, const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(f, "\e[31m", format, args);
-    va_end(args);
-}
-void rprintr(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(stdout, "\e[31m", format, args);
-    va_end(args);
-}
-
-// Green
-void rprintgf(FILE *f, const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(f, "\e[32m", format, args);
-    va_end(args);
-}
-void rprintg(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(stdout, "\e[32m", format, args);
-    va_end(args);
-}
-
-// Yellow
-void rprintyf(FILE *f, const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(f, "\e[33m", format, args);
-    va_end(args);
-}
-void rprinty(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(stdout, "\e[33m", format, args);
-    va_end(args);
-}
-
-// Blue
-void rprintbf(FILE *f, const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(f, "\e[34m", format, args);
-    va_end(args);
-}
-
-void rprintb(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(stdout, "\e[34m", format, args);
-    va_end(args);
-}
-
-// Magenta
-void rprintmf(FILE *f, const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(f, "\e[35m", format, args);
-    va_end(args);
-}
-void rprintm(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(stdout, "\e[35m", format, args);
-    va_end(args);
-}
-
-// Cyan
-void rprintcf(FILE *f, const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(f, "\e[36m", format, args);
-    va_end(args);
-}
-void rprintc(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(stdout, "\e[36m", format, args);
-    va_end(args);
-}
-
-// White
-void rprintwf(FILE *f, const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(f, "\e[37m", format, args);
-    va_end(args);
-}
-void rprintw(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    rprintpf(stdout, "\e[37m", format, args);
-    va_end(args);
-}
-#endif
-#define debug(fmt, ...) printf("%s:%d: " fmt, __FILE__, __LINE__, __VA_ARGS__);
-
-char *rcurrent_banner;
-int rassert_count = 0;
-unsigned short rtest_is_first = 1;
-unsigned int rtest_fail_count = 0;
-
-int rtest_end(char *content) {
-    // Returns application exit code. 0 == success
-    printf("%s", content);
-    printf("\n@assertions: %d\n", rassert_count);
-    printf("@memory: %s\n", rmalloc_stats());
-
-    if (rmalloc_count != 0) {
-        printf("MEMORY ERROR\n");
-        return rtest_fail_count > 0;
-    }
-    return rtest_fail_count > 0;
-}
-
-void rtest_test_banner(char *content, char *file) {
-    if (rtest_is_first == 1) {
-        char delimiter[] = ".";
-        char *d = delimiter;
-        char f[2048];
-        strcpy(f, file);
-        printf("%s tests", strtok(f, d));
-        rtest_is_first = 0;
-        setvbuf(stdout, NULL, _IONBF, 0);
-    }
-    printf("\n - %s ", content);
-}
-
-bool rtest_test_true_silent(char *expr, int res, int line) {
-    rassert_count++;
-    if (res) {
-        return true;
-    }
-    rprintrf(stderr, "\nERROR on line %d: %s", line, expr);
-    rtest_fail_count++;
-    return false;
-}
-
-bool rtest_test_true(char *expr, int res, int line) {
-    rassert_count++;
-    if (res) {
-        fprintf(stdout, ".");
-        return true;
-    }
-    rprintrf(stderr, "\nERROR on line %d: %s", line, expr);
-    rtest_fail_count++;
-    return false;
-}
-bool rtest_test_false_silent(char *expr, int res, int line) {
-    return rtest_test_true_silent(expr, !res, line);
-}
-bool rtest_test_false(char *expr, int res, int line) {
-    return rtest_test_true(expr, !res, line);
-}
-void rtest_test_skip(char *expr, int line) {
-    rprintgf(stderr, "\n @skip(%s) on line %d\n", expr, line);
-}
-void rtest_test_assert(char *expr, int res, int line) {
-    if (rtest_test_true(expr, res, line)) {
-        return;
-    }
-    rtest_end("");
-    exit(40);
-}
-
-#define rtest_banner(content)                                                  \
-    rcurrent_banner = content;                                                 \
-    rtest_test_banner(content, __FILE__);
-#define rtest_true(expr) rtest_test_true(#expr, expr, __LINE__);
-#define rtest_assert(expr)                                                     \
-    {                                                                          \
-        int __valid = expr ? 1 : 0;                                            \
-        rtest_test_true(#expr, __valid, __LINE__);                             \
-    };                                                                         \
-    ;
-
-#define rassert(expr)                                                          \
-    {                                                                          \
-        int __valid = expr ? 1 : 0;                                            \
-        rtest_test_true(#expr, __valid, __LINE__);                             \
-    };                                                                         \
-    ;
-#define rtest_asserts(expr)                                                    \
-    {                                                                          \
-        int __valid = expr ? 1 : 0;                                            \
-        rtest_test_true_silent(#expr, __valid, __LINE__);                      \
-    };
-#define rasserts(expr)                                                         \
-    {                                                                          \
-        int __valid = expr ? 1 : 0;                                            \
-        rtest_test_true_silent(#expr, __valid, __LINE__);                      \
-    };
-#define rtest_false(expr)                                                      \
-    rprintf(" [%s]\t%s\t\n", expr == 0 ? "OK" : "NOK", #expr);                 \
-    assert_count++;                                                            \
-    assert(#expr);
-#define rtest_skip(expr) rtest_test_skip(#expr, __LINE__);
-
-FILE *rtest_create_file(char *path, char *content) {
-    FILE *fd = fopen(path, "wb");
-
-    char c;
-    int index = 0;
-
-    while ((c = content[index]) != 0) {
-        fputc(c, fd);
-        index++;
-    }
-    fclose(fd);
-    fd = fopen(path, "rb");
-    return fd;
-}
-
-void rtest_delete_file(char *path) { unlink(path); }
-#endif
 
 typedef struct rjson_t {
     char *content;
@@ -4351,197 +5031,6 @@ void arena_free(arena_t *arena) {
 
 void arena_reset(arena_t *arena) { arena->pointer = 0; }
 #endif
-#ifndef RLIB_TERMINAL_H
-#define RLIB_TERMINAL_H
-
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-char *rfcaptured = NULL;
-
-void rfcapture(FILE *f, char *buff, size_t size) {
-    rfcaptured = buff;
-    setvbuf(f, rfcaptured, _IOFBF, size);
-}
-void rfstopcapture(FILE *f) { setvbuf(f, 0, _IOFBF, 0); }
-
-bool _r_disable_stdout_toggle = false;
-
-FILE *_r_original_stdout = NULL;
-
-bool rr_enable_stdout() {
-    if (_r_disable_stdout_toggle)
-        return false;
-    if (!_r_original_stdout) {
-        stdout = fopen("/dev/null", "rb");
-        return false;
-    }
-    if (_r_original_stdout && _r_original_stdout != stdout) {
-        fclose(stdout);
-    }
-    stdout = _r_original_stdout;
-    return true;
-}
-bool rr_disable_stdout() {
-    if (_r_disable_stdout_toggle) {
-        return false;
-    }
-    if (_r_original_stdout == NULL) {
-        _r_original_stdout = stdout;
-    }
-    if (stdout == _r_original_stdout) {
-        stdout = fopen("/dev/null", "rb");
-        return true;
-    }
-    return false;
-}
-bool rr_toggle_stdout() {
-    if (!_r_original_stdout) {
-        rr_disable_stdout();
-        return true;
-    } else if (stdout != _r_original_stdout) {
-        rr_enable_stdout();
-        return true;
-    } else {
-        rr_disable_stdout();
-        return true;
-    }
-}
-
-typedef struct rprogressbar_t {
-    unsigned long current_value;
-    unsigned long min_value;
-    unsigned long max_value;
-    unsigned int length;
-    bool changed;
-    double percentage;
-    unsigned int width;
-    unsigned long draws;
-    FILE *fout;
-} rprogressbar_t;
-
-rprogressbar_t *rprogressbar_new(long min_value, long max_value,
-                                 unsigned int width, FILE *fout) {
-    rprogressbar_t *pbar = (rprogressbar_t *)malloc(sizeof(rprogressbar_t));
-    pbar->min_value = min_value;
-    pbar->max_value = max_value;
-    pbar->current_value = min_value;
-    pbar->width = width;
-    pbar->draws = 0;
-    pbar->length = 0;
-    pbar->changed = false;
-    pbar->fout = fout ? fout : stdout;
-    return pbar;
-}
-
-void rprogressbar_free(rprogressbar_t *pbar) { free(pbar); }
-
-void rprogressbar_draw(rprogressbar_t *pbar) {
-    if (!pbar->changed) {
-        return;
-    } else {
-        pbar->changed = false;
-    }
-    pbar->draws++;
-    char draws_text[22];
-    draws_text[0] = 0;
-    sprintf(draws_text, "%ld", pbar->draws);
-    char *draws_textp = draws_text;
-    // bool draws_text_len = strlen(draws_text);
-    char bar_begin_char = ' ';
-    char bar_progress_char = ' ';
-    char bar_empty_char = ' ';
-    char bar_end_char = ' ';
-    char content[4096] = {0};
-    char bar_content[1024];
-    char buff[2048] = {0};
-    bar_content[0] = '\r';
-    bar_content[1] = bar_begin_char;
-    unsigned int index = 2;
-    for (unsigned long i = 0; i < pbar->length; i++) {
-        if (*draws_textp) {
-            bar_content[index] = *draws_textp;
-            draws_textp++;
-        } else {
-            bar_content[index] = bar_progress_char;
-        }
-        index++;
-    }
-    char infix[] = "\033[0m";
-    for (unsigned long i = 0; i < strlen(infix); i++) {
-        bar_content[index] = infix[i];
-        index++;
-    }
-    for (unsigned long i = 0; i < pbar->width - pbar->length; i++) {
-        bar_content[index] = bar_empty_char;
-        index++;
-    }
-    bar_content[index] = bar_end_char;
-    bar_content[index + 1] = '\0';
-    sprintf(buff, "\033[43m%s\033[0m \033[33m%.2f%%\033[0m ", bar_content,
-            pbar->percentage * 100);
-    strcat(content, buff);
-    if (pbar->width == pbar->length) {
-        strcat(content, "\r");
-        for (unsigned long i = 0; i < pbar->width + 10; i++) {
-            strcat(content, " ");
-        }
-        strcat(content, "\r");
-    }
-    fprintf(pbar->fout, "%s", content);
-    fflush(pbar->fout);
-}
-
-bool rprogressbar_update(rprogressbar_t *pbar, unsigned long value) {
-    if (value == pbar->current_value) {
-        return false;
-    }
-    pbar->current_value = value;
-    pbar->percentage = (double)pbar->current_value /
-                       (double)(pbar->max_value - pbar->min_value);
-    unsigned long new_length = (unsigned long)(pbar->percentage * pbar->width);
-    pbar->changed = new_length != pbar->length;
-    if (pbar->changed) {
-        pbar->length = new_length;
-        rprogressbar_draw(pbar);
-        return true;
-    }
-    return false;
-}
-
-size_t rreadline(char *data, size_t len, bool strip_ln) {
-    __attribute__((unused)) char *unused = fgets(data, len, stdin);
-    size_t length = strlen(data);
-    if (length && strip_ln)
-        data[length - 1] = 0;
-    return length;
-}
-
-void rlib_test_progressbar() {
-    rtest_banner("Progress bar");
-    rprogressbar_t *pbar = rprogressbar_new(0, 1000, 10, stderr);
-    rprogressbar_draw(pbar);
-    // No draws executed, nothing to show
-    rassert(pbar->draws == 0);
-    rprogressbar_update(pbar, 500);
-    rassert(pbar->percentage == 0.5);
-    rprogressbar_update(pbar, 500);
-    rprogressbar_update(pbar, 501);
-    rprogressbar_update(pbar, 502);
-    // Should only have drawn one time since value did change, but percentage
-    // did not
-    rassert(pbar->draws == 1);
-    // Changed is false because update function calls draw
-    rassert(pbar->changed == false);
-    rprogressbar_update(pbar, 777);
-    rassert(pbar->percentage == 0.777);
-    rprogressbar_update(pbar, 1000);
-    rassert(pbar->percentage == 1);
-}
-
-#endif
 #ifndef RTERM_H
 #define RTERM_H
 #include <stdbool.h>
@@ -5308,387 +5797,6 @@ char *rlex_format(char *content) {
 }
 #endif
 
-#ifndef RBENCH_H
-#define RBENCH_H
-
-#include <errno.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/time.h>
-#include <time.h>
-
-#define RBENCH(times, action)                                                  \
-    {                                                                          \
-        unsigned long utimes = (unsigned long)times;                           \
-        nsecs_t start = nsecs();                                               \
-        for (unsigned long i = 0; i < utimes; i++) {                           \
-            {                                                                  \
-                action;                                                        \
-            }                                                                  \
-        }                                                                      \
-        nsecs_t end = nsecs();                                                 \
-        printf("%s\n", format_time(end - start));                              \
-    }
-
-#define RBENCHP(times, action)                                                 \
-    {                                                                          \
-        printf("\n");                                                          \
-        nsecs_t start = nsecs();                                               \
-        unsigned int prev_percentage = 0;                                      \
-        unsigned long utimes = (unsigned long)times;                           \
-        for (unsigned long i = 0; i < utimes; i++) {                           \
-            unsigned int percentage =                                          \
-                ((long double)i / (long double)times) * 100;                   \
-            int percentage_changed = percentage != prev_percentage;            \
-            __attribute__((unused)) int first = i == 0;                        \
-            __attribute__((unused)) int last = i == utimes - 1;                \
-            { action; };                                                       \
-            if (percentage_changed) {                                          \
-                printf("\r%d%%", percentage);                                  \
-                fflush(stdout);                                                \
-                                                                               \
-                prev_percentage = percentage;                                  \
-            }                                                                  \
-        }                                                                      \
-        nsecs_t end = nsecs();                                                 \
-        printf("\r%s\n", format_time(end - start));                            \
-    }
-
-struct rbench_t;
-
-typedef struct rbench_function_t {
-#ifdef __cplusplus
-    void (*call)();
-#else
-    void(*call);
-#endif
-    char name[256];
-    char group[256];
-    void *arg;
-    void *data;
-    bool first;
-    bool last;
-    int argc;
-    unsigned long times_executed;
-
-    nsecs_t average_execution_time;
-    nsecs_t total_execution_time;
-} rbench_function_t;
-
-typedef struct rbench_t {
-    unsigned int function_count;
-    rbench_function_t functions[100];
-    rbench_function_t *current;
-    rprogressbar_t *progress_bar;
-    bool show_progress;
-    int winner;
-    bool stdout;
-    unsigned long times;
-    bool silent;
-    nsecs_t execution_time;
-#ifdef __cplusplus
-    void (*add_function)(struct rbench_t *r, const char *name,
-                         const char *group, void (*)());
-#else
-    void (*add_function)(struct rbench_t *r, const char *name,
-                         const char *group, void *);
-#endif
-    void (*rbench_reset)(struct rbench_t *r);
-    struct rbench_t *(*execute)(struct rbench_t *r, long times);
-    struct rbench_t *(*execute1)(struct rbench_t *r, long times, void *arg1);
-    struct rbench_t *(*execute2)(struct rbench_t *r, long times, void *arg1,
-                                 void *arg2);
-    struct rbench_t *(*execute3)(struct rbench_t *r, long times, void *arg1,
-                                 void *arg2, void *arg3);
-
-} rbench_t;
-
-FILE *_rbench_stdout = NULL;
-FILE *_rbench_stdnull = NULL;
-
-void rbench_toggle_stdout(rbench_t *r) {
-    if (!r->stdout) {
-        if (_rbench_stdout == NULL) {
-            _rbench_stdout = stdout;
-        }
-        if (_rbench_stdnull == NULL) {
-            _rbench_stdnull = fopen("/dev/null", "wb");
-        }
-        if (stdout == _rbench_stdout) {
-            stdout = _rbench_stdnull;
-        } else {
-            stdout = _rbench_stdout;
-        }
-    }
-}
-void rbench_restore_stdout(rbench_t *r) {
-    if (r->stdout)
-        return;
-    if (_rbench_stdout) {
-        stdout = _rbench_stdout;
-    }
-    if (_rbench_stdnull) {
-        fclose(_rbench_stdnull);
-        _rbench_stdnull = NULL;
-    }
-}
-
-rbench_t *rbench_new();
-
-rbench_t *_rbench = NULL;
-rbench_function_t *rbf;
-rbench_t *rbench() {
-    if (_rbench == NULL) {
-        _rbench = rbench_new();
-    }
-    return _rbench;
-}
-
-typedef void *(*rbench_call)();
-typedef void *(*rbench_call1)(void *);
-typedef void *(*rbench_call2)(void *, void *);
-typedef void *(*rbench_call3)(void *, void *, void *);
-
-#ifdef __cplusplus
-void rbench_add_function(rbench_t *rp, const char *name, const char *group,
-                         void (*call)()) {
-#else
-void rbench_add_function(rbench_t *rp, const char *name, const char *group,
-                         void *call) {
-#endif
-    rbench_function_t *f = &rp->functions[rp->function_count];
-    rp->function_count++;
-    f->average_execution_time = 0;
-    f->total_execution_time = 0;
-    f->times_executed = 0;
-    f->call = call;
-    strcpy(f->name, name);
-    strcpy(f->group, group);
-}
-
-void rbench_reset_function(rbench_function_t *f) {
-    f->average_execution_time = 0;
-    f->times_executed = 0;
-    f->total_execution_time = 0;
-}
-
-void rbench_reset(rbench_t *rp) {
-    for (unsigned int i = 0; i < rp->function_count; i++) {
-        rbench_reset_function(&rp->functions[i]);
-    }
-}
-int rbench_get_winner_index(rbench_t *r) {
-    int winner = 0;
-    nsecs_t time = 0;
-    for (unsigned int i = 0; i < r->function_count; i++) {
-        if (time == 0 || r->functions[i].total_execution_time < time) {
-            winner = i;
-            time = r->functions[i].total_execution_time;
-        }
-    }
-    return winner;
-}
-bool rbench_was_last_function(rbench_t *r) {
-    for (unsigned int i = 0; i < r->function_count; i++) {
-        if (i == r->function_count - 1 && r->current == &r->functions[i])
-            return true;
-    }
-    return false;
-}
-
-rbench_function_t *rbench_execute_prepare(rbench_t *r, int findex, long times,
-                                          int argc) {
-    rbench_toggle_stdout(r);
-    if (findex == 0) {
-        r->execution_time = 0;
-    }
-    rbench_function_t *rf = &r->functions[findex];
-    rf->argc = argc;
-    rbf = rf;
-    r->current = rf;
-    if (r->show_progress)
-        r->progress_bar = rprogressbar_new(0, times, 20, stderr);
-    r->times = times;
-    // printf("   %s:%s gets executed for %ld times with %d
-    // arguments.\n",rf->group, rf->name, times,argc);
-    rbench_reset_function(rf);
-
-    return rf;
-}
-void rbench_execute_finish(rbench_t *r) {
-    rbench_toggle_stdout(r);
-    if (r->progress_bar) {
-        free(r->progress_bar);
-        r->progress_bar = NULL;
-    }
-    r->current->average_execution_time =
-        r->current->total_execution_time / r->current->times_executed;
-    ;
-    // printf("   %s:%s finished executing in
-    // %s\n",r->current->group,r->current->name,
-    // format_time(r->current->total_execution_time));
-    // rbench_show_results_function(r->current);
-    if (rbench_was_last_function(r)) {
-        rbench_restore_stdout(r);
-        unsigned int winner_index = rbench_get_winner_index(r);
-        r->winner = winner_index + 1;
-        if (!r->silent)
-            rprintgf(stderr, "Benchmark results:\n");
-        nsecs_t total_time = 0;
-
-        for (unsigned int i = 0; i < r->function_count; i++) {
-            rbf = &r->functions[i];
-            total_time += rbf->total_execution_time;
-            bool is_winner = winner_index == i;
-            if (is_winner) {
-                if (!r->silent)
-                    rprintyf(stderr, " > %s:%s:%s\n",
-                             format_time(rbf->total_execution_time), rbf->group,
-                             rbf->name);
-            } else {
-                if (!r->silent)
-                    rprintbf(stderr, "   %s:%s:%s\n",
-                             format_time(rbf->total_execution_time), rbf->group,
-                             rbf->name);
-            }
-        }
-        if (!r->silent)
-            rprintgf(stderr, "Total execution time: %s\n",
-                     format_time(total_time));
-    }
-    rbench_restore_stdout(r);
-    rbf = NULL;
-    r->current = NULL;
-}
-struct rbench_t *rbench_execute(rbench_t *r, long times) {
-
-    for (unsigned int i = 0; i < r->function_count; i++) {
-
-        rbench_function_t *f = rbench_execute_prepare(r, i, times, 0);
-        rbench_call c = (rbench_call)f->call;
-        nsecs_t start = nsecs();
-        f->first = true;
-        c();
-        f->first = false;
-        f->last = false;
-        f->times_executed++;
-        for (int j = 1; j < times; j++) {
-            c();
-            f->times_executed++;
-            f->last = f->times_executed == r->times - 1;
-            if (r->progress_bar) {
-                rprogressbar_update(r->progress_bar, f->times_executed);
-            }
-        }
-        f->total_execution_time = nsecs() - start;
-        r->execution_time += f->total_execution_time;
-        rbench_execute_finish(r);
-    }
-    return r;
-}
-
-struct rbench_t *rbench_execute1(rbench_t *r, long times, void *arg1) {
-
-    for (unsigned int i = 0; i < r->function_count; i++) {
-        rbench_function_t *f = rbench_execute_prepare(r, i, times, 1);
-        rbench_call1 c = (rbench_call1)f->call;
-        nsecs_t start = nsecs();
-        f->first = true;
-        c(arg1);
-        f->first = false;
-        f->last = false;
-        f->times_executed++;
-        for (int j = 1; j < times; j++) {
-            c(arg1);
-            f->times_executed++;
-            f->last = f->times_executed == r->times - 1;
-            if (r->progress_bar) {
-                rprogressbar_update(r->progress_bar, f->times_executed);
-            }
-        }
-        f->total_execution_time = nsecs() - start;
-        r->execution_time += f->total_execution_time;
-        rbench_execute_finish(r);
-    }
-    return r;
-}
-
-struct rbench_t *rbench_execute2(rbench_t *r, long times, void *arg1,
-                                 void *arg2) {
-
-    for (unsigned int i = 0; i < r->function_count; i++) {
-        rbench_function_t *f = rbench_execute_prepare(r, i, times, 2);
-        rbench_call2 c = (rbench_call2)f->call;
-        nsecs_t start = nsecs();
-        f->first = true;
-        c(arg1, arg2);
-        f->first = false;
-        f->last = false;
-        f->times_executed++;
-        for (int j = 1; j < times; j++) {
-            c(arg1, arg2);
-            f->times_executed++;
-            f->last = f->times_executed == r->times - 1;
-            if (r->progress_bar) {
-                rprogressbar_update(r->progress_bar, f->times_executed);
-            }
-        }
-        f->total_execution_time = nsecs() - start;
-        r->execution_time += f->total_execution_time;
-        rbench_execute_finish(r);
-    }
-    return r;
-}
-
-struct rbench_t *rbench_execute3(rbench_t *r, long times, void *arg1,
-                                 void *arg2, void *arg3) {
-
-    for (unsigned int i = 0; i < r->function_count; i++) {
-        rbench_function_t *f = rbench_execute_prepare(r, i, times, 3);
-
-        rbench_call3 c = (rbench_call3)f->call;
-        nsecs_t start = nsecs();
-        f->first = true;
-        c(arg1, arg2, arg3);
-        f->first = false;
-        f->last = false;
-        f->times_executed++;
-        for (int j = 1; j < times; j++) {
-            c(arg1, arg2, arg3);
-            f->times_executed++;
-            f->last = f->times_executed == r->times - 1;
-            if (r->progress_bar) {
-                rprogressbar_update(r->progress_bar, f->times_executed);
-            }
-        }
-        f->total_execution_time = nsecs() - start;
-        rbench_execute_finish(r);
-    }
-    return r;
-}
-
-rbench_t *rbench_new() {
-
-    rbench_t *r = (rbench_t *)malloc(sizeof(rbench_t));
-    memset(r, 0, sizeof(rbench_t));
-    r->add_function = rbench_add_function;
-    r->rbench_reset = rbench_reset;
-    r->execute1 = rbench_execute1;
-    r->execute2 = rbench_execute2;
-    r->execute3 = rbench_execute3;
-    r->execute = rbench_execute;
-    r->stdout = true;
-    r->silent = false;
-    r->winner = 0;
-    r->show_progress = true;
-    return r;
-}
-void rbench_free(rbench_t *r) { free(r); }
-
-#endif
 #ifndef RLIB_MAIN
 #define RLIB_MAIN
 #ifndef RMERGE_H
@@ -5888,6 +5996,8 @@ int rlib_main(int argc, char *argv[]) {
         printf(
             " rmerge - a merge tool. Converts c source files to one file \n"
             "          with local includes by giving main file as argument.\n");
+        printf("  rcov - coverage tool theat cleans up after himself. Based on "
+               "lcov.\n");
         return 0;
     }
 
@@ -5900,10 +6010,14 @@ int rlib_main(int argc, char *argv[]) {
     if (!strcmp(argv[0], "rmerge")) {
         return rmerge_main(argc, argv);
     }
+    if (!strcmp(argv[0], "rcov")) {
+        return rcov_main(argc, argv);
+    }
 
     return 0;
 }
 
 #endif
+
 // END OF RLIB
 #endif

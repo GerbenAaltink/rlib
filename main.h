@@ -2,6 +2,7 @@
 #define RLIB_MAIN
 #include "rhttp.h"
 #include "rmerge.h"
+#include "rcov.h"
 
 void forward_argument(int *argcc, char *argv[]) {
     int argc = *argcc;
@@ -21,6 +22,8 @@ int rlib_main(int argc, char *argv[]) {
         printf(
             " rmerge - a merge tool. Converts c source files to one file \n"
             "          with local includes by giving main file as argument.\n");
+        printf("  rcov - coverage tool theat cleans up after himself. Based on "
+               "lcov.\n");
         return 0;
     }
 
@@ -32,6 +35,9 @@ int rlib_main(int argc, char *argv[]) {
     }
     if (!strcmp(argv[0], "rmerge")) {
         return rmerge_main(argc, argv);
+    }
+    if (!strcmp(argv[0], "rcov")) {
+        return rcov_main(argc, argv);
     }
 
     return 0;
