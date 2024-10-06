@@ -14,11 +14,14 @@ byte _current_rtempc_slot = 0;
 char _rtempc_buffer[RTEMPC_SLOT_COUNT][RTEMPC_SLOT_SIZE];
 char *rtempc(char *data) {
 
-    if (!_rtempc_initialized && rtempc_use_mutex) {
-        _rtempc_initialized = true;
-        pthread_mutex_init(&_rtempc_thread_lock, NULL);
+    if (rtempc_use_mutex) {
+        if (!_rtempc_initialized) {
+            _rtempc_initialized = true;
+            pthread_mutex_init(&_rtempc_thread_lock, NULL);
+        }
+
+        pthread_mutex_lock(&_rtempc_thread_lock);
     }
-    pthread_mutex_lock(&_rtempc_thread_lock);
 
     uint current_rtempc_slot = _current_rtempc_slot;
     _rtempc_buffer[current_rtempc_slot][0] = 0;
