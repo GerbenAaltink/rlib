@@ -3,6 +3,8 @@
 #include "rmalloc.h"
 #include "rio.h"
 #include "rtime.h"
+#include "rtemp.h"
+#include <pthread.h>
 #include <arpa/inet.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -24,8 +26,11 @@ int rhttp_opt_request_logging = 0;
 int rhttp_sock = 0;
 int rhttp_opt_buffered = 0;
 int rhttp_c = 0;
+int rhttp_c_mutex_initialized = 0;
+pthread_mutex_t rhttp_c_mutex;
 char rhttp_opt_host[1024] = "0.0.0.0";
 unsigned int rhttp_connections_handled = 0;
+
 
 typedef struct rhttp_header_t {
     char *name;
@@ -574,11 +579,16 @@ void rhttp_client_bench(int workers, int times, const char *host, int port,
     }
 }
 char *rhttp_client_get(const char *host, int port, const char *path) {
-    static char http_response[1024 * 1024];
+    if(!rhttp_c_mutex_initialized)
+    {
+        rhttp_c_mutex_initialized = 1;
+        pthread_mutex_init(&rhttp_c_mutex,NULL);
+    }
+    char http_response[1024 * 1024];
     http_response[0] = 0;
     rhttp_client_request_t *r = rhttp_create_request(host, port, path);
     unsigned int reconnects = 0;
-    unsigned int reconnects_max = 100;
+    unsigned int reconnects_max = 100000;
     while (!rhttp_execute_request(r)) {
         reconnects++;
         tick();
@@ -591,14 +601,16 @@ char *rhttp_client_get(const char *host, int port, const char *path) {
     }
     r->is_done = true;
     char *body = r->response ? strstr(r->response, "\r\n\r\n") : NULL;
-
+    pthread_mutex_lock(&rhttp_c_mutex);
     if (body) {
         strcpy(http_response, body + 4);
     } else {
         strcpy(http_response, r->response);
     }
     rhttp_free_client_request(r);
-    return http_response;
+    char * result = sbuf(http_response);
+    pthread_mutex_unlock(&rhttp_c_mutex);
+    return result;
 }
 /*END CLIENT CODE */
 #endif

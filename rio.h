@@ -108,11 +108,11 @@ size_t rfile_readb(char *path, void *data, size_t size) {
     if (!fd) {
         return 0;
     }
-    __attribute__((unused)) size_t bytes_read =
-        fread(data, size, sizeof(char), fd);
+    size_t bytes_read = fread(data, sizeof(char), size, fd);
 
     fclose(fd);
-    return size;
+    ((char *)data)[bytes_read] = 0;
+    return bytes_read;
 }
 
 #endif

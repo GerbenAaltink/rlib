@@ -30,6 +30,7 @@ tag" />
 #include "arena.h"
 #include "rio.h"
 #include "rstring.h"
+#include "rcase.h"
 #include "rterminal.h"
 #include "rterm.h"
 #include "rtree.h"

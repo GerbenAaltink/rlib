@@ -3,6 +3,7 @@
 #include "rhttp.h"
 #include "rmerge.h"
 #include "rcov.h"
+#include "rcase.h"
 
 void forward_argument(int *argcc, char *argv[]) {
     int argc = *argcc;
@@ -22,8 +23,10 @@ int rlib_main(int argc, char *argv[]) {
         printf(
             " rmerge - a merge tool. Converts c source files to one file \n"
             "          with local includes by giving main file as argument.\n");
-        printf("  rcov - coverage tool theat cleans up after himself. Based on "
+        printf(" rcov - coverage tool theat cleans up after himself. Based on "
                "lcov.\n");
+        printf(" rcase - tool to swap input file automatically between"
+               "         camel case and snake case.\n");
         return 0;
     }
 
@@ -38,6 +41,9 @@ int rlib_main(int argc, char *argv[]) {
     }
     if (!strcmp(argv[0], "rcov")) {
         return rcov_main(argc, argv);
+    }
+    if (!strcmp(argv[0], "rcase")) {
+        return rcase_main(argc, argv);
     }
 
     return 0;
