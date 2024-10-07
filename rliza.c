@@ -48,33 +48,30 @@ void rliza_free(rliza_t *rliza) {
         free(rliza->key);
         rliza->key = NULL;
     }
-    if(rliza->value)
+    if (rliza->value)
         rliza_free(rliza->value);
     if (rliza->type == RLIZA_STRING) {
-        if (rliza->content.string){
+        if (rliza->content.string) {
             free(rliza->content.string);
+        } else if (rliza->type == RLIZA_NUMBER) {
         }
-    else if(rliza->type == RLIZA_NUMBER){
-        
-    }
     } else if (rliza->type == RLIZA_OBJECT) {
-         if (rliza->content.map) {
-           
-        for (unsigned int i = 0; i < rliza->count; i++) {
+        if (rliza->content.map) {
+
+            for (unsigned int i = 0; i < rliza->count; i++) {
                 rliza_free(rliza->content.map[i]);
-                
             }
-          free(rliza->content.map);
+            free(rliza->content.map);
         }
     } else if (rliza->type == RLIZA_ARRAY) {
 
         if (rliza->content.array && rliza->count) {
             for (unsigned int i = 0; i < rliza->count; i++) {
                 rliza_free(rliza->content.array[i]);
-                //printf("Removed array item\n");
+                // printf("Removed array item\n");
             }
 
-           //free(rliza->content.array);
+            // free(rliza->content.array);
         }
     }
 }
@@ -334,21 +331,22 @@ unsigned char *rliza_seek_string(char **content, char *options) {
                                   &state))) {
             is_first = false;
             if (!strcmp(option, "\\b")) {
-                if (!strncmp(*content, "true",4) || !strncmp(*content, "false",5)) {
+                if (!strncmp(*content, "true", 4) ||
+                    !strncmp(*content, "false", 5)) {
 
-                    //printf("Boolean match: %c\n", **content);
+                    // printf("Boolean match: %c\n", **content);
                     return *content;
                 }
             }
             if (!strcmp(option, "\\d")) {
                 if (**content >= '0' && **content <= '9') {
-                    //printf("Number match: %c\n", **content);
+                    // printf("Number match: %c\n", **content);
 
                     return *content;
                 }
             }
             if (!strncmp(option, *content, strlen(option))) {
-                //printf("Literal match: %c\n", **content);
+                // printf("Literal match: %c\n", **content);
                 return *content;
             }
         }
@@ -359,21 +357,17 @@ unsigned char *rliza_seek_string(char **content, char *options) {
     return *content;
 }
 
-unsigned char * rliza_extract_quotes(char **content) {
-    rbuffer_t * buffer = rbuffer_new(NULL,0);
+unsigned char *rliza_extract_quotes(char **content) {
+    rbuffer_t *buffer = rbuffer_new(NULL, 0);
     assert(**content == '"');
     bool escaping = false;
-    while(true){
+    while (true) {
         (*content)++;
-        if(**content == '\\')
-        {
+        if (**content == '\\') {
             escaping = true;
             (*content)++;
-        }
-        else if(**content == '"')
-        {
-            if(escaping)
-            {
+        } else if (**content == '"') {
+            if (escaping) {
                 (*content)++;
                 escaping = false;
                 continue;
@@ -384,13 +378,13 @@ unsigned char * rliza_extract_quotes(char **content) {
     }
     assert(**content == '"');
     (*content)++;
-    rbuffer_push(buffer,0);
-    char * data = buffer->data;
+    rbuffer_push(buffer, 0);
+    char *data = buffer->data;
     buffer->data = NULL;
     rbuffer_free(buffer);
     return data;
 }
-unsigned char *rliza_object_to_string(rliza_t *rliza) ;
+unsigned char *rliza_object_to_string(rliza_t *rliza);
 rliza_t *rliza_object_from_string(char **content) {
     char *token = rliza_seek_string(content, "[|{|\"|\\d|\\b|root");
     if (!token)
@@ -411,9 +405,9 @@ rliza_t *rliza_object_from_string(char **content) {
                 key = rliza_extract_quotes(content);
                 assert(rliza_seek_string(content, ":|keystr"));
                 (*content)++;
-                rliza_t * value = rliza_object_from_string(content);
+                rliza_t *value = rliza_object_from_string(content);
                 value->key = key;
-                rliza_set_object(rliza,value);
+                rliza_set_object(rliza, value);
             } else if (**content == '}') {
                 (*content)++;
             } else {
@@ -441,20 +435,20 @@ rliza_t *rliza_object_from_string(char **content) {
     } else if (**content >= '0' && **content <= '9') {
         rliza->type = RLIZA_INTEGER;
         rliza->content.integer = strtoll(*content, NULL, 10);
-        printf("Parsed number: %lld\n",rliza->content.integer);
+        printf("Parsed number: %lld\n", rliza->content.integer);
         while (**content >= '0' && **content <= '9') {
             (*content)++;
         }
     } else if (!strncmp(*content, "true", 4)) {
         rliza->type = RLIZA_BOOLEAN;
         rliza->content.boolean = true;
-        *content+=4;
+        *content += 4;
     } else if (!strncmp(*content, "false", 5)) {
         rliza->type = RLIZA_BOOLEAN;
         rliza->content.boolean = false;
-        *content+=5;
+        *content += 5;
     } else if (**content == '"') {
-        char * extracted = rliza_extract_quotes(content);
+        char *extracted = rliza_extract_quotes(content);
         bool is_number = true;
         char *ptr = extracted;
         while (*ptr) {
@@ -558,21 +552,20 @@ int main() {
     rliza_set_object(rliza, arr);
     rliza_set_object(rliza, arr);
     char *content = rliza_object_to_string(rliza);
-    char * original_content = content;
-    
+    char *original_content = content;
+
     printf("%s\n", content);
-    rliza_t * rliza2 = rliza_object_from_string(&content);
-    char * content2 = rliza_object_to_string(rliza2);
+    rliza_t *rliza2 = rliza_object_from_string(&content);
+    char *content2 = rliza_object_to_string(rliza2);
     content = original_content;
-    
-    char * content3 = rliza_object_to_string(rliza2);
-    printf("<content1:%s>\n",content);
-    printf("<content2:%s>\n",content2);
-    printf("<content3:%s>\n",content3);
-    
-    assert(!strcmp(content2,content3));
-    assert(!strcmp(content,content2));
-    
+
+    char *content3 = rliza_object_to_string(rliza2);
+    printf("<content1:%s>\n", content);
+    printf("<content2:%s>\n", content2);
+    printf("<content3:%s>\n", content3);
+
+    assert(!strcmp(content2, content3));
+    assert(!strcmp(content, content2));
 
     printf("%s\n", (unsigned char *)rliza_coalesce(rliza_get_string(rliza, "a"),
                                                    "WHOOPS"));

@@ -31,7 +31,6 @@ pthread_mutex_t rhttp_c_mutex;
 char rhttp_opt_host[1024] = "0.0.0.0";
 unsigned int rhttp_connections_handled = 0;
 
-
 typedef struct rhttp_header_t {
     char *name;
     char *value;
@@ -579,10 +578,9 @@ void rhttp_client_bench(int workers, int times, const char *host, int port,
     }
 }
 char *rhttp_client_get(const char *host, int port, const char *path) {
-    if(!rhttp_c_mutex_initialized)
-    {
+    if (!rhttp_c_mutex_initialized) {
         rhttp_c_mutex_initialized = 1;
-        pthread_mutex_init(&rhttp_c_mutex,NULL);
+        pthread_mutex_init(&rhttp_c_mutex, NULL);
     }
     char http_response[1024 * 1024];
     http_response[0] = 0;
@@ -608,7 +606,7 @@ char *rhttp_client_get(const char *host, int port, const char *path) {
         strcpy(http_response, r->response);
     }
     rhttp_free_client_request(r);
-    char * result = sbuf(http_response);
+    char *result = sbuf(http_response);
     pthread_mutex_unlock(&rhttp_c_mutex);
     return result;
 }

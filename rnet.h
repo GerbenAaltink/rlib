@@ -39,7 +39,7 @@ typedef struct rnet_server_t {
     unsigned int socket_count;
     unsigned int port;
     unsigned int backlog;
-    rnet_select_result_t * select_result;
+    rnet_select_result_t *select_result;
     int max_fd;
     void (*on_connect)(rnet_socket_t *socket);
     void (*on_close)(rnet_socket_t *socket);
@@ -52,7 +52,7 @@ int net_socket_connect(const char *, unsigned int);
 int net_socket_init();
 rnet_server_t *net_socket_serve(unsigned int port, unsigned int backlog);
 rnet_select_result_t *net_socket_select(rnet_server_t *server);
-rnet_socket_t * net_socket_wait(rnet_socket_t * socket_fd);
+rnet_socket_t *net_socket_wait(rnet_socket_t *socket_fd);
 bool net_set_non_blocking(int sock);
 bool net_socket_bind(int sock, unsigned int port);
 bool net_socket_listen(int sock, unsigned int backlog);
@@ -61,7 +61,7 @@ size_t net_socket_write(rnet_socket_t *, unsigned char *, size_t);
 rnet_socket_t *get_net_socket_by_fd(int);
 unsigned char *net_socket_read(rnet_socket_t *, unsigned int buff_size);
 void _net_socket_close(int sock);
-void net_socket_close(rnet_socket_t * sock);
+void net_socket_close(rnet_socket_t *sock);
 
 rnet_server_t *rnet_server_new(int socket_fd, unsigned int port,
                                unsigned int backlog) {
@@ -75,7 +75,7 @@ rnet_server_t *rnet_server_new(int socket_fd, unsigned int port,
     server->select_result = NULL;
     server->on_connect = NULL;
     server->on_close = NULL;
-    server->on_read = NULL; 
+    server->on_read = NULL;
     return server;
 }
 
@@ -262,7 +262,8 @@ static void net_socket_stats(WrenVM *vm)
     wrenInsertInList(vm, 0, -1, 1);
 }*/
 
-size_t net_socket_write(rnet_socket_t * sock, unsigned char *message,size_t size) {
+size_t net_socket_write(rnet_socket_t *sock, unsigned char *message,
+                        size_t size) {
     ssize_t sent_total = 0;
     ssize_t sent = 0;
     ssize_t to_send = size;
@@ -286,7 +287,7 @@ size_t net_socket_write(rnet_socket_t * sock, unsigned char *message,size_t size
     return sent_total;
 }
 
-unsigned char *net_socket_read(rnet_socket_t * sock, unsigned int buff_size) {
+unsigned char *net_socket_read(rnet_socket_t *sock, unsigned int buff_size) {
     if (buff_size > 1024 * 1024 + 1) {
         perror("Buffer too big. Maximum is 1024*1024.\n");
         exit(1);
@@ -302,15 +303,15 @@ unsigned char *net_socket_read(rnet_socket_t * sock, unsigned int buff_size) {
             return NULL;
         }
     }
-    buffer[received+1] = 0;
+    buffer[received + 1] = 0;
     sock->bytes_received = received;
     return buffer;
 }
 
-rnet_socket_t * net_socket_wait(rnet_socket_t *sock) {
-    if(!sock)
+rnet_socket_t *net_socket_wait(rnet_socket_t *sock) {
+    if (!sock)
         return NULL;
-    if(sock->fd == -1)
+    if (sock->fd == -1)
         return NULL;
     fd_set read_fds;
     FD_ZERO(&read_fds);
@@ -330,10 +331,10 @@ rnet_socket_t * net_socket_wait(rnet_socket_t *sock) {
     return NULL;
 }
 
-void rnet_safe_str(char *str, size_t length){
-    for(unsigned int i = 0; i < length; i++){
-        if(str[i] < 32 || str[i] > 126)
-            if(str[i] != 0)
+void rnet_safe_str(char *str, size_t length) {
+    for (unsigned int i = 0; i < length; i++) {
+        if (str[i] < 32 || str[i] > 126)
+            if (str[i] != 0)
                 str[i] = '.';
     }
 }
@@ -347,7 +348,7 @@ rnet_select_result_t *rnet_new_socket_select_result(int socket_fd) {
     return result;
 }
 
-void rnet_select_result_add(rnet_select_result_t *result, rnet_socket_t * sock) {
+void rnet_select_result_add(rnet_select_result_t *result, rnet_socket_t *sock) {
     result->sockets = realloc(result->sockets, sizeof(rnet_socket_t *) *
                                                    (result->socket_count + 1));
     result->sockets[result->socket_count] = sock;
@@ -382,9 +383,8 @@ rnet_select_result_t *net_socket_select(rnet_server_t *server) {
         return NULL;
     }
     if (FD_ISSET(server->socket_fd, &read_fds)) {
-        if ((new_socket =
-                 accept(server->socket_fd, (struct sockaddr *)&address,
-                        (socklen_t *)&addrlen)) < 0) {
+        if ((new_socket = accept(server->socket_fd, (struct sockaddr *)&address,
+                                 (socklen_t *)&addrlen)) < 0) {
             perror("Accept failed\n");
             return NULL;
         }
@@ -420,22 +420,21 @@ rnet_select_result_t *net_socket_select(rnet_server_t *server) {
         rnet_new_socket_select_result(server->socket_fd);
     unsigned int readable_count = 0;
     for (unsigned int i = 0; i < server->socket_count; i++) {
-        if(server->sockets[i]->fd == -1)
+        if (server->sockets[i]->fd == -1)
             continue;
         if (FD_ISSET(server->sockets[i]->fd, &read_fds)) {
             rnet_select_result_add(result, server->sockets[i]);
             readable_count++;
-            if(server->sockets[i]->on_read){
+            if (server->sockets[i]->on_read) {
                 server->sockets[i]->on_read(server->sockets[i]);
             }
         }
     }
-    if(server->select_result)
-    {
+    if (server->select_result) {
         rnet_select_result_free(server->select_result);
         server->select_result = NULL;
     }
-    if(readable_count == 0)
+    if (readable_count == 0)
         rnet_select_result_free(result);
     return readable_count ? result : NULL;
 }
@@ -450,7 +449,7 @@ rnet_socket_t *get_net_socket_by_fd(int sock) {
 }
 
 void _net_socket_close(int sock) {
-    if (sock > 0 ) {
+    if (sock > 0) {
         sockets_connected--;
         sockets_disconnected++;
         if (sock > 0) {
@@ -461,11 +460,11 @@ void _net_socket_close(int sock) {
     }
 }
 
-void net_socket_close(rnet_socket_t * sock) { 
-    if(sock->on_close)
-    sock->on_close(sock);
-    _net_socket_close(sock->fd); 
+void net_socket_close(rnet_socket_t *sock) {
+    if (sock->on_close)
+        sock->on_close(sock);
+    _net_socket_close(sock->fd);
     sock->fd = -1;
-    }
+}
 
 #endif
