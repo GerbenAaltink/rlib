@@ -65,8 +65,21 @@ void rterm_getwinsize(winsize_t *w) {
     }
 }
 
+void rrawfd(int fd) {
+    struct termios orig_termios;
+    tcgetattr(fd, &orig_termios); // Get current terminal attributes
+
+    struct termios raw = orig_termios;
+    raw.c_lflag &= ~(ICANON | ECHO); // Disable canonical mode and echoing
+    raw.c_cc[VMIN] = 1;
+    raw.c_cc[VTIME] = 240; // Set timeout for read input
+
+    tcsetattr(fd, TCSAFLUSH, &raw);
+}
+
 // Terminal setup functions
 void enableRawMode(struct termios *orig_termios) {
+
     struct termios raw = *orig_termios;
     raw.c_lflag &= ~(ICANON | ECHO); // Disable canonical mode and echoing
     raw.c_cc[VMIN] = 1;
