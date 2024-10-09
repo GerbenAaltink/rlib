@@ -36,9 +36,9 @@ void *rmalloc(size_t size) {
     return result;
 }
 void *rrealloc(void *obj, size_t size) {
-    if (!obj) {
+    if (obj == NULL) {
         rmalloc_count++;
-        rmalloc_alloc_count++;
+        rmalloc_count++;
     }
     void *result;
     while (!(result = realloc(obj, size))) {
