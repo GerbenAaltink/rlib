@@ -60,7 +60,7 @@ char *readline(FILE *f) {
     }
     data[index] = 0;
     if (data[0] == 0)
-        return false;
+        return NULL;
     return data;
 }
 void writestring(FILE *f, char *line) {

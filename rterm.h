@@ -70,7 +70,8 @@ void rrawfd(int fd) {
     tcgetattr(fd, &orig_termios); // Get current terminal attributes
 
     struct termios raw = orig_termios;
-    raw.c_lflag &= ~(ICANON | ECHO); // Disable canonical mode and echoing
+    raw.c_lflag &=
+        ~(ICANON | ISIG | ECHO); // ECHO // Disable canonical mode and echoing
     raw.c_cc[VMIN] = 1;
     raw.c_cc[VTIME] = 240; // Set timeout for read input
 

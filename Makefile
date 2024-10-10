@@ -2,11 +2,11 @@
 CC = gcc
 
 # Compiler flags
-CFLAGS = -D_POSIX_C_SOURCE=199309L -Wall -Wextra -Werror -Ofast -std=c11 -lrt -pthread -static
+CFLAGS = -Wall -Wextra -Werror -Ofast -std=c2x -lrt -pthread
 LDFLAGS = -lm
  
-
-all: clear test_rmalloc test_rtemp test_rjson test_rrex4 test_rstring_list test_rhttp test_rtime test_arena test_rtree test_rstring test_rlexer test_rrex3 test_rio test_rhashtable test_rkeytable test_rterminal test_rmerge run_rmerge format_all build format_all test_rlib 
+# -D_POSIX_C_SOURCE=199309L 
+all: clear test_rnet test_rmalloc test_rtemp test_rjson test_rrex4 test_rstring_list test_rhttp test_rtime test_arena test_rtree test_rstring test_rlexer test_rrex3 test_rio test_rhashtable test_rkeytable test_rterminal test_rmerge run_rmerge format_all build format_all test_rlib 
 
 
 
@@ -22,6 +22,13 @@ clear:
 	@echo "Build directory emptied"
 
 rebuild: clear all
+
+
+test_rnet: build_rnet run_rnet
+build_rnet:
+	$(CC) $(CFLAGS)  rnet.c -o ./build/rnet	
+run_rnet:
+	./build/rnet test
 
 test_rtemp: build_rtemp run_rtemp
 build_rtemp:
