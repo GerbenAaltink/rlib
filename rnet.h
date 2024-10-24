@@ -1,7 +1,10 @@
 #ifndef RNET_H
 #define RNET_H
 
+#if _POSIX_C_SOURCE != 200112L
+#undef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200112L
+#endif
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <errno.h>

@@ -1,4 +1,4 @@
-// RETOOR - Oct 20 2024
+// RETOOR - Oct 24 2024
 // MIT License
 // ===========
 
@@ -34,7 +34,10 @@ tag" />
 #ifndef RNET_H
 #define RNET_H
 
+#if _POSIX_C_SOURCE != 200112L
+#undef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200112L
+#endif
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>

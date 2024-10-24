@@ -24,7 +24,6 @@ void rget_terminal_size(int *x, int *y) {
     // Example content that fits within half the terminal width
     //    printf("%.*s\n", terminal_width / 2, "This text is formatted to half
     //    the terminal width.");
-
 }
 
 struct termios rorig_termios;
