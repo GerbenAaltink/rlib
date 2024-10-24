@@ -3,6 +3,7 @@
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <unistd.h>
+#include <string.h>
 
 void rget_terminal_size(int *x, int *y) {
     struct winsize w;
@@ -24,7 +25,6 @@ void rget_terminal_size(int *x, int *y) {
     //    printf("%.*s\n", terminal_width / 2, "This text is formatted to half
     //    the terminal width.");
 
-    return 0;
 }
 
 struct termios rorig_termios;
