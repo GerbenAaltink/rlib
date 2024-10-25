@@ -6,7 +6,8 @@ CFLAGS = -Wall -Wextra -Werror -Ofast -std=c2x -lrt -pthread
 LDFLAGS = -lm
  
 # -D_POSIX_C_SOURCE=199309L 
-all: clear test_rnet test_rmalloc test_rtemp test_rjson test_rrex4 test_rstring_list test_rhttp test_rtime test_arena test_rtree test_rstring test_rlexer test_rrex3 test_rio test_rhashtable test_rkeytable test_rterminal test_rmerge run_rmerge format_all build format_all test_rlib 
+all: clear test_rliza test_rnet test_rmalloc test_rtemp test_rjson test_rrex4 test_rstring_list test_rhttp test_rtime test_arena test_rtree test_rstring test_rlexer test_rrex3 test_rio test_rhashtable test_rkeytable test_rterminal test_rmerge run_rmerge format_all build format_all test_rlib 
+
 
 
 
@@ -23,6 +24,11 @@ clear:
 
 rebuild: clear all
 
+test_rliza: build_rliza run_rliza
+build_rliza:
+	$(CC) $(CFLAGS)  rliza.c -o ./build/rliza	
+run_rliza:
+	./build/rliza test
 
 test_rnet: build_rnet run_rnet
 build_rnet:

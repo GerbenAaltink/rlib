@@ -4,6 +4,7 @@
 #include "rio.h"
 #include "rtime.h"
 #include "rtemp.h"
+#include "rstring.h"
 #include <pthread.h>
 #include <arpa/inet.h>
 #include <stdarg.h>
@@ -13,8 +14,9 @@
 #include <time.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <signal.h>
 
-#define BUFF_SIZE 1337
+#define BUFF_SIZE 8096
 #define RHTTP_MAX_CONNECTIONS 100
 
 int rhttp_opt_error = 1;
@@ -140,7 +142,8 @@ void rhttp_rhttp_free_headers(rhttp_request_t *r) {
 
 rhttp_header_t *rhttp_parse_headers(rhttp_request_t *s) {
     int first = 1;
-    char *body = s->body;
+    char *body = strdup(s->body);
+    char *body_original = body;
     while (body && *body) {
         char *line = __strtok_r(first ? body : NULL, "\r\n", &body);
         if (!line)
@@ -165,6 +168,7 @@ rhttp_header_t *rhttp_parse_headers(rhttp_request_t *s) {
         h->next = s->headers;
         s->headers = h;
     }
+    free(body_original);
     return s->headers;
 }
 
@@ -180,6 +184,25 @@ void rhttp_free_request(rhttp_request_t *r) {
         rhttp_rhttp_free_headers(r);
     }
     free(r);
+}
+
+long rhttp_header_get_long(rhttp_request_t *r, const char *name) {
+    rhttp_header_t *h = r->headers;
+    while (h) {
+        if (!strcmp(h->name, name))
+            return strtol(h->value, NULL, 10);
+        h = h->next;
+    }
+    return -1;
+}
+char *rhttp_header_get_string(rhttp_request_t *r, const char *name) {
+    rhttp_header_t *h = r->headers;
+    while (h) {
+        if (!strcmp(h->name, name))
+            return h->value && *h->value ? h->value : NULL;
+        h = h->next;
+    }
+    return NULL;
 }
 
 void rhttp_print_header(rhttp_header_t *h) {
@@ -212,7 +235,16 @@ rhttp_request_t *rhttp_parse_request(int s) {
     http_request_init(request);
     char buf[BUFF_SIZE] = {0};
     request->c = s;
-    int breceived = read(s, buf, BUFF_SIZE);
+    int breceived = 0;
+    while (!rstrendswith(buf, "\r\n\r\n")) {
+        int chunk_size = read(s, buf + breceived, 1);
+        if (chunk_size <= 0) {
+            close(request->c);
+            request->closed = 1;
+            return request;
+        }
+        breceived += chunk_size;
+    }
     if (breceived <= 0) {
         close(request->c);
         request->closed = 1;
@@ -272,6 +304,9 @@ size_t rhttp_send_drain(int s, void *tsend, size_t to_send_len) {
         to_send += bytes_sent;
         if (bytes_sent_total == to_send_len) {
             break;
+        } else if (!to_send_len) {
+            // error
+            break;
         } else {
             rhttp_log_info("Extra send of %d bytes.\n", to_send_len);
         }
@@ -286,6 +321,7 @@ typedef int (*rhttp_request_handler_t)(rhttp_request_t *r);
 void rhttp_serve(const char *host, int port, int backlog, int request_logging,
                  int request_debug, rhttp_request_handler_t handler,
                  void *context) {
+    signal(SIGPIPE, SIG_IGN);
     rhttp_sock = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;

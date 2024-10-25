@@ -129,8 +129,8 @@ unsigned char *rbuffer_match_option(rbuffer_t *rfb, char *options) {
             return rfb->data;
         }
         if (rfb->size - rfb->pos >= 5 && !strcmp(option, "\\b") &&
-            ((!strncmp(rfb->data, "true", 4) ||
-              !strncmp(rfb->data, "false", 5)))) {
+            ((!ustrncmp(rfb->data, (unsigned char *)"true", 4) ||
+              !ustrncmp(rfb->data, (unsigned char *)"false", 5)))) {
             return rfb->data;
         }
         if (!ustrncmp(rfb->data, (unsigned char *)option, option_length)) {
