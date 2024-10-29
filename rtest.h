@@ -1,5 +1,6 @@
 #ifndef RTEST_H
 #define RTEST_H
+#include "remo.h"
 #include "rmalloc.h"
 #include <stdbool.h>
 #include <stdio.h>
@@ -16,10 +17,11 @@ int rtest_end(char *content) {
     // Returns application exit code. 0 == success
     printf("%s", content);
     printf("\n@assertions: %d\n", rassert_count);
-    printf("@memory: %s\n", rmalloc_stats());
+    printf("@memory: %s%s\n", rmalloc_stats(),
+           rmalloc_count == 0 ? remo_get("rainbow") : "fire");
 
     if (rmalloc_count != 0) {
-        printf("MEMORY ERROR\n");
+        printf("MEMORY ERROR %s\n", remo_get("cross mark"));
         return rtest_fail_count > 0;
     }
     return rtest_fail_count > 0;
@@ -51,10 +53,11 @@ bool rtest_test_true_silent(char *expr, int res, int line) {
 bool rtest_test_true(char *expr, int res, int line) {
     rassert_count++;
     if (res) {
-        fprintf(stdout, ".");
+        fprintf(stdout, "%s", remo_get("Slightly Smiling Face"));
         return true;
     }
-    rprintrf(stderr, "\nERROR on line %d: %s", line, expr);
+    rprintrf(stderr, "\nERROR %s on line %d: %s\n", remo_get("skull"), line,
+             expr);
     rtest_fail_count++;
     return false;
 }

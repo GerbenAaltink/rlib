@@ -248,26 +248,26 @@ rliza_t *rliza_new_key_number(char *key, double value) {
     return rliza;
 }
 
-void rliza_set_null(rliza_t *self, char *key){
-     rliza_t *obj = rliza_get_object(self, key);
-     if(!obj){
+void rliza_set_null(rliza_t *self, char *key) {
+    rliza_t *obj = rliza_get_object(self, key);
+    if (!obj) {
         obj = rliza_new_null();
         obj->key = strdup(key);
         rliza_set_object(self, obj);
-     }else if(obj->type == RLIZA_STRING){
-        if(obj->content.string)
+    } else if (obj->type == RLIZA_STRING) {
+        if (obj->content.string)
             free(obj->content.string);
         obj->content.string = NULL;
-     }else if(obj->type == RLIZA_ARRAY || obj->type == RLIZA_OBJECT){
-        for(unsigned int i = 0; i < obj->count; i++){
+    } else if (obj->type == RLIZA_ARRAY || obj->type == RLIZA_OBJECT) {
+        for (unsigned int i = 0; i < obj->count; i++) {
             rliza_free(obj->content.map[i]);
         }
-     }else if(obj->type == RLIZA_NUMBER){
+    } else if (obj->type == RLIZA_NUMBER) {
         obj->content.number = 0;
-     }else if(obj->type == RLIZA_INTEGER){
+    } else if (obj->type == RLIZA_INTEGER) {
         obj->content.integer = 0;
-     }
-     obj->type = RLIZA_NULL;
+    }
+    obj->type = RLIZA_NULL;
 }
 void rliza_set_string(rliza_t *self, char *key, char *string) {
     rliza_t *obj = rliza_get_object(self, key);
@@ -453,8 +453,8 @@ rliza_t *rliza_object_from_string(char **content) {
         rliza->type = RLIZA_OBJECT;
         (*content)++;
         char *result = NULL;
-        while ((result = (char *)rliza_seek_string(content, "\"|,|null|}|object")) !=
-                   NULL &&
+        while ((result = (char *)rliza_seek_string(
+                    content, "\"|,|null|}|object")) != NULL &&
                *result) {
             if (**content == ',') {
                 (*content)++;
@@ -477,7 +477,7 @@ rliza_t *rliza_object_from_string(char **content) {
                 // printf("<<<<<<<<%s>>>>>>>>>>\n",value->content.string);
             } else if (**content == '}') {
                 (*content)++;
-            } else if (!strncmp(*content, "null", 4))  {
+            } else if (!strncmp(*content, "null", 4)) {
                 (*content) += 4;
                 /*
                 unsigned char * key = (unsigned char *)malloc(5);
@@ -494,8 +494,8 @@ rliza_t *rliza_object_from_string(char **content) {
                 value->key = escaped_key;
                 free(key);
                 rliza_set_object(rliza, value);*/
-            } else  {
-                 assert(false && "Parse error.");
+            } else {
+                assert(false && "Parse error.");
             }
         };
         return rliza;
@@ -663,7 +663,7 @@ unsigned char *rliza_object_to_string(rliza_t *rliza) {
             content[strlen((char *)content) - 1] = 0;
         strcat((char *)content, "]");
     } else if (rliza->type == RLIZA_NULL) {
-        
+
         if (rliza->key) {
             char *escaped_key =
                 (char *)malloc(strlen((char *)rliza->key) * 2 + 1);

@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include "remo.h"
 
 bool has_error = false;
 
@@ -175,7 +176,8 @@ int rmerge_main(int argc, char *argv[]) {
         rprintrf(stderr,
                  "\\l Warning: there are errors while merging this file.\n");
     } else {
-        rprintgf(stderr, "\\l Merge succesful without error(s).\n");
+        rprintgf(stderr, "\\l Merge succesful without error(s).%s\n",
+                 remo_get("fire"));
     }
     return 0;
 }

@@ -26,7 +26,7 @@ int main() {
     rliza_set_integer(rliza, "e", 5);
     rliza_set_integer(rliza, "f", 6);
     rliza_set_string(rliza, "str1", "str1value");
-    rliza_set_null(rliza,"q");
+    rliza_set_null(rliza, "q");
 
     unsigned char *original_content = rliza_object_to_string(rliza);
     unsigned char *content = original_content;

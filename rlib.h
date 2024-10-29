@@ -63,6 +63,8 @@ typedef unsigned char byte;
 #endif
 #endif
 
+#ifndef NSOCK_H
+#define NSOCK_H
 #ifndef RMALLOC_H
 #define RMALLOC_H
 #ifndef RMALLOC_OVERRIDE
@@ -159,6 +161,252 @@ char *rmalloc_stats() {
 
 #endif
 
+#include <arpa/inet.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+int *nsock_socks = NULL;
+int *nsock_readable = NULL;
+void **nsock_data = NULL;
+int nsock_server_fd = 0;
+int nsock_max_socket_fd = 0;
+
+void (*nsock_on_connect)(int fd) = NULL;
+void (*nsock_on_data)(int fd) = NULL;
+void (*nsock_on_close)(int fd) = NULL;
+
+void nsock_close(int fd) {
+    if (nsock_on_close)
+        nsock_on_close(fd);
+    nsock_socks[fd] = 0;
+    close(fd);
+}
+
+int *nsock_init(int socket_count) {
+    if (nsock_socks) {
+        free(nsock_socks);
+    }
+    nsock_socks = (int *)calloc(1, sizeof(int) * socket_count + 1);
+    if (nsock_data) {
+        free(nsock_data);
+        nsock_data = NULL;
+    }
+    nsock_data = (void **)malloc(sizeof(void *) * socket_count + 1);
+    nsock_socks[socket_count] = -1;
+    return nsock_socks;
+}
+
+void nsock_free() {
+    if (nsock_socks)
+        free(nsock_socks);
+    if (nsock_readable)
+        free(nsock_readable);
+    nsock_server_fd = 0;
+    nsock_max_socket_fd = 0;
+    if (nsock_data) {
+        printf("Clean data before freeing\n");
+        exit(1);
+    }
+}
+
+void *nsock_get_data(int socket) { return nsock_data[socket]; }
+void nsock_set_data(int socket, void *data) { nsock_data[socket] = data; }
+
+void nsock_listen(int port) {
+    int server_fd;
+    struct sockaddr_in address;
+
+    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
+        perror("Socket failed");
+        exit(EXIT_FAILURE);
+    }
+
+    int opt = 1;
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
+        perror("setsockopt failed");
+        close(server_fd);
+        exit(EXIT_FAILURE);
+    }
+
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(port);
+
+    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
+        printf("port %d already in use\n", port);
+        perror("Bind failed");
+        close(server_fd);
+        exit(EXIT_FAILURE);
+    }
+
+    if (listen(server_fd, 8096) < 0) {
+        perror("Listen failed");
+        close(server_fd);
+        exit(EXIT_FAILURE);
+    }
+    nsock_server_fd = server_fd;
+}
+
+int *nsock_select(suseconds_t timeout) {
+    struct timeval tv;
+    tv.tv_sec = 0;
+    tv.tv_usec = timeout;
+    int server_fd = nsock_server_fd;
+    fd_set rfds;
+    FD_ZERO(&rfds);
+    FD_SET(server_fd, &rfds);
+    int *socks = nsock_socks;
+    fd_set efds;
+    FD_ZERO(&efds);
+    nsock_max_socket_fd = server_fd;
+    for (int i = 0; socks[i] != -1; i++) {
+        if (i == server_fd)
+            continue;
+        ;
+        if (!socks[i])
+            continue;
+        if (socks[i] > nsock_max_socket_fd) {
+            nsock_max_socket_fd = socks[i];
+        }
+        FD_SET(socks[i], &rfds);
+        FD_SET(socks[i], &efds);
+    }
+
+    int activity = select(nsock_max_socket_fd + 1, &rfds, NULL, &efds,
+                          timeout == 0 ? NULL : &tv);
+    if ((activity < 0) && (errno != EINTR)) {
+        perror("Select error\n");
+        return NULL;
+    } else if (activity == 0) {
+        return NULL;
+    }
+    if (FD_ISSET(server_fd, &rfds)) {
+        struct sockaddr_in address;
+        int addrlen = sizeof(address);
+        address.sin_family = AF_INET; // IPv4
+        address.sin_addr.s_addr =
+            INADDR_ANY; // Listen on any available network interface
+
+        int new_socket = 0;
+        if ((new_socket = accept(server_fd, (struct sockaddr *)&address,
+                                 (socklen_t *)&addrlen)) < 0) {
+            perror("Accept failed");
+        } else {
+            nsock_socks[new_socket] = new_socket;
+            if (nsock_on_connect)
+                nsock_on_connect(new_socket);
+            if (new_socket > nsock_max_socket_fd)
+                nsock_max_socket_fd = new_socket;
+        }
+    }
+    if (nsock_readable) {
+        free(nsock_readable);
+    }
+    nsock_readable = (int *)calloc(1, sizeof(int) * (nsock_max_socket_fd + 2));
+    nsock_readable[nsock_max_socket_fd + 1] = -1;
+    nsock_readable[0] = 0;
+    int readable_count = 0;
+    for (int i = 0; i < nsock_max_socket_fd + 1; i++) {
+        if (FD_ISSET(i, &efds)) {
+            nsock_close(nsock_socks[i]);
+            nsock_socks[i] = 0;
+            nsock_readable[i] = 0;
+        }
+        if (FD_ISSET(i, &rfds) && i != server_fd) {
+
+            nsock_readable[i] = i;
+            readable_count++;
+            if (nsock_on_data) {
+                nsock_on_data(i);
+            }
+        } else {
+            nsock_readable[i] = 0;
+        }
+    }
+    return nsock_readable;
+}
+
+unsigned char *nsock_read(int fd, int length) {
+    unsigned char *buffer = (unsigned char *)malloc(length + 1);
+    int bytes_read = read(fd, buffer, length);
+    if (bytes_read <= 0) {
+        nsock_close(fd);
+        return NULL;
+    }
+    buffer[bytes_read] = 0;
+    return buffer;
+}
+
+unsigned char *nsock_read_all(int fd, int length) {
+    unsigned char *buffer = (unsigned char *)malloc(length + 1);
+    int bytes_read = 0;
+    while (bytes_read < length) {
+        int bytes_chunk = read(fd, buffer + bytes_read, length - bytes_read);
+        if (bytes_chunk <= 0) {
+            nsock_close(fd);
+            return NULL;
+        }
+        bytes_read += bytes_chunk;
+    }
+    buffer[bytes_read] = 0;
+    return buffer;
+}
+
+int nsock_write_all(int fd, unsigned char *data, int length) {
+    int bytes_written = 0;
+    while (bytes_written < length) {
+        int bytes_chunk =
+            write(fd, data + bytes_written, length - bytes_written);
+        if (bytes_chunk <= 0) {
+            nsock_close(fd);
+            return 0;
+        }
+        bytes_written += bytes_chunk;
+    }
+    return bytes_written;
+}
+void nsock(int port, void (*on_connect)(int fd), void (*on_data)(int fd),
+           void (*on_close)(int fd)) {
+    nsock_init(2048);
+    nsock_listen(port);
+    nsock_on_connect = on_connect;
+    nsock_on_data = on_data;
+    nsock_on_close = on_close;
+    int serve_in_terminal = nsock_on_connect == NULL && nsock_on_data == NULL &&
+                            nsock_on_close == NULL;
+    while (1) {
+        int *readable = nsock_select(1000000000);
+        if (!serve_in_terminal)
+            continue;
+        if (!readable)
+            continue;
+        for (int i = 0; readable[i] != -1; i++) {
+            if (!readable[i])
+                continue;
+            char buffer[1024] = {0};
+
+            int bytes_read = read(readable[i], buffer, 1);
+            buffer[bytes_read] = 0;
+            if (bytes_read <= 0) {
+                nsock_close(readable[i]);
+                continue;
+            }
+            if (write(readable[i], buffer, bytes_read) <= 0) {
+                nsock_close(readable[i]);
+                continue;
+            }
+        }
+    }
+}
+#endif
 #ifndef RNET_H
 #define RNET_H
 #ifdef _POSIX_C_SOURCE
@@ -1640,6 +1888,27 @@ rliza_t *rliza_new_key_number(char *key, double value) {
     return rliza;
 }
 
+void rliza_set_null(rliza_t *self, char *key) {
+    rliza_t *obj = rliza_get_object(self, key);
+    if (!obj) {
+        obj = rliza_new_null();
+        obj->key = strdup(key);
+        rliza_set_object(self, obj);
+    } else if (obj->type == RLIZA_STRING) {
+        if (obj->content.string)
+            free(obj->content.string);
+        obj->content.string = NULL;
+    } else if (obj->type == RLIZA_ARRAY || obj->type == RLIZA_OBJECT) {
+        for (unsigned int i = 0; i < obj->count; i++) {
+            rliza_free(obj->content.map[i]);
+        }
+    } else if (obj->type == RLIZA_NUMBER) {
+        obj->content.number = 0;
+    } else if (obj->type == RLIZA_INTEGER) {
+        obj->content.integer = 0;
+    }
+    obj->type = RLIZA_NULL;
+}
 void rliza_set_string(rliza_t *self, char *key, char *string) {
     rliza_t *obj = rliza_get_object(self, key);
 
@@ -1824,8 +2093,8 @@ rliza_t *rliza_object_from_string(char **content) {
         rliza->type = RLIZA_OBJECT;
         (*content)++;
         char *result = NULL;
-        while ((result = (char *)rliza_seek_string(content, "\"|,|}|object")) !=
-                   NULL &&
+        while ((result = (char *)rliza_seek_string(
+                    content, "\"|,|null|}|object")) != NULL &&
                *result) {
             if (**content == ',') {
                 (*content)++;
@@ -1848,6 +2117,23 @@ rliza_t *rliza_object_from_string(char **content) {
                 // printf("<<<<<<<<%s>>>>>>>>>>\n",value->content.string);
             } else if (**content == '}') {
                 (*content)++;
+            } else if (!strncmp(*content, "null", 4)) {
+                (*content) += 4;
+                /*
+                unsigned char * key = (unsigned char *)malloc(5);
+                strcpy((char *)key, "null");
+                (*content) += 4;
+                char *escaped_key = (char *)malloc(strlen((char *)key) * 2 + 1);
+                rstrstripslashes((char *)key, escaped_key);
+                assert(rliza_seek_string(content, ":|keystr"));
+                (*content)++;
+
+                rliza_t *value = rliza_object_from_string(content);
+                if (value->key)
+                    free(value->key);
+                value->key = escaped_key;
+                free(key);
+                rliza_set_object(rliza, value);*/
             } else {
                 assert(false && "Parse error.");
             }
@@ -2017,7 +2303,16 @@ unsigned char *rliza_object_to_string(rliza_t *rliza) {
             content[strlen((char *)content) - 1] = 0;
         strcat((char *)content, "]");
     } else if (rliza->type == RLIZA_NULL) {
-        strcpy((char *)content, "null");
+
+        if (rliza->key) {
+            char *escaped_key =
+                (char *)malloc(strlen((char *)rliza->key) * 2 + 1);
+            rstraddslashes((char *)rliza->key, escaped_key);
+
+            sprintf((char *)content, "\"%s\":null", escaped_key);
+            free(escaped_key);
+        } else
+            strcpy((char *)content, "null");
     }
     return content;
 }
@@ -2542,6 +2837,253 @@ void rprintw(const char *format, ...) {
 #include <string.h>
 #ifndef RTEST_H
 #define RTEST_H
+#ifndef REMO_H
+#define REMO_H
+#include <ctype.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+
+typedef struct {
+    const char *str;
+    const char *description;
+} remo_t;
+
+remo_t remo[] = {
+    {"\U0001F600", "Grinning Face"},                   // 😀
+    {"\U0001F601", "Beaming Face with Smiling Eyes"},  // 😁
+    {"\U0001F602", "Face with Tears of Joy"},          // 😂
+    {"\U0001F923", "Rolling on the Floor Laughing"},   // 🤣
+    {"\U0001F603", "Grinning Face with Big Eyes"},     // 😃
+    {"\U0001F604", "Grinning Face with Smiling Eyes"}, // 😄
+    {"\U0001F609", "Winking Face"},                    // 😉
+    {"\U0001F60A", "Smiling Face with Smiling Eyes"},  // 😊
+    {"\U0001F60D", "Smiling Face with Heart-Eyes"},    // 😍
+    {"\U0001F618", "Face Blowing a Kiss"},             // 😘
+    {"\U0001F617", "Kissing Face"},                    // 😗
+    {"\U0001F61A", "Kissing Face with Closed Eyes"},   // 😚
+    {"\U0001F642", "Slightly Smiling Face"},           // 🙂
+    {"\U0001F643", "Upside-Down Face"},                // 🙃
+    {"\U0001F970", "Smiling Face with Hearts"},        // 🥰
+    {"\U0001F60B", "Face Savoring Food"},              // 😋
+    {"\U0001F61B", "Face with Tongue"},                // 😛
+    {"\U0001F61C", "Winking Face with Tongue"},        // 😜
+    {"\U0001F92A", "Zany Face"},                       // 🤪
+    {"\U0001F929", "Star-Struck"},                     // 🤩
+    {"\U0001F631", "Face Screaming in Fear"},          // 😱
+    {"\U0001F62D", "Loudly Crying Face"},              // 😭
+    {"\U0001F624", "Face with Steam From Nose"},       // 😤
+    {"\U0001F620", "Angry Face"},                      // 😠
+    {"\U0001F621", "Pouting Face"},                    // 😡
+    {"\U0001F47B", "Ghost"},                           // 👻
+    {"\U0001F480", "Skull"},                           // 💀
+    {"\U0001F4A9", "Pile of Poo"},                     // 💩
+    {"\U0001F47D", "Alien"},                           // 👽
+                                                       // Geometric Shapes
+    {"\U000025A0", "Black Square"},                    // ■
+    {"\U000025B2", "Upward Triangle"},                 // ▲
+    {"\U000025CF", "Black Circle"},                    // ●
+    {"\U000025CB", "White Circle"},                    // ○
+    {"\U00002B1B", "Large Black Square"},              // ⬛
+    {"\U00002B1C", "Large White Square"},              // ⬜
+
+    // Mathematical Symbols
+    {"\U00002200", "For All"},       // ∀
+    {"\U00002203", "Exists"},        // ∃
+    {"\U00002205", "Empty Set"},     // ∅
+    {"\U00002207", "Nabla"},         // ∇
+    {"\U0000220F", "N-Ary Product"}, // ∏
+    {"\U00002212", "Minus Sign"},    // −
+    {"\U0000221E", "Infinity"},      // ∞
+
+    // Arrows
+    {"\U00002190", "Left Arrow"},        // ←
+    {"\U00002191", "Up Arrow"},          // ↑
+    {"\U00002192", "Right Arrow"},       // →
+    {"\U00002193", "Down Arrow"},        // ↓
+    {"\U00002195", "Up Down Arrow"},     // ↕
+    {"\U00002197", "Up Right Arrow"},    // ↗
+    {"\U00002198", "Down Right Arrow"},  // ↘
+    {"\U000027A1", "Black Right Arrow"}, // ➡️
+
+    // Dingbats
+    {"\U00002714", "Check Mark"},             // ✔️
+    {"\U00002716", "Heavy Multiplication X"}, // ✖️
+    {"\U00002728", "Sparkles"},               // ✨
+    {"\U00002757", "Exclamation Mark"},       // ❗
+    {"\U0000274C", "Cross Mark"},             // ❌
+    {"\U00002795", "Heavy Plus Sign"},        // ➕
+
+    // Miscellaneous Symbols
+    {"\U00002600", "Sun"},                      // ☀️
+    {"\U00002614", "Umbrella with Rain Drops"}, // ☔
+    {"\U00002620", "Skull and Crossbones"},     // ☠️
+    {"\U000026A0", "Warning Sign"},             // ⚠️
+    {"\U000026BD", "Soccer Ball"},              // ⚽
+    {"\U000026C4", "Snowman"},                  // ⛄
+
+    // Stars and Asterisks
+    {"\U00002733", "Eight Pointed Black Star"}, // ✳️
+    {"\U00002734", "Eight Spoked Asterisk"},    // ✴️
+    {"\U00002B50", "White Star"},               // ⭐
+    {"\U0001F31F", "Glowing Star"},             // 🌟
+    {"\U00002728", "Sparkles"},                 // ✨
+                                                // Animals and Nature
+    {"\U0001F98A", "Fox"},                      // 🦊
+    {"\U0001F415", "Dog"},                      // 🐕
+    {"\U0001F431", "Cat Face"},                 // 🐱
+    {"\U0001F435", "Monkey Face"},              // 🐵
+    {"\U0001F408", "Black Cat"},                // 🐈
+    {"\U0001F98C", "Deer"},                     // 🦌
+    {"\U0001F344", "Mushroom"},                 // 🍄
+    {"\U0001F333", "Tree"},                     // 🌳
+
+    // Weather and Space Symbols
+    {"\U0001F308", "Rainbow"},       // 🌈
+    {"\U0001F320", "Shooting Star"}, // 🌠
+    {"\U00002600", "Sun"},           // ☀️
+    {"\U00002601", "Cloud"},         // ☁️
+    {"\U000026A1", "High Voltage"},  // ⚡
+    {"\U0001F525", "Fire"},          // 🔥
+    {"\U000026C4", "Snowman"},       // ⛄
+    {"\U0001F30A", "Water Wave"},    // 🌊
+
+    // Transport and Map Symbols
+    {"\U0001F68C", "Bus"},        // 🚌
+    {"\U0001F697", "Car"},        // 🚗
+    {"\U0001F6B2", "Bicycle"},    // 🚲
+    {"\U0001F6A2", "Ship"},       // 🚢
+    {"\U0001F681", "Helicopter"}, // 🚁
+    {"\U0001F680", "Rocket"},     // 🚀
+    {"\U0001F6EB", "Airplane"},   // 🛫
+
+    // Currency Symbols
+    {"\U00000024", "Dollar Sign"},     // $
+    {"\U000000A3", "Pound Sign"},      // £
+    {"\U000000A5", "Yen Sign"},        // ¥
+    {"\U000020AC", "Euro Sign"},       // €
+    {"\U0001F4B5", "Dollar Banknote"}, // 💵
+    {"\U0001F4B4", "Yen Banknote"},    // 💴
+
+    // Card Suits
+    {"\U00002660", "Black Spade Suit"},   // ♠️
+    {"\U00002663", "Black Club Suit"},    // ♣️
+    {"\U00002665", "Black Heart Suit"},   // ♥️
+    {"\U00002666", "Black Diamond Suit"}, // ♦️
+    {"\U0001F0CF", "Joker Card"},         // 🃏
+
+    // Office Supplies and Objects
+    {"\U0001F4DA", "Books"},                      // 📚
+    {"\U0001F4D7", "Green Book"},                 // 📗
+    {"\U0001F4C8", "Chart with Upwards Trend"},   // 📈
+    {"\U0001F4C9", "Chart with Downwards Trend"}, // 📉
+    {"\U0001F4B0", "Money Bag"},                  // 💰
+    {"\U0001F4B8", "Money with Wings"},           // 💸
+    {"\U0001F4E6", "Package"},                    // 📦
+
+    // Miscellaneous Symbols
+    {"\U00002757", "Exclamation Mark"},       // ❗
+    {"\U00002714", "Check Mark"},             // ✔️
+    {"\U0000274C", "Cross Mark"},             // ❌
+    {"\U00002705", "Check Mark Button"},      // ✅
+    {"\U00002B50", "White Star"},             // ⭐
+    {"\U0001F31F", "Glowing Star"},           // 🌟
+    {"\U0001F4A1", "Light Bulb"},             // 💡
+    {"\U0001F4A3", "Bomb"},                   // 💣
+    {"\U0001F4A9", "Pile of Poo"},            // 💩
+                                              // Musical Symbols
+    {"\U0001F3B5", "Musical Note"},           // 🎵
+    {"\U0001F3B6", "Multiple Musical Notes"}, // 🎶
+    {"\U0001F3BC", "Musical Score"},          // 🎼
+    {"\U0001F399", "Studio Microphone"},      // 🎙️
+    {"\U0001F3A4", "Microphone"},             // 🎤
+
+    // Food and Drink
+    {"\U0001F35F", "Cheese Wedge"},   // 🧀
+    {"\U0001F355", "Slice of Pizza"}, // 🍕
+    {"\U0001F32D", "Taco"},           // 🌮
+    {"\U0001F37D", "Beer Mug"},       // 🍻
+    {"\U0001F96B", "Cup with Straw"}, // 🥤
+    {"\U0001F32E", "Hot Pepper"},     // 🌶️
+    {"\U0001F95A", "Potato"},         // 🥔
+
+    // Zodiac Signs
+    {"\U00002600", "Aries"},       // ♈
+    {"\U00002601", "Taurus"},      // ♉
+    {"\U00002602", "Gemini"},      // ♊
+    {"\U00002603", "Cancer"},      // ♋
+    {"\U00002604", "Leo"},         // ♌
+    {"\U00002605", "Virgo"},       // ♍
+    {"\U00002606", "Libra"},       // ♎
+    {"\U00002607", "Scorpio"},     // ♏
+    {"\U00002608", "Sagittarius"}, // ♐
+    {"\U00002609", "Capricorn"},   // ♑
+    {"\U0000260A", "Aquarius"},    // ♒
+    {"\U0000260B", "Pisces"},      // ♓
+
+    // Miscellaneous Shapes
+    {"\U0001F4C8", "Chart Increasing"}, // 📈
+    {"\U0001F4C9", "Chart Decreasing"}, // 📉
+    {"\U0001F4CA", "Bar Chart"},        // 📊
+    {"\U0001F7E6", "Orange Circle"},    // 🟠
+    {"\U0001F7E7", "Yellow Circle"},    // 🟡
+    {"\U0001F7E8", "Green Circle"},     // 🟢
+    {"\U0001F7E9", "Blue Circle"},      // 🔵
+    {"\U0001F7EA", "Purple Circle"},    // 🟣
+
+    // Flags
+    {"\U0001F1E6\U0001F1E9", "Flag of France"},        // 🇫🇷
+    {"\U0001F1E8\U0001F1E6", "Flag of Germany"},       // 🇩🇪
+    {"\U0001F1FA\U0001F1F8", "Flag of United States"}, // 🇺🇸
+    {"\U0001F1E7\U0001F1F7", "Flag of Canada"},        // 🇨🇦
+    {"\U0001F1EE\U0001F1F2", "Flag of Italy"},         // 🇮🇹
+    {"\U0001F1F8\U0001F1EC", "Flag of Australia"},     // 🇦🇺
+    {"\U0001F1F3\U0001F1F4", "Flag of Spain"},         // 🇪🇸
+
+    // Additional Miscellaneous Symbols
+    {"\U0001F4A5", "Collision"},         // 💥
+    {"\U0001F4A6", "Sweat Droplets"},    // 💦
+    {"\U0001F4A8", "Dashing Away"},      // 💨
+    {"\U0001F50B", "Battery"},           // 🔋
+    {"\U0001F4BB", "Laptop Computer"},   // 💻
+    {"\U0001F4DE", "Telephone"},         // 📞
+    {"\U0001F4E7", "Incoming Envelope"}, // 📧
+};
+size_t remo_count = sizeof(remo) / sizeof(remo[0]);
+
+void rstrtolower(const char *input, char *output) {
+    while (*input) {
+        *output = tolower(*input);
+        input++;
+        output++;
+    }
+    *output = 0;
+}
+bool rstrinstr(const char *haystack, const char *needle) {
+    char lower1[strlen(haystack) + 1];
+    char lower2[strlen(needle) + 1];
+    rstrtolower(haystack, lower1);
+    rstrtolower(needle, lower2);
+    return strstr(lower1, lower2) ? true : false;
+}
+
+void remo_print() {
+
+    for (size_t i = 0; i < remo_count; i++) {
+        printf("%s - %s\n", remo[i].str, remo[i].description);
+    }
+}
+
+const char *remo_get(char *name) {
+    for (size_t i = 0; i < remo_count; i++) {
+        if (rstrinstr(remo[i].description, name)) {
+            return remo[i].str;
+        }
+    }
+    return NULL;
+}
+
+#endif
 #include <stdbool.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -2556,10 +3098,11 @@ int rtest_end(char *content) {
     // Returns application exit code. 0 == success
     printf("%s", content);
     printf("\n@assertions: %d\n", rassert_count);
-    printf("@memory: %s\n", rmalloc_stats());
+    printf("@memory: %s%s\n", rmalloc_stats(),
+           rmalloc_count == 0 ? remo_get("rainbow") : "fire");
 
     if (rmalloc_count != 0) {
-        printf("MEMORY ERROR\n");
+        printf("MEMORY ERROR %s\n", remo_get("cross mark"));
         return rtest_fail_count > 0;
     }
     return rtest_fail_count > 0;
@@ -2591,10 +3134,11 @@ bool rtest_test_true_silent(char *expr, int res, int line) {
 bool rtest_test_true(char *expr, int res, int line) {
     rassert_count++;
     if (res) {
-        fprintf(stdout, ".");
+        fprintf(stdout, "%s", remo_get("Slightly Smiling Face"));
         return true;
     }
-    rprintrf(stderr, "\nERROR on line %d: %s", line, expr);
+    rprintrf(stderr, "\nERROR %s on line %d: %s\n", remo_get("skull"), line,
+             expr);
     rtest_fail_count++;
     return false;
 }
@@ -7632,7 +8176,8 @@ int rmerge_main(int argc, char *argv[]) {
         rprintrf(stderr,
                  "\\l Warning: there are errors while merging this file.\n");
     } else {
-        rprintgf(stderr, "\\l Merge succesful without error(s).\n");
+        rprintgf(stderr, "\\l Merge succesful without error(s).%s\n",
+                 remo_get("fire"));
     }
     return 0;
 }
