@@ -1,4 +1,4 @@
-// RETOOR - Oct 25 2024
+// RETOOR - Oct 29 2024
 // MIT License
 // ===========
 
@@ -31,10 +31,141 @@
 tag" />
 */
 
+#ifndef RTYPES_H
+#define RTYPES_H
+#ifdef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE_TEMP _POSIX_C_SOURCE
+#undef _POSIX_C_SOURCE
+#endif
+#ifndef _POSIX_C_SOURCE
+#undef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200112L
+#endif
+#include <stdbool.h>
+#include <stdint.h> // uint
+#include <string.h>
+#include <sys/types.h> // ulong
+#ifndef ulonglong
+#define ulonglong unsigned long long
+#endif
+#ifndef uint
+typedef unsigned int uint;
+#endif
+#ifndef byte
+typedef unsigned char byte;
+#endif
+#ifdef _POSIX_C_SOURCE_TEMP
+#undef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE _POSIX_C_SOURCE_TEMP
+#undef _POSIX_C_SOURCE_TEMP
+#else
+#undef _POSIX_C_SOURCE
+#endif
+#endif
+
+#ifndef RMALLOC_H
+#define RMALLOC_H
+#ifndef RMALLOC_OVERRIDE
+#define RMALLOC_OVERRIDE 1
+#endif
+#ifdef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE_TEMP _POSIX_C_SOURCE
+#undef _POSIX_C_SOURCE
+#endif
+#ifndef _POSIX_C_SOURCE
+#undef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200112L
+#endif
+#ifndef ulonglong
+#define ulonglong unsigned long long
+#endif
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#ifdef _POSIX_C_SOURCE_TEMP
+#undef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE _POSIX_C_SOURCE_TEMP
+#undef _POSIX_C_SOURCE_TEMP
+#else
+#undef _POSIX_C_SOURCE
+#endif
+
+static ulonglong rmalloc_count = 0;
+static ulonglong rmalloc_alloc_count = 0;
+static ulonglong rmalloc_free_count = 0;
+
+void *rmalloc(size_t size) {
+    void *result;
+    while (!(result = malloc(size))) {
+        fprintf(stderr, "Warning: malloc failed, trying again.\n");
+    }
+    rmalloc_count++;
+    rmalloc_alloc_count++;
+    return result;
+}
+void *rcalloc(size_t count, size_t size) {
+    void *result;
+    while (!(result = calloc(count, size))) {
+        fprintf(stderr, "Warning: calloc failed, trying again.\n");
+    }
+    rmalloc_alloc_count++;
+    rmalloc_count++;
+    return result;
+}
+void *rrealloc(void *obj, size_t size) {
+    if (!obj) {
+        rmalloc_count++;
+        rmalloc_alloc_count++;
+    }
+    void *result;
+    while (!(result = realloc(obj, size))) {
+        fprintf(stderr, "Warning: realloc failed, trying again.\n");
+    }
+    return result;
+}
+
+char *rstrdup(const char *s) {
+    if (!s)
+        return NULL;
+
+    char *result;
+    size_t size = strlen(s) + 1;
+    result = rmalloc(size);
+    memcpy(result, s, size);
+    return result;
+}
+void *rfree(void *obj) {
+    rmalloc_count--;
+    rmalloc_free_count++;
+    free(obj);
+    return NULL;
+}
+
+#if RMALLOC_OVERRIDE
+#define malloc rmalloc
+#define calloc rcalloc
+#define realloc rrealloc
+#define free rfree
+#define strdup rstrdup
+#endif
+
+char *rmalloc_stats() {
+    static char res[200];
+    res[0] = 0;
+    sprintf(res, "Memory usage: %lld allocated, %lld freed, %lld in use.",
+            rmalloc_alloc_count, rmalloc_free_count, rmalloc_count);
+    return res;
+}
+
+#endif
+
 #ifndef RNET_H
 #define RNET_H
-
-#if _POSIX_C_SOURCE != 200112L
+#ifdef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE_TEMP _POSIX_C_SOURCE
+#undef _POSIX_C_SOURCE
+#endif
+#ifndef _POSIX_C_SOURCE
 #undef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200112L
 #endif
@@ -53,7 +184,13 @@ tag" />
 #include <sys/types.h>
 
 #include <unistd.h>
+#ifdef _POSIX_C_SOURCE_TEMP
 #undef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE _POSIX_C_SOURCE_TEMP
+#undef _POSIX_C_SOURCE_TEMP
+#else
+#undef _POSIX_C_SOURCE
+#endif
 #define NET_SOCKET_MAX_CONNECTIONS 50000
 
 typedef struct rnet_socket_t {
@@ -516,96 +653,105 @@ void net_socket_close(rnet_socket_t *sock) {
 #undef _POSIX_C_SOURCE
 #endif
 
-#ifndef RLIZA_H
-#define RLIZA_H
-#include <assert.h>
-#ifndef RMALLOC_H
-#define RMALLOC_H
-#ifndef RMALLOC_OVERRIDE
-#define RMALLOC_OVERRIDE 1
-#endif
-
-#ifndef RTYPES_H
-#define RTYPES_H
-#include <stdbool.h>
-#include <stdint.h> // uint
-#include <string.h>
-#include <sys/types.h> // ulong
-#define ulonglong unsigned long long
-#ifndef uint
-typedef unsigned int uint;
-#endif
-#ifndef byte
-typedef unsigned char byte;
-#endif
-#endif
-
 #include <stdio.h>
+#ifndef RLIB_RARGS_H
+#define RLIB_RARGS_H
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
-ulonglong rmalloc_count = 0;
-ulonglong rmalloc_alloc_count = 0;
-ulonglong rmalloc_free_count = 0;
+bool rargs_isset(int argc, char *argv[], char *key) {
 
-char *rstrdup(const char *s) {
-    if (!s)
-        return NULL;
-
-    char *result;
-    rmalloc_count++;
-    rmalloc_alloc_count++;
-    size_t size = strlen(s) + 1;
-    while (!(result = (char *)malloc(size))) {
-        fprintf(stderr, "Warning: strdup failed, trying again.\n");
+    for (int i = 0; i < argc; i++) {
+        if (!strcmp(argv[i], key)) {
+            return true;
+        }
     }
-    memcpy(result, s, size);
-    return result;
-}
-void *rmalloc(size_t size) {
-    rmalloc_count++;
-    rmalloc_alloc_count++;
-    void *result;
-    while (!(result = malloc(size))) {
-        fprintf(stderr, "Warning: malloc failed, trying again.\n");
-    }
-    return result;
-}
-void *rrealloc(void *obj, size_t size) {
-    if (obj == NULL) {
-        rmalloc_count++;
-        rmalloc_count++;
-    }
-    void *result;
-    while (!(result = realloc(obj, size))) {
-        fprintf(stderr, "Warning: realloc failed, trying again.\n");
-    }
-    return result;
-}
-void *rfree(void *obj) {
-    rmalloc_count--;
-    rmalloc_free_count++;
-    free(obj);
-    return NULL;
+    return false;
 }
 
-#if RMALLOC_OVERRIDE
-#define malloc rmalloc
-#define realloc rrealloc
-#define free rfree
-#define strdup rstrdup
+char *rargs_get_option_string(int argc, char *argv[], char *key,
+                              const char *def) {
+
+    for (int i = 0; i < argc; i++) {
+        if (!strcmp(argv[i], key)) {
+            if (i < argc - 1) {
+                return argv[i + 1];
+            }
+        }
+    }
+    return (char *)def;
+}
+
+int rargs_get_option_int(int argc, char *argv[], char *key, int def) {
+
+    for (int i = 0; i < argc; i++) {
+        if (!strcmp(argv[i], key)) {
+            if (i < argc - 1) {
+                return atoi(argv[i + 1]);
+            }
+        }
+    }
+    return def;
+}
+
+bool rargs_get_option_bool(int argc, char *argv[], char *key, bool def) {
+
+    for (int i = 0; i < argc; i++) {
+        if (!strcmp(argv[i], key)) {
+            if (i < argc - 1) {
+                if (!strcmp(argv[i + 1], "false"))
+                    return false;
+                if (!strcmp(argv[i + 1], "0"))
+                    return false;
+                return true;
+            }
+        }
+    }
+
+    return def;
+}
+#endif
+#ifndef RCAT_H
+#define RCAT_H
+#include <stdio.h>
+#include <stdlib.h>
+
+void rcat(char *filename) {
+    FILE *f = fopen(filename, "rb");
+    if (!f) {
+        printf("rcat: couldn't open \"%s\" for read.\n", filename);
+        return;
+    }
+    unsigned char c;
+    while ((c = fgetc(f)) && !feof(f)) {
+        printf("%c", c);
+    }
+    fclose(f);
+    fflush(stdout);
+}
+
+int rcat_main(int argc, char *argv[]) {
+    if (argc < 2) {
+        printf("Usage: [filename]\n");
+        return 1;
+    }
+    rcat(argv[1]);
+    return 0;
+}
+
 #endif
 
-char *rmalloc_stats() {
-    static char res[200];
-    res[0] = 0;
-    sprintf(res, "Memory usage: %lld allocated, %lld freed, %lld in use.",
-            rmalloc_alloc_count, rmalloc_free_count, rmalloc_count);
-    return res;
-}
-
-#endif
-
+#ifndef RLIZA_H
+#define RLIZA_H
+#include <assert.h>
+#include <ctype.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#ifndef RBUFFER_H
+#define RBUFFER_H
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -613,6 +759,7 @@ char *rmalloc_stats() {
 #include <string.h>
 typedef struct rbuffer_t {
     unsigned char *data;
+    unsigned char *_data;
     size_t size;
     size_t pos;
     bool eof;
@@ -628,14 +775,16 @@ unsigned char *rbuffer_expect(rbuffer_t *rfb, char *options, char *ignore);
 void rbuffer_set(rbuffer_t *rfb, const unsigned char *data, size_t size);
 
 void rbuffer_set(rbuffer_t *rfb, const unsigned char *data, size_t size) {
-    if (rfb->data) {
-        free(rfb->data);
+    if (rfb->_data) {
+        free(rfb->_data);
+        rfb->_data = NULL;
         rfb->data = NULL;
         rfb->eof = true;
     }
     if (size) {
-        rfb->data = (unsigned char *)malloc(size);
-        memcpy(rfb->data, data, size);
+        rfb->_data = (unsigned char *)malloc(size);
+        memcpy(rfb->_data, data, size);
+        rfb->data = rfb->_data;
         rfb->eof = false;
     }
     rfb->size = size;
@@ -645,30 +794,31 @@ void rbuffer_set(rbuffer_t *rfb, const unsigned char *data, size_t size) {
 rbuffer_t *rbuffer_new(unsigned char *data, size_t size) {
     rbuffer_t *rfb = (rbuffer_t *)malloc(sizeof(rbuffer_t));
     if (size) {
-        rfb->data = (unsigned char *)malloc(size);
-        memcpy(rfb->data, data, size);
+        rfb->_data = (unsigned char *)malloc(size);
+        memcpy(rfb->_data, data, size);
         rfb->eof = false;
     } else {
-        rfb->data = NULL;
+        rfb->_data = NULL;
         rfb->eof = true;
     }
     rfb->size = size;
     rfb->pos = 0;
+    rfb->data = rfb->_data;
     return rfb;
 }
 void rbuffer_free(rbuffer_t *rfb) {
-    if (rfb->data)
-        free(rfb->data);
+    if (rfb->_data)
+        free(rfb->_data);
     free(rfb);
 }
 
 size_t rbuffer_push(rbuffer_t *rfb, unsigned char c) {
     if (rfb->pos < rfb->size) {
-        rfb->data[rfb->pos++] = c;
+        rfb->_data[rfb->pos++] = c;
         return 1;
     }
-    rfb->data = realloc(rfb->data, rfb->size + 1);
-    rfb->data[rfb->pos++] = c;
+    rfb->_data = realloc(rfb->_data, rfb->size + 1);
+    rfb->_data[rfb->pos++] = c;
     rfb->size++;
     return rfb->pos;
 }
@@ -682,7 +832,7 @@ void rbuffer_write(rbuffer_t *rfb, const unsigned char *data, size_t size) {
 unsigned char rbuffer_peek(rbuffer_t *rfb) {
     unsigned char result = EOF;
     if (rfb->pos != rfb->size) {
-        result = rfb->data[rfb->pos];
+        result = rfb->_data[rfb->pos];
         return result;
     }
     rfb->eof = true;
@@ -691,7 +841,7 @@ unsigned char rbuffer_peek(rbuffer_t *rfb) {
 unsigned char rbuffer_pop(rbuffer_t *rfb) {
     unsigned char result = EOF;
     if (rfb->pos <= rfb->size) {
-        result = rfb->data[rfb->pos];
+        result = rfb->_data[rfb->pos];
         rfb->pos++;
         rfb->data++;
         if (rfb->pos == rfb->size) {
@@ -703,8 +853,7 @@ unsigned char rbuffer_pop(rbuffer_t *rfb) {
     return result;
 }
 void rbuffer_reset(rbuffer_t *rfb) {
-    if (rfb->data)
-        rfb->data -= rfb->pos;
+    rfb->data = rfb->_data;
     rfb->pos = 0;
 }
 
@@ -719,6 +868,14 @@ unsigned char ustrncmp(const unsigned char *s1, const unsigned char *s2,
     return *s1 != *s2;
 }
 size_t ustrlen(const unsigned char *s) { return strlen((char *)s); }
+
+unsigned char *rbuffer_to_string(rbuffer_t *rfb) {
+    unsigned char *result = rfb->_data;
+    rfb->_data = NULL;
+    rfb->data = NULL;
+    rbuffer_free(rfb);
+    return result;
+}
 
 unsigned char *rbuffer_match_option(rbuffer_t *rfb, char *options) {
     char *option = NULL;
@@ -752,7 +909,6 @@ unsigned char *rbuffer_expect(rbuffer_t *rfb, char *options, char *ignore) {
         if (rbuffer_match_option(rfb, options) != NULL) {
             return rfb->data;
         }
-        printf("MATCIHGG\n");
         if (rbuffer_match_option(rfb, ignore)) {
             printf("SKIP:%s\n", rfb->data);
             rbuffer_pop(rfb);
@@ -765,11 +921,486 @@ unsigned char *rbuffer_expect(rbuffer_t *rfb, char *options, char *ignore) {
 unsigned char *rbuffer_consume(rbuffer_t *rfb, char *options, char *ignore) {
     unsigned char *result = NULL;
     if ((result = rbuffer_expect(rfb, options, ignore)) != NULL) {
-        printf("HAAA%s\n", result);
         rbuffer_pop(rfb);
     }
     return result;
 }
+#endif
+#ifndef RSTRING_H
+#define RSTRING_H
+#ifndef RMATH_H
+#define RMATH_H
+#include <math.h>
+
+#ifndef ceil
+double ceil(double x) {
+    if (x == (double)(long long)x) {
+        return x;
+    } else if (x > 0.0) {
+        return (double)(long long)x + 1.0;
+    } else {
+        return (double)(long long)x;
+    }
+}
+#endif
+
+#ifndef floor
+double floor(double x) {
+    if (x >= 0.0) {
+        return (double)(long long)x;
+    } else {
+        double result = (double)(long long)x;
+        return (result == x) ? result : result - 1.0;
+    }
+}
+#endif
+
+#ifndef modf
+double modf(double x, double *iptr) {
+    double int_part = (x >= 0.0) ? floor(x) : ceil(x);
+    *iptr = int_part;
+    return x - int_part;
+}
+#endif
+#endif
+#include <ctype.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+char *rstrtimestamp() {
+    time_t current_time;
+    time(&current_time);
+    struct tm *local_time = localtime(&current_time);
+    static char time_string[100];
+    time_string[0] = 0;
+    strftime(time_string, sizeof(time_string), "%Y-%m-%d %H:%M:%S", local_time);
+    return time_string;
+}
+
+ulonglong _r_generate_key_current = 0;
+
+char *_rcat_int_int(int a, int b) {
+    static char res[20];
+    res[0] = 0;
+    sprintf(res, "%d%d", a, b);
+    return res;
+}
+char *_rcat_int_double(int a, double b) {
+    static char res[20];
+    res[0] = 0;
+    sprintf(res, "%d%f", a, b);
+    return res;
+}
+
+char *_rcat_charp_int(char *a, int b) {
+    char res[20];
+    sprintf(res, "%c", b);
+    return strcat(a, res);
+}
+
+char *_rcat_charp_double(char *a, double b) {
+    char res[20];
+    sprintf(res, "%f", b);
+    return strcat(a, res);
+}
+
+char *_rcat_charp_charp(char *a, char *b) {
+    ;
+    return strcat(a, b);
+}
+char *_rcat_charp_char(char *a, char b) {
+    char extra[] = {b, 0};
+    return strcat(a, extra);
+}
+char *_rcat_charp_bool(char *a, bool *b) {
+    if (b) {
+        return strcat(a, "true");
+    } else {
+        return strcat(a, "false");
+    }
+}
+
+#define rcat(x, y)                                                             \
+    _Generic((x),                                                              \
+        int: _Generic((y),                                                     \
+        int: _rcat_int_int,                                                    \
+        double: _rcat_int_double,                                              \
+        char *: _rcat_charp_charp),                                            \
+        char *: _Generic((y),                                                  \
+        int: _rcat_charp_int,                                                  \
+        double: _rcat_charp_double,                                            \
+        char *: _rcat_charp_charp,                                             \
+        char: _rcat_charp_char,                                                \
+        bool: _rcat_charp_bool))((x), (y))
+
+char *rgenerate_key() {
+    _r_generate_key_current++;
+    static char key[100];
+    key[0] = 0;
+    sprintf(key, "%lld", _r_generate_key_current);
+    return key;
+}
+
+char *rformat_number(long long lnumber) {
+    static char formatted[1024];
+
+    char number[1024] = {0};
+    sprintf(number, "%lld", lnumber);
+
+    int len = strlen(number);
+    int commas_needed = (len - 1) / 3;
+    int new_len = len + commas_needed;
+
+    formatted[new_len] = '\0';
+
+    int i = len - 1;
+    int j = new_len - 1;
+    int count = 0;
+
+    while (i >= 0) {
+        if (count == 3) {
+            formatted[j--] = '.';
+            count = 0;
+        }
+        formatted[j--] = number[i--];
+        count++;
+    }
+    if (lnumber < 0)
+        formatted[j--] = '-';
+    return formatted;
+}
+
+bool rstrextractdouble(char *str, double *d1) {
+    for (size_t i = 0; i < strlen(str); i++) {
+        if (isdigit(str[i])) {
+            str += i;
+            sscanf(str, "%lf", d1);
+            return true;
+        }
+    }
+    return false;
+}
+
+void rstrstripslashes(const char *content, char *result) {
+    size_t content_length = strlen((char *)content);
+    unsigned int index = 0;
+    for (unsigned int i = 0; i < content_length; i++) {
+        char c = content[i];
+        if (c == '\\') {
+            i++;
+            c = content[i];
+            if (c == 'r') {
+                c = '\r';
+            } else if (c == 't') {
+                c = '\t';
+            } else if (c == 'b') {
+                c = '\b';
+            } else if (c == 'n') {
+                c = '\n';
+            } else if (c == 'f') {
+                c = '\f';
+            } else if (c == '\\') {
+                // No need tbh
+                c = '\\';
+            }
+        }
+        result[index] = c;
+        index++;
+    }
+    result[index] = 0;
+}
+
+int rstrstartswith(const char *s1, const char *s2) {
+    if (s1 == NULL)
+        return s2 == NULL;
+    if (s1 == s2 || s2 == NULL || *s2 == 0)
+        return true;
+    size_t len_s2 = strlen(s2);
+    size_t len_s1 = strlen(s1);
+    if (len_s2 > len_s1)
+        return false;
+    return !strncmp(s1, s2, len_s2);
+}
+
+bool rstrendswith(const char *s1, const char *s2) {
+    if (s1 == NULL)
+        return s2 == NULL;
+    if (s1 == s2 || s2 == NULL || *s2 == 0)
+        return true;
+    size_t len_s2 = strlen(s2);
+    size_t len_s1 = strlen(s1);
+    if (len_s2 > len_s1) {
+        return false;
+    }
+    s1 += len_s1 - len_s2;
+    return !strncmp(s1, s2, len_s2);
+}
+
+void rstraddslashes(const char *content, char *result) {
+    size_t content_length = strlen((char *)content);
+    unsigned int index = 0;
+    for (unsigned int i = 0; i < content_length; i++) {
+        if (content[i] == '\r') {
+            result[index] = '\\';
+            index++;
+            result[index] = 'r';
+            index++;
+            continue;
+        } else if (content[i] == '\t') {
+            result[index] = '\\';
+            index++;
+            result[index] = 't';
+            index++;
+            continue;
+        } else if (content[i] == '\n') {
+            result[index] = '\\';
+            index++;
+            result[index] = 'n';
+            index++;
+            continue;
+        } else if (content[i] == '\\') {
+            result[index] = '\\';
+            index++;
+            result[index] = '\\';
+            index++;
+            continue;
+        } else if (content[i] == '\b') {
+            result[index] = '\\';
+            index++;
+            result[index] = 'b';
+            index++;
+            continue;
+        } else if (content[i] == '\f') {
+            result[index] = '\\';
+            index++;
+            result[index] = 'f';
+            index++;
+            continue;
+        } else if (content[i] == '"') {
+            result[index] = '\\';
+            index++;
+            result[index] = '"';
+            index++;
+            continue;
+        }
+        result[index] = content[i];
+        index++;
+    }
+    result[index] = 0;
+}
+
+int rstrip_whitespace(char *input, char *output) {
+    output[0] = 0;
+    int count = 0;
+    size_t len = strlen(input);
+    for (size_t i = 0; i < len; i++) {
+        if (input[i] == '\t' || input[i] == ' ' || input[i] == '\n') {
+            continue;
+        }
+        count = i;
+        size_t j;
+        for (j = 0; j < len - count; j++) {
+            output[j] = input[j + count];
+        }
+        output[j] = '\0';
+        break;
+    }
+    return count;
+}
+
+/*
+ * Converts "pony" to \"pony\". Addslashes does not
+ * Converts "pony\npony" to "pony\n"
+ * 			    "pony"
+ */
+void rstrtocstring(const char *input, char *output) {
+    int index = 0;
+    char clean_input[strlen(input) * 2];
+    char *iptr = clean_input;
+    rstraddslashes(input, clean_input);
+    output[index] = '"';
+    index++;
+    while (*iptr) {
+        if (*iptr == '"') {
+            output[index] = '\\';
+            output++;
+        } else if (*iptr == '\\' && *(iptr + 1) == 'n') {
+            output[index] = '\\';
+            output++;
+            output[index] = 'n';
+            output++;
+            output[index] = '"';
+            output++;
+            output[index] = '\n';
+            output++;
+            output[index] = '"';
+            output++;
+            iptr++;
+            iptr++;
+            continue;
+        }
+        output[index] = *iptr;
+        index++;
+        iptr++;
+    }
+    if (output[index - 1] == '"' && output[index - 2] == '\n') {
+        output[index - 1] = 0;
+    } else if (output[index - 1] != '"') {
+        output[index] = '"';
+        output[index + 1] = 0;
+    }
+}
+
+size_t rstrtokline(char *input, char *output, size_t offset, bool strip_nl) {
+
+    size_t len = strlen(input);
+    output[0] = 0;
+    size_t new_offset = 0;
+    size_t j;
+    size_t index = 0;
+
+    for (j = offset; j < len + offset; j++) {
+        if (input[j] == 0) {
+            index++;
+            break;
+        }
+        index = j - offset;
+        output[index] = input[j];
+
+        if (output[index] == '\n') {
+            index++;
+            break;
+        }
+    }
+    output[index] = 0;
+
+    new_offset = index + offset;
+
+    if (strip_nl) {
+        if (output[index - 1] == '\n') {
+            output[index - 1] = 0;
+        }
+    }
+    return new_offset;
+}
+
+void rstrjoin(char **lines, size_t count, char *glue, char *output) {
+    output[0] = 0;
+    for (size_t i = 0; i < count; i++) {
+        strcat(output, lines[i]);
+        if (i != count - 1)
+            strcat(output, glue);
+    }
+}
+
+int rstrsplit(char *input, char **lines) {
+    int index = 0;
+    size_t offset = 0;
+    char line[1024];
+    while ((offset = rstrtokline(input, line, offset, false)) && *line) {
+        if (!*line) {
+            break;
+        }
+        lines[index] = (char *)malloc(strlen(line) + 1);
+        strcpy(lines[index], line);
+        index++;
+    }
+    return index;
+}
+
+bool rstartswithnumber(char *str) { return isdigit(str[0]); }
+
+void rstrmove2(char *str, unsigned int start, size_t length,
+               unsigned int new_pos) {
+    size_t str_len = strlen(str);
+    char new_str[str_len + 1];
+    memset(new_str, 0, str_len);
+    if (start < new_pos) {
+        strncat(new_str, str + length, str_len - length - start);
+        new_str[new_pos] = 0;
+        strncat(new_str, str + start, length);
+        strcat(new_str, str + strlen(new_str));
+        memset(str, 0, str_len);
+        strcpy(str, new_str);
+    } else {
+        strncat(new_str, str + start, length);
+        strncat(new_str, str, start);
+        strncat(new_str, str + start + length, str_len - start);
+        memset(str, 0, str_len);
+        strcpy(str, new_str);
+    }
+    new_str[str_len] = 0;
+}
+
+void rstrmove(char *str, unsigned int start, size_t length,
+              unsigned int new_pos) {
+    size_t str_len = strlen(str);
+    if (start >= str_len || new_pos >= str_len || start + length > str_len) {
+        return;
+    }
+    char temp[length + 1];
+    strncpy(temp, str + start, length);
+    temp[length] = 0;
+    if (start < new_pos) {
+        memmove(str + start, str + start + length, new_pos - start);
+        strncpy(str + new_pos - length + 1, temp, length);
+    } else {
+        memmove(str + new_pos + length, str + new_pos, start - new_pos);
+        strncpy(str + new_pos, temp, length);
+    }
+}
+
+int cmp_line(const void *left, const void *right) {
+    char *l = *(char **)left;
+    char *r = *(char **)right;
+
+    char lstripped[strlen(l) + 1];
+    rstrip_whitespace(l, lstripped);
+    char rstripped[strlen(r) + 1];
+    rstrip_whitespace(r, rstripped);
+
+    double d1, d2;
+    bool found_d1 = rstrextractdouble(lstripped, &d1);
+    bool found_d2 = rstrextractdouble(rstripped, &d2);
+
+    if (found_d1 && found_d2) {
+        double frac_part1;
+        double int_part1;
+        frac_part1 = modf(d1, &int_part1);
+        double frac_part2;
+        double int_part2;
+        frac_part2 = modf(d2, &int_part2);
+        if (d1 == d2) {
+            return strcmp(lstripped, rstripped);
+        } else if (frac_part1 && frac_part2) {
+            return d1 > d2;
+        } else if (frac_part1 && !frac_part2) {
+            return 1;
+        } else if (frac_part2 && !frac_part1) {
+            return -1;
+        } else if (!frac_part1 && !frac_part2) {
+            return d1 > d2;
+        }
+    }
+    return 0;
+}
+
+int rstrsort(char *input, char *output) {
+    char **lines = (char **)malloc(strlen(input) * 10);
+    int line_count = rstrsplit(input, lines);
+    qsort(lines, line_count, sizeof(char *), cmp_line);
+    rstrjoin(lines, line_count, "", output);
+    for (int i = 0; i < line_count; i++) {
+        free(lines[i]);
+    }
+    free(lines);
+    return line_count;
+}
+
+#endif
 
 typedef enum rliza_type_t {
     RLIZA_STRING = 's',
@@ -790,8 +1421,6 @@ typedef struct rliza_t {
         unsigned char *string;
         bool boolean;
         double number;
-        struct rliza_t *object;
-        struct rliza_t **array;
         struct rliza_t **map;
         long long integer;
     } content;
@@ -800,12 +1429,14 @@ typedef struct rliza_t {
     long long (*get_integer)(struct rliza_t *, char *);
     double (*get_number)(struct rliza_t *, char *);
     bool (*get_boolean)(struct rliza_t *, char *);
-    struct rliza_t **(*get_array)(struct rliza_t *, char *);
+    struct rliza_t *(*get_array)(struct rliza_t *, char *);
     struct rliza_t *(*get_object)(struct rliza_t *, char *);
-    unsigned char *(*set_string)(struct rliza_t *, char *, char *);
-    long long (*set_integer)(struct rliza_t *, char *, long long);
-    double (*set_number)(struct rliza_t *, char *, double);
-    double (*set_boolean)(struct rliza_t *, char *, bool);
+    void (*set_string)(struct rliza_t *, char *, char *);
+    void (*set_integer)(struct rliza_t *, char *, long long);
+    void (*set_number)(struct rliza_t *, char *, double);
+    void (*set_boolean)(struct rliza_t *, char *, bool);
+    void (*set_array)(struct rliza_t *self, char *key, struct rliza_t *array);
+    void (*set_object)(struct rliza_t *self, char *key, struct rliza_t *object);
 } rliza_t;
 
 void rliza_free(rliza_t *rliza) {
@@ -813,36 +1444,42 @@ void rliza_free(rliza_t *rliza) {
         free(rliza->key);
         rliza->key = NULL;
     }
-    if (rliza->value)
+    if (rliza->value) {
         rliza_free(rliza->value);
+        rliza->value = NULL;
+    }
+    // if (rliza->content.array) {
+    //     printf("JAAAA\n");
+    // }
+    // if (rliza->content.object) {
+    //     rliza_free(rliza->content.object);
+    //    rliza->content.object = NULL;
+    //}
     if (rliza->type == RLIZA_STRING) {
         if (rliza->content.string) {
             free(rliza->content.string);
-        } else if (rliza->type == RLIZA_NUMBER) {
+            rliza->content.string = NULL;
+            // else if (rliza->type == RLIZA_NUMBER) {
+            //    printf("STDring freed\n");
         }
-    } else if (rliza->type == RLIZA_OBJECT) {
-        if (rliza->content.map) {
+    } else if (rliza->type == RLIZA_OBJECT || rliza->type == RLIZA_ARRAY) {
 
+        if (rliza->content.map) {
             for (unsigned int i = 0; i < rliza->count; i++) {
                 rliza_free(rliza->content.map[i]);
             }
             free(rliza->content.map);
         }
-    } else if (rliza->type == RLIZA_ARRAY) {
-
-        if (rliza->content.array && rliza->count) {
-            for (unsigned int i = 0; i < rliza->count; i++) {
-                rliza_free(rliza->content.array[i]);
-                // printf("Removed array item\n");
-            }
-
-            // free(rliza->content.array);
-        }
     }
+    // free(rliza->content.array);
+    //}
+
+    free(rliza);
 }
 
 rliza_t *rliza_new(rliza_type_t type);
 rliza_t *rliza_new_string(char *string);
+rliza_t *rliza_new_null();
 rliza_t *rliza_new_boolean(bool value);
 rliza_t *rliza_new_number(double value);
 rliza_t *rliza_new_integer(long long value);
@@ -860,8 +1497,9 @@ unsigned char *rliza_get_string(rliza_t *self, char *key);
 long long rliza_get_integer(rliza_t *self, char *key);
 double rliza_get_number(rliza_t *self, char *key);
 bool rliza_get_boolean(rliza_t *self, char *key);
-rliza_t **rliza_get_array(rliza_t *self, char *key);
+rliza_t *rliza_get_array(rliza_t *self, char *key);
 rliza_t *rliza_get_object(rliza_t *self, char *key);
+void rliza_set_array(rliza_t *self, char *key, rliza_t *array);
 
 unsigned char *rliza_get_string(rliza_t *self, char *key) {
     for (unsigned int i = 0; i < self->count; i++) {
@@ -928,19 +1566,23 @@ rliza_t *rliza_get_object(rliza_t *self, char *key) {
     return NULL;
 }
 
-rliza_t **rliza_get_array(rliza_t *self, char *key) {
+rliza_t *rliza_get_array(rliza_t *self, char *key) {
     for (unsigned int i = 0; i < self->count; i++) {
         if (self->content.map[i]->key != NULL &&
             strcmp(self->content.map[i]->key, key) == 0) {
             if (self->content.map[i]->type == RLIZA_ARRAY ||
                 self->content.map[i]->type == RLIZA_NULL) {
-                return self->content.array;
+                return self->content.map[i];
             }
         }
     }
     return NULL;
 }
 
+rliza_t *rliza_new_null() {
+    rliza_t *rliza = rliza_new(RLIZA_NULL);
+    return rliza;
+}
 rliza_t *rliza_new_string(char *string) {
     rliza_t *rliza = rliza_new(RLIZA_STRING);
     if (string == NULL) {
@@ -948,7 +1590,8 @@ rliza_t *rliza_new_string(char *string) {
         rliza->content.string = NULL;
         return rliza;
     } else {
-        rliza->content.string = (unsigned char *)strdup(string);
+        rliza->content.string =
+            (unsigned char *)strdup(string); // (unsigned char *)new_string;
     }
     return rliza;
 }
@@ -999,17 +1642,33 @@ rliza_t *rliza_new_key_number(char *key, double value) {
 
 void rliza_set_string(rliza_t *self, char *key, char *string) {
     rliza_t *obj = rliza_get_object(self, key);
+
     if (!obj) {
         obj = rliza_new_string(string);
         obj->key = strdup(key);
         obj->type = RLIZA_STRING;
         rliza_set_object(self, obj);
     } else {
+        char *new_string = (char *)malloc(strlen(string) * 2 + 1);
+        new_string[0] = 0;
+        rstraddslashes(string, new_string);
         if (obj->content.string)
             free(obj->content.string);
-        obj->content.string = (unsigned char *)strdup(string);
+        obj->content.string = (unsigned char *)new_string;
     }
 }
+
+void rliza_set_array(rliza_t *self, char *key, rliza_t *array) {
+    rliza_t *obj = rliza_get_object(self, key);
+    if (obj)
+        rliza_free(obj);
+    if (array->key) {
+        free(array->key);
+        array->key = strdup(key);
+    }
+    rliza_set_object(self, array);
+}
+
 void rliza_set_number(rliza_t *self, char *key, double value) {
     rliza_t *obj = rliza_get_object(self, key);
     if (!obj) {
@@ -1054,8 +1713,7 @@ void rliza_set_boolean(rliza_t *self, char *key, bool value) {
 }
 
 rliza_t *rliza_new(rliza_type_t type) {
-    rliza_t *rliza = malloc(sizeof(rliza_t));
-    memset(rliza, 0, sizeof(rliza_t));
+    rliza_t *rliza = calloc(1, sizeof(rliza_t));
     rliza->type = type;
     rliza->key = NULL;
     rliza->count = 0;
@@ -1065,8 +1723,13 @@ rliza_t *rliza_new(rliza_type_t type) {
     rliza->get_string = rliza_get_string;
     rliza->get_array = rliza_get_array;
     rliza->get_object = rliza_get_object;
+    rliza->set_string = rliza_set_string;
+    rliza->set_number = rliza_set_number;
+    rliza->set_boolean = rliza_set_boolean;
+    rliza->set_integer = rliza_set_integer;
+    rliza->set_array = rliza_set_array;
     rliza->content.map = NULL;
-    rliza->content.array = NULL;
+    rliza->value = NULL;
 
     return rliza;
 }
@@ -1081,7 +1744,16 @@ unsigned char *rliza_seek_string(char **content, char *options) {
     char *content_original = *content;
     while (**content) {
         if (**content == '\r' || **content == '\n' || **content == ' ' ||
-            **content == '\t') {
+            **content == '\t' || **content == '\\') {
+            if (**content == '\\' && *(*content + 1) == '"') {
+                while (true) {
+                    (*content)++;
+                    if (**content == '\\' && *(*content + 1) == '"') {
+                        (*content)++;
+                        break;
+                    }
+                }
+            }
             (*content)++;
             continue;
         }
@@ -1093,7 +1765,6 @@ unsigned char *rliza_seek_string(char **content, char *options) {
         char *option = NULL;
         while ((option = strtok_r(option == NULL ? options_ptr : NULL, "|",
                                   &state))) {
-
             if (!strcmp(option, "\\b")) {
                 if (!strncmp(*content, "true", 4) ||
                     !strncmp(*content, "false", 5)) {
@@ -1105,10 +1776,10 @@ unsigned char *rliza_seek_string(char **content, char *options) {
             if (!strcmp(option, "\\d")) {
                 if (**content >= '0' && **content <= '9') {
                     // printf("Number match: %c\n", **content);
-
                     return (unsigned char *)*content;
                 }
             }
+
             if (!strncmp(option, *content, strlen(option))) {
                 // printf("Literal match: %c\n", **content);
                 return (unsigned char *)*content;
@@ -1125,33 +1796,27 @@ unsigned char *rliza_seek_string(char **content, char *options) {
 unsigned char *rliza_extract_quotes(char **content) {
     rbuffer_t *buffer = rbuffer_new(NULL, 0);
     assert(**content == '"');
-    bool escaping = false;
+    char previous = 0;
     while (true) {
+
         (*content)++;
-        if (**content == '\\') {
-            escaping = true;
-            (*content)++;
-        } else if (**content == '"') {
-            if (escaping) {
-                (*content)++;
-                escaping = false;
-                continue;
-            }
+
+        if (**content == '"' && previous != '\\') {
             break;
         }
         rbuffer_push(buffer, **content);
+        previous = **content;
     }
     assert(**content == '"');
     (*content)++;
     rbuffer_push(buffer, 0);
-    unsigned char *data = buffer->data;
-    buffer->data = NULL;
-    rbuffer_free(buffer);
-    return data;
+    unsigned char *result = rbuffer_to_string(buffer);
+    return result;
 }
 unsigned char *rliza_object_to_string(rliza_t *rliza);
 rliza_t *rliza_object_from_string(char **content) {
-    char *token = (char *)rliza_seek_string(content, "[|{|\"|\\d|\\b|root");
+    char *token =
+        (char *)rliza_seek_string(content, "[|{|\"|\\d|\\b|null|root");
     if (!token)
         return NULL;
     rliza_t *rliza = rliza_new(RLIZA_NULL);
@@ -1169,23 +1834,31 @@ rliza_t *rliza_object_from_string(char **content) {
             unsigned char *key = NULL;
             if (**content == '"') {
                 key = rliza_extract_quotes((char **)content);
+                char *escaped_key = (char *)malloc(strlen((char *)key) * 2 + 1);
+                rstrstripslashes((char *)key, escaped_key);
                 assert(rliza_seek_string(content, ":|keystr"));
                 (*content)++;
+
                 rliza_t *value = rliza_object_from_string(content);
-                value->key = (char *)key;
+                if (value->key)
+                    free(value->key);
+                value->key = escaped_key;
+                free(key);
                 rliza_set_object(rliza, value);
+                // printf("<<<<<<<<%s>>>>>>>>>>\n",value->content.string);
             } else if (**content == '}') {
                 (*content)++;
             } else {
                 assert(false && "Parse error.");
             }
         };
+        return rliza;
     } else if (**content == '[') {
         rliza->type = RLIZA_ARRAY;
         (*content)++;
         char *result;
         while ((result = (char *)rliza_seek_string(
-                    content, "{|[|\"|\\d|\\b|,|]|array")) != NULL &&
+                    content, "{|[|\"|\\d|\\b|,|]|null|array")) != NULL &&
                *result) {
             if (**content == ',') {
                 (*content)++;
@@ -1198,44 +1871,63 @@ rliza_t *rliza_object_from_string(char **content) {
             rliza_t *obj = rliza_object_from_string(content);
             rliza_push(rliza, obj);
         }
+        return rliza;
     } else if (**content >= '0' && **content <= '9') {
-        rliza->type = RLIZA_INTEGER;
-        rliza->content.integer = strtoll(*content, NULL, 10);
+        char *ptr = *content;
+        bool is_decimal = false;
+        while (*ptr) {
+            if (*ptr == '.') {
+                is_decimal = true;
+            } else if (!isdigit(*ptr)) {
+                break;
+            }
+            ptr++;
+        }
+        if (is_decimal) {
+            rliza->type = RLIZA_NUMBER;
+            rliza->content.number = strtod((char *)*content, NULL);
+        } else {
+            rliza->type = RLIZA_INTEGER;
+            rliza->content.integer = strtoll(*content, NULL, 10);
+        }
         // printf("Parsed number: %lld\n", rliza->content.integer);
-        while (**content >= '0' && **content <= '9') {
+        while (isdigit(**content) || (is_decimal && **content == '.')) {
             (*content)++;
         }
+        return rliza;
     } else if (!strncmp(*content, "true", 4)) {
         rliza->type = RLIZA_BOOLEAN;
         rliza->content.boolean = true;
         *content += 4;
+        return rliza;
     } else if (!strncmp(*content, "false", 5)) {
         rliza->type = RLIZA_BOOLEAN;
         rliza->content.boolean = false;
         *content += 5;
+        return rliza;
+    } else if (!strncmp(*content, "null", 4)) {
+        rliza->type = RLIZA_NULL;
+        *content += 4;
+        return rliza;
     } else if (**content == '"') {
         unsigned char *extracted = rliza_extract_quotes((char **)content);
-        bool is_number = true;
-        unsigned char *ptr = extracted;
-        while (*ptr) {
-            if ((*ptr < '0' || *ptr > '9') && *ptr != '.') {
-                is_number = false;
-            }
-            ptr++;
-        }
-        if (is_number) {
-            rliza->type = RLIZA_NUMBER;
-            rliza->content.number = strtod((char *)extracted, NULL);
-            free(extracted);
-        } else {
-            rliza->type = RLIZA_STRING;
-            rliza->content.string = extracted;
-        }
+        unsigned char *extracted_without_slashes =
+            (unsigned char *)malloc(strlen((char *)extracted) + 1);
+        extracted_without_slashes[0] = 0;
+        rstrstripslashes((char *)extracted, (char *)extracted_without_slashes);
+        rliza->type = RLIZA_STRING;
+        ;
+        rliza->content.string = extracted_without_slashes;
+        free(extracted);
+        return rliza;
     }
+
+    assert(false && "Rliza Overflow.");
     return rliza;
 }
 unsigned char *rliza_object_to_string(rliza_t *rliza) {
-    unsigned char *content = (unsigned char *)malloc(1024 * 1024);
+    size_t size = 4096;
+    unsigned char *content = (unsigned char *)malloc(size);
     content[0] = 0;
     if (rliza->type == RLIZA_INTEGER) {
         if (rliza->key) {
@@ -1245,18 +1937,34 @@ unsigned char *rliza_object_to_string(rliza_t *rliza) {
             sprintf((char *)content, "%lld", rliza->content.integer);
         }
     } else if (rliza->type == RLIZA_STRING) {
-        if (rliza->key) {
-            sprintf((char *)content, "\"%s\":\"%s\"", rliza->key,
-                    rliza->content.string);
-        } else {
-            sprintf((char *)content, "\"%s\"", rliza->content.string);
+        char *escaped_string =
+            (char *)malloc(strlen((char *)rliza->content.string) * 2 + 1);
+        rstraddslashes((char *)rliza->content.string, escaped_string);
+
+        if (size < strlen((char *)rliza->content.string) * 2 + 1) {
+            size = strlen((char *)rliza->content.string) * 2 + 1;
+            content = realloc(content, size + 1024);
         }
+        if (rliza->key) {
+            char *escaped_key =
+                (char *)malloc(strlen((char *)rliza->key) * 2 + 1);
+            rstraddslashes((char *)rliza->key, escaped_key);
+            sprintf((char *)content, "\"%s\":\"%s\"", escaped_key,
+                    escaped_string);
+            free(escaped_key);
+            // rliza->content.string);
+        } else {
+
+            sprintf((char *)content, "\"%s\"",
+                    escaped_string); // rliza->content.string);
+        }
+        free(escaped_string);
     } else if (rliza->type == RLIZA_NUMBER) {
         if (rliza->key) {
-            sprintf((char *)content, "\"%s\":\"%f\"", rliza->key,
+            sprintf((char *)content, "\"%s\":%f", rliza->key,
                     rliza->content.number);
         } else {
-            sprintf((char *)content, "\"%f\"", rliza->content.number);
+            sprintf((char *)content, "%f", rliza->content.number);
         }
     } else if (rliza->type == RLIZA_BOOLEAN) {
         if (rliza->key) {
@@ -1267,62 +1975,59 @@ unsigned char *rliza_object_to_string(rliza_t *rliza) {
                     rliza->content.boolean ? "true" : "false");
         }
     } else if (rliza->type == RLIZA_OBJECT) {
-        strcat((char *)content, "{");
+        strcpy((char *)content, "{");
         for (unsigned i = 0; i < rliza->count; i++) {
-            strcat((char *)content,
-                   (char *)rliza_object_to_string(rliza->content.map[i]));
+            unsigned char *content_chunk =
+                rliza_object_to_string(rliza->content.map[i]);
+            if (strlen((char *)content_chunk) + strlen((char *)content) >
+                size) {
+                size += strlen((char *)content_chunk) + 1;
+                realloc(content, size);
+            }
+            strcat((char *)content, (char *)content_chunk);
+            free(content_chunk);
             strcat((char *)content, ",");
         }
         content[strlen((char *)content) - 1] = 0;
         strcat((char *)content, "}");
     } else if (rliza->type == RLIZA_ARRAY) {
-        sprintf((char *)content, "\"%s\":[", rliza->key);
+        if (rliza->key) {
+            char *escaped_key =
+                (char *)malloc(strlen((char *)rliza->key) * 2 + 1);
+            rstraddslashes((char *)rliza->key, escaped_key);
+
+            sprintf((char *)content, "\"%s\":[", escaped_key);
+            free(escaped_key);
+        } else
+            strcpy((char *)content, "[");
+
         for (unsigned i = 0; i < rliza->count; i++) {
-            strcat((char *)content,
-                   (char *)rliza_object_to_string(rliza->content.map[i]));
+            unsigned char *content_chunk =
+                rliza_object_to_string(rliza->content.map[i]);
+            if (strlen((char *)content_chunk) + strlen((char *)content) >
+                size) {
+                size += strlen((char *)content_chunk) + 1;
+                realloc(content, size);
+            }
+            strcat((char *)content, (char *)content_chunk);
+            free(content_chunk);
             strcat((char *)content, ",");
         }
-        content[strlen((char *)content) - 1] = 0;
+        if (content[strlen((char *)content) - 1] != '[')
+            content[strlen((char *)content) - 1] = 0;
         strcat((char *)content, "]");
+    } else if (rliza->type == RLIZA_NULL) {
+        strcpy((char *)content, "null");
     }
     return content;
 }
 
 void rliza_push(rliza_t *self, rliza_t *obj) {
-    self->content.array =
-        realloc(self->content.array, sizeof(rliza_t *) * (self->count + 1));
-    self->content.array[self->count] = obj;
-    self->count++;
-}
-
-#endif
-
-#ifndef RCAT_H
-#define RCAT_H
-#include <stdio.h>
-#include <stdlib.h>
-
-void rcat(char *filename) {
-    FILE *f = fopen(filename, "rb");
-    if (!f) {
-        printf("rcat: couldn't open \"%s\" for read.\n", filename);
-        return;
-    }
-    unsigned char c;
-    while ((c = fgetc(f)) && !feof(f)) {
-        printf("%c", c);
-    }
-    fclose(f);
-    fflush(stdout);
-}
-
-int rcat_main(int argc, char *argv[]) {
-    if (argc < 2) {
-        printf("Usage: [filename]\n");
-        return 1;
-    }
-    rcat(argv[1]);
-    return 0;
+    rliza_set_object(self, obj);
+    // self->content.array =
+    //     realloc(self->content.array, sizeof(rliza_t *) * (self->count + 1));
+    // self->content.array[self->count] = obj;
+    // self->count++;
 }
 
 #endif
@@ -1396,11 +2101,9 @@ char *rtempc(char *data) {
 
 #define _POSIX_C_SOURCE_199309L
 #endif
-
 #include <sys/time.h>
-
 #include <time.h>
-
+#undef _POSIX_C_SOURCE_199309L
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -1829,476 +2532,6 @@ void rprintw(const char *format, ...) {
 #include <string.h>
 #include <sys/time.h>
 #include <time.h>
-
-#ifndef RSTRING_H
-#define RSTRING_H
-#ifndef RMATH_H
-#define RMATH_H
-#include <math.h>
-
-#ifndef ceil
-double ceil(double x) {
-    if (x == (double)(long long)x) {
-        return x;
-    } else if (x > 0.0) {
-        return (double)(long long)x + 1.0;
-    } else {
-        return (double)(long long)x;
-    }
-}
-#endif
-
-#ifndef floor
-double floor(double x) {
-    if (x >= 0.0) {
-        return (double)(long long)x;
-    } else {
-        double result = (double)(long long)x;
-        return (result == x) ? result : result - 1.0;
-    }
-}
-#endif
-
-#ifndef modf
-double modf(double x, double *iptr) {
-    double int_part = (x >= 0.0) ? floor(x) : ceil(x);
-    *iptr = int_part;
-    return x - int_part;
-}
-#endif
-#endif
-#include <ctype.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-
-char *rstrtimestamp() {
-    time_t current_time;
-    time(&current_time);
-    struct tm *local_time = localtime(&current_time);
-    static char time_string[100];
-    time_string[0] = 0;
-    strftime(time_string, sizeof(time_string), "%Y-%m-%d %H:%M:%S", local_time);
-    return time_string;
-}
-
-ulonglong _r_generate_key_current = 0;
-
-char *_rcat_int_int(int a, int b) {
-    static char res[20];
-    res[0] = 0;
-    sprintf(res, "%d%d", a, b);
-    return res;
-}
-char *_rcat_int_double(int a, double b) {
-    static char res[20];
-    res[0] = 0;
-    sprintf(res, "%d%f", a, b);
-    return res;
-}
-
-char *_rcat_charp_int(char *a, int b) {
-    char res[20];
-    sprintf(res, "%c", b);
-    return strcat(a, res);
-}
-
-char *_rcat_charp_double(char *a, double b) {
-    char res[20];
-    sprintf(res, "%f", b);
-    return strcat(a, res);
-}
-
-char *_rcat_charp_charp(char *a, char *b) {
-    ;
-    return strcat(a, b);
-}
-char *_rcat_charp_char(char *a, char b) {
-    char extra[] = {b, 0};
-    return strcat(a, extra);
-}
-char *_rcat_charp_bool(char *a, bool *b) {
-    if (b) {
-        return strcat(a, "true");
-    } else {
-        return strcat(a, "false");
-    }
-}
-
-#define rcat(x, y)                                                             \
-    _Generic((x),                                                              \
-        int: _Generic((y),                                                     \
-        int: _rcat_int_int,                                                    \
-        double: _rcat_int_double,                                              \
-        char *: _rcat_charp_charp),                                            \
-        char *: _Generic((y),                                                  \
-        int: _rcat_charp_int,                                                  \
-        double: _rcat_charp_double,                                            \
-        char *: _rcat_charp_charp,                                             \
-        char: _rcat_charp_char,                                                \
-        bool: _rcat_charp_bool))((x), (y))
-
-char *rgenerate_key() {
-    _r_generate_key_current++;
-    static char key[100];
-    key[0] = 0;
-    sprintf(key, "%lld", _r_generate_key_current);
-    return key;
-}
-
-char *rformat_number(long long lnumber) {
-    static char formatted[1024];
-
-    char number[1024] = {0};
-    sprintf(number, "%lld", lnumber);
-
-    int len = strlen(number);
-    int commas_needed = (len - 1) / 3;
-    int new_len = len + commas_needed;
-
-    formatted[new_len] = '\0';
-
-    int i = len - 1;
-    int j = new_len - 1;
-    int count = 0;
-
-    while (i >= 0) {
-        if (count == 3) {
-            formatted[j--] = '.';
-            count = 0;
-        }
-        formatted[j--] = number[i--];
-        count++;
-    }
-    if (lnumber < 0)
-        formatted[j--] = '-';
-    return formatted;
-}
-
-bool rstrextractdouble(char *str, double *d1) {
-    for (size_t i = 0; i < strlen(str); i++) {
-        if (isdigit(str[i])) {
-            str += i;
-            sscanf(str, "%lf", d1);
-            return true;
-        }
-    }
-    return false;
-}
-
-void rstrstripslashes(const char *content, char *result) {
-    size_t content_length = strlen((char *)content);
-    unsigned int index = 0;
-    for (unsigned int i = 0; i < content_length; i++) {
-        char c = content[i];
-        if (c == '\\') {
-            i++;
-            c = content[i];
-            if (c == 'r') {
-                c = '\r';
-            } else if (c == 't') {
-                c = '\t';
-            } else if (c == 'b') {
-                c = '\b';
-            } else if (c == 'n') {
-                c = '\n';
-            } else if (c == 'f') {
-                c = '\f';
-            } else if (c == '\\') {
-                // No need tbh
-                c = '\\';
-            }
-        }
-        result[index] = c;
-        index++;
-    }
-    result[index] = 0;
-}
-
-int rstrstartswith(const char *s1, const char *s2) {
-    if (s1 == NULL)
-        return s2 == NULL;
-    if (s1 == s2 || s2 == NULL || *s2 == 0)
-        return true;
-    size_t len_s2 = strlen(s2);
-    size_t len_s1 = strlen(s1);
-    if (len_s2 > len_s1)
-        return false;
-    return !strncmp(s1, s2, len_s2);
-}
-
-bool rstrendswith(const char *s1, const char *s2) {
-    if (s1 == NULL)
-        return s2 == NULL;
-    if (s1 == s2 || s2 == NULL || *s2 == 0)
-        return true;
-    size_t len_s2 = strlen(s2);
-    size_t len_s1 = strlen(s1);
-    if (len_s2 > len_s1) {
-        return false;
-    }
-    s1 += len_s1 - len_s2;
-    return !strncmp(s1, s2, len_s2);
-}
-
-void rstraddslashes(const char *content, char *result) {
-    size_t content_length = strlen((char *)content);
-    unsigned int index = 0;
-    for (unsigned int i = 0; i < content_length; i++) {
-        if (content[i] == '\r') {
-            result[index] = '\\';
-            index++;
-            result[index] = 'r';
-            index++;
-            continue;
-        } else if (content[i] == '\t') {
-            result[index] = '\\';
-            index++;
-            result[index] = 't';
-            index++;
-            continue;
-        } else if (content[i] == '\n') {
-            result[index] = '\\';
-            index++;
-            result[index] = 'n';
-            index++;
-            continue;
-        } else if (content[i] == '\\') {
-            result[index] = '\\';
-            index++;
-            result[index] = '\\';
-            index++;
-            continue;
-        } else if (content[i] == '\b') {
-            result[index] = '\\';
-            index++;
-            result[index] = 'b';
-            index++;
-            continue;
-        } else if (content[i] == '\f') {
-            result[index] = '\\';
-            index++;
-            result[index] = 'f';
-            index++;
-            continue;
-        }
-        result[index] = content[i];
-        index++;
-    }
-    result[index] = 0;
-}
-
-int rstrip_whitespace(char *input, char *output) {
-    output[0] = 0;
-    int count = 0;
-    size_t len = strlen(input);
-    for (size_t i = 0; i < len; i++) {
-        if (input[i] == '\t' || input[i] == ' ' || input[i] == '\n') {
-            continue;
-        }
-        count = i;
-        size_t j;
-        for (j = 0; j < len - count; j++) {
-            output[j] = input[j + count];
-        }
-        output[j] = '\0';
-        break;
-    }
-    return count;
-}
-
-/*
- * Converts "pony" to \"pony\". Addslashes does not
- * Converts "pony\npony" to "pony\n"
- * 			    "pony"
- */
-void rstrtocstring(const char *input, char *output) {
-    int index = 0;
-    char clean_input[strlen(input) * 2];
-    char *iptr = clean_input;
-    rstraddslashes(input, clean_input);
-    output[index] = '"';
-    index++;
-    while (*iptr) {
-        if (*iptr == '"') {
-            output[index] = '\\';
-            output++;
-        } else if (*iptr == '\\' && *(iptr + 1) == 'n') {
-            output[index] = '\\';
-            output++;
-            output[index] = 'n';
-            output++;
-            output[index] = '"';
-            output++;
-            output[index] = '\n';
-            output++;
-            output[index] = '"';
-            output++;
-            iptr++;
-            iptr++;
-            continue;
-        }
-        output[index] = *iptr;
-        index++;
-        iptr++;
-    }
-    if (output[index - 1] == '"' && output[index - 2] == '\n') {
-        output[index - 1] = 0;
-    } else if (output[index - 1] != '"') {
-        output[index] = '"';
-        output[index + 1] = 0;
-    }
-}
-
-size_t rstrtokline(char *input, char *output, size_t offset, bool strip_nl) {
-
-    size_t len = strlen(input);
-    output[0] = 0;
-    size_t new_offset = 0;
-    size_t j;
-    size_t index = 0;
-
-    for (j = offset; j < len + offset; j++) {
-        if (input[j] == 0) {
-            index++;
-            break;
-        }
-        index = j - offset;
-        output[index] = input[j];
-
-        if (output[index] == '\n') {
-            index++;
-            break;
-        }
-    }
-    output[index] = 0;
-
-    new_offset = index + offset;
-
-    if (strip_nl) {
-        if (output[index - 1] == '\n') {
-            output[index - 1] = 0;
-        }
-    }
-    return new_offset;
-}
-
-void rstrjoin(char **lines, size_t count, char *glue, char *output) {
-    output[0] = 0;
-    for (size_t i = 0; i < count; i++) {
-        strcat(output, lines[i]);
-        if (i != count - 1)
-            strcat(output, glue);
-    }
-}
-
-int rstrsplit(char *input, char **lines) {
-    int index = 0;
-    size_t offset = 0;
-    char line[1024];
-    while ((offset = rstrtokline(input, line, offset, false)) && *line) {
-        if (!*line) {
-            break;
-        }
-        lines[index] = (char *)malloc(strlen(line) + 1);
-        strcpy(lines[index], line);
-        index++;
-    }
-    return index;
-}
-
-bool rstartswithnumber(char *str) { return isdigit(str[0]); }
-
-void rstrmove2(char *str, unsigned int start, size_t length,
-               unsigned int new_pos) {
-    size_t str_len = strlen(str);
-    char new_str[str_len + 1];
-    memset(new_str, 0, str_len);
-    if (start < new_pos) {
-        strncat(new_str, str + length, str_len - length - start);
-        new_str[new_pos] = 0;
-        strncat(new_str, str + start, length);
-        strcat(new_str, str + strlen(new_str));
-        memset(str, 0, str_len);
-        strcpy(str, new_str);
-    } else {
-        strncat(new_str, str + start, length);
-        strncat(new_str, str, start);
-        strncat(new_str, str + start + length, str_len - start);
-        memset(str, 0, str_len);
-        strcpy(str, new_str);
-    }
-    new_str[str_len] = 0;
-}
-
-void rstrmove(char *str, unsigned int start, size_t length,
-              unsigned int new_pos) {
-    size_t str_len = strlen(str);
-    if (start >= str_len || new_pos >= str_len || start + length > str_len) {
-        return;
-    }
-    char temp[length + 1];
-    strncpy(temp, str + start, length);
-    temp[length] = 0;
-    if (start < new_pos) {
-        memmove(str + start, str + start + length, new_pos - start);
-        strncpy(str + new_pos - length + 1, temp, length);
-    } else {
-        memmove(str + new_pos + length, str + new_pos, start - new_pos);
-        strncpy(str + new_pos, temp, length);
-    }
-}
-
-int cmp_line(const void *left, const void *right) {
-    char *l = *(char **)left;
-    char *r = *(char **)right;
-
-    char lstripped[strlen(l) + 1];
-    rstrip_whitespace(l, lstripped);
-    char rstripped[strlen(r) + 1];
-    rstrip_whitespace(r, rstripped);
-
-    double d1, d2;
-    bool found_d1 = rstrextractdouble(lstripped, &d1);
-    bool found_d2 = rstrextractdouble(rstripped, &d2);
-
-    if (found_d1 && found_d2) {
-        double frac_part1;
-        double int_part1;
-        frac_part1 = modf(d1, &int_part1);
-        double frac_part2;
-        double int_part2;
-        frac_part2 = modf(d2, &int_part2);
-        if (d1 == d2) {
-            return strcmp(lstripped, rstripped);
-        } else if (frac_part1 && frac_part2) {
-            return d1 > d2;
-        } else if (frac_part1 && !frac_part2) {
-            return 1;
-        } else if (frac_part2 && !frac_part1) {
-            return -1;
-        } else if (!frac_part1 && !frac_part2) {
-            return d1 > d2;
-        }
-    }
-    return 0;
-}
-
-int rstrsort(char *input, char *output) {
-    char **lines = (char **)malloc(strlen(input) * 10);
-    int line_count = rstrsplit(input, lines);
-    qsort(lines, line_count, sizeof(char *), cmp_line);
-    rstrjoin(lines, line_count, "", output);
-    for (int i = 0; i < line_count; i++) {
-        free(lines[i]);
-    }
-    free(lines);
-    return line_count;
-}
-
-#endif
 
 #ifndef RLIB_TERMINAL_H
 #define RLIB_TERMINAL_H
@@ -3257,6 +3490,7 @@ typedef struct rhttp_header_t {
 typedef struct rhttp_request_t {
     int c;
     int closed;
+    bool keep_alive;
     nsecs_t start;
     char *raw;
     char *line;
@@ -3388,11 +3622,9 @@ rhttp_header_t *rhttp_parse_headers(rhttp_request_t *s) {
 }
 
 void rhttp_free_request(rhttp_request_t *r) {
-    if (r->bytes_received != 0) {
-
+    if (r->raw) {
         free(r->raw);
         free(r->body);
-
         free(r->method);
         free(r->path);
         free(r->version);
@@ -3486,7 +3718,14 @@ rhttp_request_t *rhttp_parse_request(int s) {
     request->path = strdup(path);
     request->version = strdup(version);
     request->headers = NULL;
-    rhttp_parse_headers(request);
+    request->keep_alive = false;
+    if (rhttp_parse_headers(request)) {
+        char *keep_alive_string =
+            rhttp_header_get_string(request, "Connection");
+        if (keep_alive_string && !strcmp(keep_alive_string, "keep-alive")) {
+            request->keep_alive = 1;
+        }
+    }
     return request;
 }
 
@@ -3507,23 +3746,26 @@ size_t rhttp_send_drain(int s, void *tsend, size_t to_send_len) {
 
     memcpy(to_send, tsend, to_send_len);
     // to_send[to_send_len] = '\0';
-    size_t bytes_sent = 0;
-    size_t bytes_sent_total = 0;
+    long bytes_sent = 0;
+    long bytes_sent_total = 0;
     while (1) {
-        bytes_sent = send(s, to_send, to_send_len, 0);
+        bytes_sent = send(s, to_send + bytes_sent_total,
+                          to_send_len - bytes_sent_total, 0);
         if (bytes_sent <= 0) {
             bytes_sent_total = 0;
             break;
         }
         bytes_sent_total += bytes_sent;
-        to_send += bytes_sent;
-        if (bytes_sent_total == to_send_len) {
+
+        if (bytes_sent_total == (long)to_send_len) {
             break;
-        } else if (!to_send_len) {
+        } else if (!bytes_sent) {
+            bytes_sent_total = 0;
             // error
             break;
         } else {
-            rhttp_log_info("Extra send of %d bytes.\n", to_send_len);
+            rhttp_log_info("Extra send of %d/%d bytes.\n", bytes_sent_total,
+                           to_send_len);
         }
     }
 
@@ -3557,13 +3799,25 @@ void rhttp_serve(const char *host, int port, int backlog, int request_logging,
 
         rhttp_c = accept(rhttp_sock, (struct sockaddr *)&client_addr,
                          (socklen_t *)&addrlen);
+
         rhttp_connections_handled++;
-        rhttp_request_t *r = rhttp_parse_request(rhttp_c);
-        r->context = context;
-        if (!r->closed) {
-            handler(r);
+        while (true) {
+            rhttp_request_t *r = rhttp_parse_request(rhttp_c);
+            r->context = context;
+            if (!r->closed) {
+                if (!handler(r) && !r->closed) {
+                    rhttp_close(r);
+                }
+            }
+            if (!r->keep_alive && !r->closed) {
+                rhttp_close(r);
+            } else if (r->keep_alive && !r->closed) {
+            }
+            if (r->closed) {
+                break;
+            }
+            rhttp_free_request(r);
         }
-        rhttp_close(r);
     }
 }
 

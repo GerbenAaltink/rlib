@@ -1,7 +1,10 @@
 #ifndef RNET_H
 #define RNET_H
-
-#if _POSIX_C_SOURCE != 200112L
+#ifdef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE_TEMP _POSIX_C_SOURCE
+#undef _POSIX_C_SOURCE
+#endif
+#ifndef _POSIX_C_SOURCE
 #undef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200112L
 #endif
@@ -21,7 +24,13 @@
 #include <sys/socket.h>
 
 #include <unistd.h>
+#ifdef _POSIX_C_SOURCE_TEMP
 #undef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE _POSIX_C_SOURCE_TEMP
+#undef _POSIX_C_SOURCE_TEMP
+#else
+#undef _POSIX_C_SOURCE
+#endif
 #define NET_SOCKET_MAX_CONNECTIONS 50000
 
 typedef struct rnet_socket_t {

@@ -1,3 +1,5 @@
+#ifndef RBUFFER_H
+#define RBUFFER_H
 #include "rmalloc.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -6,6 +8,7 @@
 #include <assert.h>
 typedef struct rbuffer_t {
     unsigned char *data;
+    unsigned char *_data;
     size_t size;
     size_t pos;
     bool eof;
@@ -21,14 +24,16 @@ unsigned char *rbuffer_expect(rbuffer_t *rfb, char *options, char *ignore);
 void rbuffer_set(rbuffer_t *rfb, const unsigned char *data, size_t size);
 
 void rbuffer_set(rbuffer_t *rfb, const unsigned char *data, size_t size) {
-    if (rfb->data) {
-        free(rfb->data);
+    if (rfb->_data) {
+        free(rfb->_data);
+        rfb->_data = NULL;
         rfb->data = NULL;
         rfb->eof = true;
     }
     if (size) {
-        rfb->data = (unsigned char *)malloc(size);
-        memcpy(rfb->data, data, size);
+        rfb->_data = (unsigned char *)malloc(size);
+        memcpy(rfb->_data, data, size);
+        rfb->data = rfb->_data;
         rfb->eof = false;
     }
     rfb->size = size;
@@ -38,30 +43,31 @@ void rbuffer_set(rbuffer_t *rfb, const unsigned char *data, size_t size) {
 rbuffer_t *rbuffer_new(unsigned char *data, size_t size) {
     rbuffer_t *rfb = (rbuffer_t *)malloc(sizeof(rbuffer_t));
     if (size) {
-        rfb->data = (unsigned char *)malloc(size);
-        memcpy(rfb->data, data, size);
+        rfb->_data = (unsigned char *)malloc(size);
+        memcpy(rfb->_data, data, size);
         rfb->eof = false;
     } else {
-        rfb->data = NULL;
+        rfb->_data = NULL;
         rfb->eof = true;
     }
     rfb->size = size;
     rfb->pos = 0;
+    rfb->data = rfb->_data;
     return rfb;
 }
 void rbuffer_free(rbuffer_t *rfb) {
-    if (rfb->data)
-        free(rfb->data);
+    if (rfb->_data)
+        free(rfb->_data);
     free(rfb);
 }
 
 size_t rbuffer_push(rbuffer_t *rfb, unsigned char c) {
     if (rfb->pos < rfb->size) {
-        rfb->data[rfb->pos++] = c;
+        rfb->_data[rfb->pos++] = c;
         return 1;
     }
-    rfb->data = realloc(rfb->data, rfb->size + 1);
-    rfb->data[rfb->pos++] = c;
+    rfb->_data = realloc(rfb->_data, rfb->size + 1);
+    rfb->_data[rfb->pos++] = c;
     rfb->size++;
     return rfb->pos;
 }
@@ -75,7 +81,7 @@ void rbuffer_write(rbuffer_t *rfb, const unsigned char *data, size_t size) {
 unsigned char rbuffer_peek(rbuffer_t *rfb) {
     unsigned char result = EOF;
     if (rfb->pos != rfb->size) {
-        result = rfb->data[rfb->pos];
+        result = rfb->_data[rfb->pos];
         return result;
     }
     rfb->eof = true;
@@ -84,7 +90,7 @@ unsigned char rbuffer_peek(rbuffer_t *rfb) {
 unsigned char rbuffer_pop(rbuffer_t *rfb) {
     unsigned char result = EOF;
     if (rfb->pos <= rfb->size) {
-        result = rfb->data[rfb->pos];
+        result = rfb->_data[rfb->pos];
         rfb->pos++;
         rfb->data++;
         if (rfb->pos == rfb->size) {
@@ -96,8 +102,7 @@ unsigned char rbuffer_pop(rbuffer_t *rfb) {
     return result;
 }
 void rbuffer_reset(rbuffer_t *rfb) {
-    if (rfb->data)
-        rfb->data -= rfb->pos;
+    rfb->data = rfb->_data;
     rfb->pos = 0;
 }
 
@@ -112,6 +117,14 @@ unsigned char ustrncmp(const unsigned char *s1, const unsigned char *s2,
     return *s1 != *s2;
 }
 size_t ustrlen(const unsigned char *s) { return strlen((char *)s); }
+
+unsigned char *rbuffer_to_string(rbuffer_t *rfb) {
+    unsigned char *result = rfb->_data;
+    rfb->_data = NULL;
+    rfb->data = NULL;
+    rbuffer_free(rfb);
+    return result;
+}
 
 unsigned char *rbuffer_match_option(rbuffer_t *rfb, char *options) {
     char *option = NULL;
@@ -145,7 +158,6 @@ unsigned char *rbuffer_expect(rbuffer_t *rfb, char *options, char *ignore) {
         if (rbuffer_match_option(rfb, options) != NULL) {
             return rfb->data;
         }
-        printf("MATCIHGG\n");
         if (rbuffer_match_option(rfb, ignore)) {
             printf("SKIP:%s\n", rfb->data);
             rbuffer_pop(rfb);
@@ -158,8 +170,8 @@ unsigned char *rbuffer_expect(rbuffer_t *rfb, char *options, char *ignore) {
 unsigned char *rbuffer_consume(rbuffer_t *rfb, char *options, char *ignore) {
     unsigned char *result = NULL;
     if ((result = rbuffer_expect(rfb, options, ignore)) != NULL) {
-        printf("HAAA%s\n", result);
         rbuffer_pop(rfb);
     }
     return result;
 }
+#endif

@@ -219,6 +219,12 @@ void rstraddslashes(const char *content, char *result) {
             result[index] = 'f';
             index++;
             continue;
+        } else if (content[i] == '"') {
+            result[index] = '\\';
+            index++;
+            result[index] = '"';
+            index++;
+            continue;
         }
         result[index] = content[i];
         index++;

@@ -1,6 +1,8 @@
+#include "rtest.h"
 #include "rbuffer.h"
 
 int main() {
+    rtest_banner("rbuffer");
     unsigned char *content =
         (unsigned char *)"[   {\n\t \"\r1\t3\n4truefalsetrue \" }, ]";
     char *ignore = "\r| |\n|\t|\f|\v";
@@ -31,4 +33,8 @@ int main() {
     assert(*rbuffer_consume(buffer, "{|[|,|\"|\\d|\\b|}", ignore) == '}');
     assert(*rbuffer_consume(buffer, "{|[|,|\"|\\d|\\b", ignore) == ',');
     assert(*rbuffer_consume(buffer, "{|[|,|\"|\\d|\\b|]", ignore) == ']');
+    unsigned char *str = rbuffer_to_string(buffer);
+    printf(">%s<\n", str);
+    free(str);
+    return rtest_end("");
 }

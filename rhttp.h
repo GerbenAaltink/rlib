@@ -1,20 +1,20 @@
 #ifndef RHTTP_H
 #define RHTTP_H
-#include "rmalloc.h"
 #include "rio.h"
-#include "rtime.h"
-#include "rtemp.h"
+#include "rmalloc.h"
 #include "rstring.h"
-#include <pthread.h>
+#include "rtemp.h"
+#include "rtime.h"
 #include <arpa/inet.h>
+#include <pthread.h>
+#include <signal.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <stdbool.h>
-#include <signal.h>
 
 #define BUFF_SIZE 8096
 #define RHTTP_MAX_CONNECTIONS 100
@@ -42,6 +42,7 @@ typedef struct rhttp_header_t {
 typedef struct rhttp_request_t {
     int c;
     int closed;
+    bool keep_alive;
     nsecs_t start;
     char *raw;
     char *line;
@@ -173,11 +174,9 @@ rhttp_header_t *rhttp_parse_headers(rhttp_request_t *s) {
 }
 
 void rhttp_free_request(rhttp_request_t *r) {
-    if (r->bytes_received != 0) {
-
+    if (r->raw) {
         free(r->raw);
         free(r->body);
-
         free(r->method);
         free(r->path);
         free(r->version);
@@ -271,7 +270,14 @@ rhttp_request_t *rhttp_parse_request(int s) {
     request->path = strdup(path);
     request->version = strdup(version);
     request->headers = NULL;
-    rhttp_parse_headers(request);
+    request->keep_alive = false;
+    if (rhttp_parse_headers(request)) {
+        char *keep_alive_string =
+            rhttp_header_get_string(request, "Connection");
+        if (keep_alive_string && !strcmp(keep_alive_string, "keep-alive")) {
+            request->keep_alive = 1;
+        }
+    }
     return request;
 }
 
@@ -292,23 +298,26 @@ size_t rhttp_send_drain(int s, void *tsend, size_t to_send_len) {
 
     memcpy(to_send, tsend, to_send_len);
     // to_send[to_send_len] = '\0';
-    size_t bytes_sent = 0;
-    size_t bytes_sent_total = 0;
+    long bytes_sent = 0;
+    long bytes_sent_total = 0;
     while (1) {
-        bytes_sent = send(s, to_send, to_send_len, 0);
+        bytes_sent = send(s, to_send + bytes_sent_total,
+                          to_send_len - bytes_sent_total, 0);
         if (bytes_sent <= 0) {
             bytes_sent_total = 0;
             break;
         }
         bytes_sent_total += bytes_sent;
-        to_send += bytes_sent;
-        if (bytes_sent_total == to_send_len) {
+
+        if (bytes_sent_total == (long)to_send_len) {
             break;
-        } else if (!to_send_len) {
+        } else if (!bytes_sent) {
+            bytes_sent_total = 0;
             // error
             break;
         } else {
-            rhttp_log_info("Extra send of %d bytes.\n", to_send_len);
+            rhttp_log_info("Extra send of %d/%d bytes.\n", bytes_sent_total,
+                           to_send_len);
         }
     }
 
@@ -342,13 +351,25 @@ void rhttp_serve(const char *host, int port, int backlog, int request_logging,
 
         rhttp_c = accept(rhttp_sock, (struct sockaddr *)&client_addr,
                          (socklen_t *)&addrlen);
+
         rhttp_connections_handled++;
-        rhttp_request_t *r = rhttp_parse_request(rhttp_c);
-        r->context = context;
-        if (!r->closed) {
-            handler(r);
+        while (true) {
+            rhttp_request_t *r = rhttp_parse_request(rhttp_c);
+            r->context = context;
+            if (!r->closed) {
+                if (!handler(r) && !r->closed) {
+                    rhttp_close(r);
+                }
+            }
+            if (!r->keep_alive && !r->closed) {
+                rhttp_close(r);
+            } else if (r->keep_alive && !r->closed) {
+            }
+            if (r->closed) {
+                break;
+            }
+            rhttp_free_request(r);
         }
-        rhttp_close(r);
     }
 }
 

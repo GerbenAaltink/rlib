@@ -6,11 +6,9 @@
 
 #define _POSIX_C_SOURCE_199309L
 #endif
-
 #include <sys/time.h>
-
 #include <time.h>
-
+#undef _POSIX_C_SOURCE_199309L
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
