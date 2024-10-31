@@ -1,8 +1,24 @@
+#define RMALLOC_OVERRIDE 1
 #include "rtest.h"
 #include "rliza.h"
+#include "rio.h"
+#include "rbench.h"
+void performance_test() {
+    size_t size = rfile_size("resources/large.json");
+    char *data = rmalloc(size + 1);
+    rfile_readb("resources/large.json", data, size);
+    data[size] = 0;
+    RBENCH(1, {
+        int length = rliza_validate(data);
+        (void)length;
+    });
+    free(data);
+}
 
 int main() {
     rtest_banner("rliza");
+    rtest_banner("performance test");
+    performance_test();
     rtest_banner("serialize/deserialize");
     char *json_content = "{\"error\":\"not \\\"aaa\\\" found\",\"rows\":[[1,23],[1,23],[1,23,true,false,5.5,5.505,6.1]]}";
 

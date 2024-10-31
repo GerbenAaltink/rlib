@@ -1,14 +1,14 @@
 #ifndef RLIZA_H
 #define RLIZA_H
-#include <assert.h>
+#include "rbuffer.h"
 #include "rmalloc.h"
+#include "rstring.h"
+#include <assert.h>
+#include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
-#include "rbuffer.h"
-#include "rstring.h"
 
 typedef enum rliza_type_t {
     RLIZA_STRING = 's',
@@ -187,7 +187,7 @@ rliza_t *rliza_new_string(char *string) {
         rliza->content.string = NULL;
         return rliza;
     } else {
-        rliza->content.string = (char *)strdup(string); // (char *)new_string;
+        rliza->content.string = strdup(string); // (char *)new_string;
     }
     return rliza;
 }
@@ -266,12 +266,7 @@ void rliza_set_string(rliza_t *self, char *key, char *string) {
         obj->type = RLIZA_STRING;
         rliza_set_object(self, obj);
     } else {
-        char *new_string = (char *)malloc(strlen(string) * 2 + 1);
-        new_string[0] = 0;
-        rstraddslashes(string, new_string);
-        if (obj->content.string)
-            free(obj->content.string);
-        obj->content.string = (char *)new_string;
+        obj->content.string = strdup(string);
     }
 }
 
@@ -329,22 +324,23 @@ void rliza_set_boolean(rliza_t *self, char *key, bool value) {
 }
 
 rliza_t *rliza_new(rliza_type_t type) {
-    rliza_t *rliza = calloc(1, sizeof(rliza_t));
+    rliza_t *rliza = malloc(sizeof(rliza_t));
     rliza->type = type;
     rliza->key = NULL;
-    rliza->count = 0;
-    rliza->get_boolean = rliza_get_boolean;
-    rliza->get_integer = rliza_get_integer;
-    rliza->get_number = rliza_get_number;
-    rliza->get_string = rliza_get_string;
-    rliza->get_array = rliza_get_array;
-    rliza->get_object = rliza_get_object;
-    rliza->set_string = rliza_set_string;
-    rliza->set_number = rliza_set_number;
-    rliza->set_boolean = rliza_set_boolean;
-    rliza->set_integer = rliza_set_integer;
-    rliza->set_array = rliza_set_array;
-    rliza->content.map = NULL;
+    rliza->count = 0; /*
+     rliza->get_boolean = rliza_get_boolean;
+     rliza->get_integer = rliza_get_integer;
+     rliza->get_number = rliza_get_number;
+     rliza->get_string = rliza_get_string;
+     rliza->get_array = rliza_get_array;
+     rliza->get_object = rliza_get_object;
+     rliza->set_string = rliza_set_string;
+     rliza->set_number = rliza_set_number;
+     rliza->set_boolean = rliza_set_boolean;
+     rliza->set_integer = rliza_set_integer;
+     rliza->set_array = rliza_set_array;
+     */
+    rliza->content.string = NULL;
     rliza->value = NULL;
 
     return rliza;
@@ -356,52 +352,26 @@ void *rliza_coalesce(void *result, void *default_value) {
     return result;
 }
 
-char *rliza_seek_string(char **content, char *options) {
-    while (**content) {
-        if (**content == '\r' || **content == '\n' || **content == ' ' || **content == '\t' || **content == '\\') {
-            if (**content == '\\' && *(*content + 1) == '"') {
-                while (true) {
-                    (*content)++;
-                    if (**content == '\\' && *(*content + 1) == '"') {
-                        (*content)++;
-                        break;
-                    }
-                }
-            }
-            (*content)++;
-            continue;
-        }
-
-        char options_cpy[100] = {0};
-        strcpy(options_cpy, options);
-        char *options_ptr = options_cpy;
-        char *state = options_ptr;
-        char *option = NULL;
-        while ((option = strtok_r(option == NULL ? options_ptr : NULL, "|", &state))) {
-            if (!strcmp(option, "\\b")) {
-                if (!strncmp(*content, "true", 4) || !strncmp(*content, "false", 5)) {
-
-                    // printf("Boolean match: %c\n", **content);
-                    return (char *)*content;
-                }
-            }
-            if (!strcmp(option, "\\d")) {
-                if (**content >= '0' && **content <= '9') {
-                    // printf("Number match: %c\n", **content);
-                    return (char *)*content;
-                }
-            }
-
-            if (!strncmp(option, *content, strlen(option))) {
-                // printf("Literal match: %c\n", **content);
+char *rliza_seek_string(char **content, char **options) {
+    while (**content == ' ' || **content == '\n' || **content == '\t' || **content == '\r') {
+        (*content)++;
+    }
+    char *option = NULL;
+    unsigned int option_index = 0;
+    while (true) {
+        option = options[option_index];
+        if (option == NULL)
+            break;
+        option_index++;
+        if (option[0] == 'd') {
+            if (**content >= '0' && **content <= '9') {
                 return (char *)*content;
             }
+        } else if (!strncmp(option, *content, strlen(option))) {
+            return (char *)*content;
         }
-        // printf("PRE_MISMATCHH: <%s>\n", content_original);
-        // printf("MISMATCH: %s\n", *content);
-        return NULL;
-        // exit(0);
     }
+
     return (char *)*content;
 }
 
@@ -431,15 +401,31 @@ char *rliza_extract_quotes(char **content) {
 }
 char *rliza_dumps(rliza_t *rliza);
 rliza_t *_rliza_loads(char **content) {
-    char *token = (char *)rliza_seek_string(content, "[|{|\"|\\d|\\b|null|root");
+    static char *seek_for1[] = {"[", "{", "\"", "d", "true", "false", "null", NULL};
+    char *token = (char *)rliza_seek_string(content, seek_for1);
     if (!token)
         return NULL;
     rliza_t *rliza = rliza_new(RLIZA_NULL);
-    if (**content == '{') {
+    if (**content == '"') {
+        char *extracted = rliza_extract_quotes(content);
+        if (!extracted) {
+            rliza_free(rliza);
+            return NULL;
+        }
+        char *extracted_without_slashes = (char *)malloc(strlen((char *)extracted) + 1);
+        extracted_without_slashes[0] = 0;
+        rstrstripslashes(extracted, extracted_without_slashes);
+        rliza->type = RLIZA_STRING;
+        ;
+        rliza->content.string = extracted_without_slashes;
+        free(extracted);
+        return rliza;
+    } else if (**content == '{') {
         rliza->type = RLIZA_OBJECT;
         (*content)++;
         char *result = NULL;
-        while ((result = (char *)rliza_seek_string(content, "\"|,|}")) != NULL && *result) {
+        static char *seek_for2[] = {"\"", ",", "}", NULL};
+        while ((result = (char *)rliza_seek_string(content, seek_for2)) != NULL && *result) {
 
             if (!**content) {
                 rliza_free(rliza);
@@ -462,7 +448,8 @@ rliza_t *_rliza_loads(char **content) {
                 }
                 char *escaped_key = (char *)malloc(strlen((char *)key) * 2 + 1);
                 rstrstripslashes((char *)key, escaped_key);
-                char *devider = rliza_seek_string(content, ":|keystr");
+                static char *seek_for3[] = {":", NULL};
+                char *devider = rliza_seek_string(content, seek_for3);
 
                 if (!devider || !*devider) {
                     free(escaped_key);
@@ -507,7 +494,8 @@ rliza_t *_rliza_loads(char **content) {
         rliza->type = RLIZA_ARRAY;
         (*content)++;
         char *result;
-        while ((result = (char *)rliza_seek_string(content, "{|[|\"|\\d|\\b|,|]|null")) != NULL && *result) {
+        static char *seek_for4[] = {"[", "\"", "d", "]", "null", "true", "false", NULL};
+        while ((result = (char *)rliza_seek_string(content, seek_for4)) != NULL && *result) {
             if (**content == ',') {
                 (*content)++;
                 continue;
@@ -534,31 +522,29 @@ rliza_t *_rliza_loads(char **content) {
     } else if (**content >= '0' && **content <= '9') {
         char *ptr = *content;
         bool is_decimal = false;
-        while (*ptr) {
-            if (*ptr == '.') {
+
+        while (**content) {
+            if (**content == '.') {
                 is_decimal = true;
-            } else if (!isdigit(*ptr)) {
+            } else if (!isdigit(**content)) {
                 break;
             }
-            ptr++;
+            (*content)++;
         }
-        if (*(ptr - 1) == '.') {
+        if (*(*content - 1) == '.') {
             rliza_free(rliza);
             return NULL;
         }
-        if (!*ptr) {
+        if (!**content) {
             rliza_free(rliza);
             return NULL;
         }
         if (is_decimal) {
             rliza->type = RLIZA_NUMBER;
-            rliza->content.number = strtod((char *)*content, NULL);
+            rliza->content.number = strtod(ptr, NULL);
         } else {
             rliza->type = RLIZA_INTEGER;
-            rliza->content.integer = strtoll(*content, NULL, 10);
-        }
-        while (isdigit(**content) || (is_decimal && **content == '.')) {
-            (*content)++;
+            rliza->content.integer = strtoll(ptr, NULL, 10);
         }
         return rliza;
     } else if (!strncmp(*content, "true", 4)) {
@@ -587,20 +573,6 @@ rliza_t *_rliza_loads(char **content) {
             return NULL;
         }
         return rliza;
-    } else if (**content == '"') {
-        char *extracted = rliza_extract_quotes(content);
-        if (!extracted) {
-            rliza_free(rliza);
-            return NULL;
-        }
-        char *extracted_without_slashes = (char *)malloc(strlen((char *)extracted) + 1);
-        extracted_without_slashes[0] = 0;
-        rstrstripslashes(extracted, extracted_without_slashes);
-        rliza->type = RLIZA_STRING;
-        ;
-        rliza->content.string = extracted_without_slashes;
-        free(extracted);
-        return rliza;
     }
     // Parsing error
     rliza_free(rliza);
@@ -626,19 +598,20 @@ char *rliza_dumps(rliza_t *rliza) {
             sprintf(content, "%lld", rliza->content.integer);
         }
     } else if (rliza->type == RLIZA_STRING) {
+
         char *escaped_string = (char *)malloc(strlen((char *)rliza->content.string) * 2 + 1);
         rstraddslashes((char *)rliza->content.string, escaped_string);
-
-        if (size < strlen((char *)rliza->content.string) * 2 + 1) {
-            size = strlen((char *)rliza->content.string) * 2 + 1;
-            content = realloc(content, size + 1024);
+        size_t min_size = strlen((char *)escaped_string) + (rliza->key ? strlen(rliza->key) : 0) + 20;
+        if (size < min_size) {
+            size = min_size;
+            content = realloc(content, min_size);
         }
         if (rliza->key) {
             char *escaped_key = (char *)malloc(strlen((char *)rliza->key) * 2 + 1);
             rstraddslashes((char *)rliza->key, escaped_key);
             sprintf(content, "\"%s\":\"%s\"", escaped_key, escaped_string);
             free(escaped_key);
-            // rliza->content.string);
+            //  rliza->content.string);
         } else {
 
             sprintf(content, "\"%s\"",
@@ -682,7 +655,7 @@ char *rliza_dumps(rliza_t *rliza) {
             char *content_chunk = rliza_dumps(rliza->content.map[i]);
             if (strlen(content_chunk) + strlen(content) > size) {
                 size += strlen(content_chunk) + 1;
-                realloc(content, size);
+                content = realloc(content, size);
             }
             strcat(content, content_chunk);
             free(content_chunk);
@@ -704,7 +677,7 @@ char *rliza_dumps(rliza_t *rliza) {
             char *content_chunk = rliza_dumps(rliza->content.map[i]);
             if (strlen(content_chunk) + strlen(content) > size) {
                 size += strlen(content_chunk) + 1;
-                realloc(content, size);
+                content = realloc(content, size);
             }
             strcat(content, content_chunk);
             free(content_chunk);

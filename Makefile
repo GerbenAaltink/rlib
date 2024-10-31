@@ -2,7 +2,7 @@
 CC = gcc
 
 # Compiler flags
-CFLAGS = -Wall -Wextra -Werror -Ofast -std=c2x -lrt -pthread
+CFLAGS = -Wall -Wextra -Werror -O2 -std=c2x -lm -lrt -pthread -fPIC 
 LDFLAGS = -lm
  
 # -D_POSIX_C_SOURCE=199309L 
