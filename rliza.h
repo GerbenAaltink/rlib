@@ -26,14 +26,14 @@ typedef struct rliza_t {
     struct rliza_t *value;
     char *key;
     union {
-        unsigned char *string;
+        char *string;
         bool boolean;
         double number;
         struct rliza_t **map;
         long long integer;
     } content;
     unsigned int count;
-    unsigned char *(*get_string)(struct rliza_t *, char *);
+    char *(*get_string)(struct rliza_t *, char *);
     long long (*get_integer)(struct rliza_t *, char *);
     double (*get_number)(struct rliza_t *, char *);
     bool (*get_boolean)(struct rliza_t *, char *);
@@ -101,7 +101,7 @@ void rliza_set_string(rliza_t *self, char *key, char *string);
 void rliza_set_boolean(rliza_t *self, char *key, bool value);
 void rliza_set_number(rliza_t *self, char *key, double value);
 void rliza_set_integer(rliza_t *self, char *key, long long value);
-unsigned char *rliza_get_string(rliza_t *self, char *key);
+char *rliza_get_string(rliza_t *self, char *key);
 long long rliza_get_integer(rliza_t *self, char *key);
 double rliza_get_number(rliza_t *self, char *key);
 bool rliza_get_boolean(rliza_t *self, char *key);
@@ -109,12 +109,10 @@ rliza_t *rliza_get_array(rliza_t *self, char *key);
 rliza_t *rliza_get_object(rliza_t *self, char *key);
 void rliza_set_array(rliza_t *self, char *key, rliza_t *array);
 
-unsigned char *rliza_get_string(rliza_t *self, char *key) {
+char *rliza_get_string(rliza_t *self, char *key) {
     for (unsigned int i = 0; i < self->count; i++) {
-        if (self->content.map[i]->key != NULL &&
-            strcmp(self->content.map[i]->key, key) == 0) {
-            if (self->content.map[i]->type == RLIZA_STRING ||
-                self->content.map[i]->type == RLIZA_NULL) {
+        if (self->content.map[i]->key != NULL && strcmp(self->content.map[i]->key, key) == 0) {
+            if (self->content.map[i]->type == RLIZA_STRING || self->content.map[i]->type == RLIZA_NULL) {
                 return self->content.map[i]->content.string;
             }
         }
@@ -123,10 +121,8 @@ unsigned char *rliza_get_string(rliza_t *self, char *key) {
 }
 long long rliza_get_integer(rliza_t *self, char *key) {
     for (unsigned int i = 0; i < self->count; i++) {
-        if (self->content.map[i]->key != NULL &&
-            strcmp(self->content.map[i]->key, key) == 0) {
-            if (self->content.map[i]->type == RLIZA_INTEGER ||
-                self->content.map[i]->type == RLIZA_NULL) {
+        if (self->content.map[i]->key != NULL && strcmp(self->content.map[i]->key, key) == 0) {
+            if (self->content.map[i]->type == RLIZA_INTEGER || self->content.map[i]->type == RLIZA_NULL) {
                 return self->content.map[i]->content.integer;
             }
         }
@@ -136,10 +132,8 @@ long long rliza_get_integer(rliza_t *self, char *key) {
 
 double rliza_get_number(rliza_t *self, char *key) {
     for (unsigned int i = 0; i < self->count; i++) {
-        if (self->content.map[i]->key != NULL &&
-            strcmp(self->content.map[i]->key, key) == 0) {
-            if (self->content.map[i]->type == RLIZA_NUMBER ||
-                self->content.map[i]->type == RLIZA_NULL) {
+        if (self->content.map[i]->key != NULL && strcmp(self->content.map[i]->key, key) == 0) {
+            if (self->content.map[i]->type == RLIZA_NUMBER || self->content.map[i]->type == RLIZA_NULL) {
                 return self->content.map[i]->content.number;
             }
         }
@@ -149,10 +143,8 @@ double rliza_get_number(rliza_t *self, char *key) {
 
 bool rliza_get_boolean(rliza_t *self, char *key) {
     for (unsigned int i = 0; i < self->count; i++) {
-        if (self->content.map[i]->key != NULL &&
-            strcmp(self->content.map[i]->key, key) == 0) {
-            if (self->content.map[i]->type == RLIZA_BOOLEAN ||
-                self->content.map[i]->type == RLIZA_NULL) {
+        if (self->content.map[i]->key != NULL && strcmp(self->content.map[i]->key, key) == 0) {
+            if (self->content.map[i]->type == RLIZA_BOOLEAN || self->content.map[i]->type == RLIZA_NULL) {
                 return self->content.map[i]->content.boolean;
             }
         }
@@ -162,8 +154,7 @@ bool rliza_get_boolean(rliza_t *self, char *key) {
 
 rliza_t *rliza_get_object(rliza_t *self, char *key) {
     for (unsigned int i = 0; i < self->count; i++) {
-        if (self->content.map[i]->key != NULL &&
-            strcmp(self->content.map[i]->key, key) == 0) {
+        if (self->content.map[i]->key != NULL && strcmp(self->content.map[i]->key, key) == 0) {
             //  if(self->content.map[i]->type == RLIZA_OBJECT ||
             //  self->content.map[i]->type == RLIZA_NULL){
             return self->content.map[i];
@@ -176,10 +167,8 @@ rliza_t *rliza_get_object(rliza_t *self, char *key) {
 
 rliza_t *rliza_get_array(rliza_t *self, char *key) {
     for (unsigned int i = 0; i < self->count; i++) {
-        if (self->content.map[i]->key != NULL &&
-            strcmp(self->content.map[i]->key, key) == 0) {
-            if (self->content.map[i]->type == RLIZA_ARRAY ||
-                self->content.map[i]->type == RLIZA_NULL) {
+        if (self->content.map[i]->key != NULL && strcmp(self->content.map[i]->key, key) == 0) {
+            if (self->content.map[i]->type == RLIZA_ARRAY || self->content.map[i]->type == RLIZA_NULL) {
                 return self->content.map[i];
             }
         }
@@ -198,8 +187,7 @@ rliza_t *rliza_new_string(char *string) {
         rliza->content.string = NULL;
         return rliza;
     } else {
-        rliza->content.string =
-            (unsigned char *)strdup(string); // (unsigned char *)new_string;
+        rliza->content.string = (char *)strdup(string); // (char *)new_string;
     }
     return rliza;
 }
@@ -283,7 +271,7 @@ void rliza_set_string(rliza_t *self, char *key, char *string) {
         rstraddslashes(string, new_string);
         if (obj->content.string)
             free(obj->content.string);
-        obj->content.string = (unsigned char *)new_string;
+        obj->content.string = (char *)new_string;
     }
 }
 
@@ -311,8 +299,7 @@ void rliza_set_number(rliza_t *self, char *key, double value) {
 }
 
 void rliza_set_object(rliza_t *self, rliza_t *object) {
-    self->content.map =
-        realloc(self->content.map, sizeof(rliza_t *) * (self->count + 1));
+    self->content.map = realloc(self->content.map, sizeof(rliza_t *) * (self->count + 1));
     self->content.map[self->count] = object;
     self->count++;
 }
@@ -369,11 +356,9 @@ void *rliza_coalesce(void *result, void *default_value) {
     return result;
 }
 
-unsigned char *rliza_seek_string(char **content, char *options) {
-    char *content_original = *content;
+char *rliza_seek_string(char **content, char *options) {
     while (**content) {
-        if (**content == '\r' || **content == '\n' || **content == ' ' ||
-            **content == '\t' || **content == '\\') {
+        if (**content == '\r' || **content == '\n' || **content == ' ' || **content == '\t' || **content == '\\') {
             if (**content == '\\' && *(*content + 1) == '"') {
                 while (true) {
                     (*content)++;
@@ -392,43 +377,45 @@ unsigned char *rliza_seek_string(char **content, char *options) {
         char *options_ptr = options_cpy;
         char *state = options_ptr;
         char *option = NULL;
-        while ((option = strtok_r(option == NULL ? options_ptr : NULL, "|",
-                                  &state))) {
+        while ((option = strtok_r(option == NULL ? options_ptr : NULL, "|", &state))) {
             if (!strcmp(option, "\\b")) {
-                if (!strncmp(*content, "true", 4) ||
-                    !strncmp(*content, "false", 5)) {
+                if (!strncmp(*content, "true", 4) || !strncmp(*content, "false", 5)) {
 
                     // printf("Boolean match: %c\n", **content);
-                    return (unsigned char *)*content;
+                    return (char *)*content;
                 }
             }
             if (!strcmp(option, "\\d")) {
                 if (**content >= '0' && **content <= '9') {
                     // printf("Number match: %c\n", **content);
-                    return (unsigned char *)*content;
+                    return (char *)*content;
                 }
             }
 
             if (!strncmp(option, *content, strlen(option))) {
                 // printf("Literal match: %c\n", **content);
-                return (unsigned char *)*content;
+                return (char *)*content;
             }
         }
-        printf("PRE_MISMATCHH: <%s>\n", content_original);
-        printf("MISMATCH: %s\n", *content);
-        exit(0);
-        (*content)++;
+        // printf("PRE_MISMATCHH: <%s>\n", content_original);
+        // printf("MISMATCH: %s\n", *content);
+        return NULL;
+        // exit(0);
     }
-    return (unsigned char *)*content;
+    return (char *)*content;
 }
 
-unsigned char *rliza_extract_quotes(char **content) {
+char *rliza_extract_quotes(char **content) {
     rbuffer_t *buffer = rbuffer_new(NULL, 0);
     assert(**content == '"');
     char previous = 0;
     while (true) {
 
         (*content)++;
+        if (!**content) {
+            rbuffer_free(buffer);
+            return NULL;
+        }
 
         if (**content == '"' && previous != '\\') {
             break;
@@ -439,13 +426,12 @@ unsigned char *rliza_extract_quotes(char **content) {
     assert(**content == '"');
     (*content)++;
     rbuffer_push(buffer, 0);
-    unsigned char *result = rbuffer_to_string(buffer);
+    char *result = (char *)rbuffer_to_string(buffer);
     return result;
 }
-unsigned char *rliza_object_to_string(rliza_t *rliza);
-rliza_t *rliza_object_from_string(char **content) {
-    char *token =
-        (char *)rliza_seek_string(content, "[|{|\"|\\d|\\b|null|root");
+char *rliza_dumps(rliza_t *rliza);
+rliza_t *_rliza_loads(char **content) {
+    char *token = (char *)rliza_seek_string(content, "[|{|\"|\\d|\\b|null|root");
     if (!token)
         return NULL;
     rliza_t *rliza = rliza_new(RLIZA_NULL);
@@ -453,70 +439,97 @@ rliza_t *rliza_object_from_string(char **content) {
         rliza->type = RLIZA_OBJECT;
         (*content)++;
         char *result = NULL;
-        while ((result = (char *)rliza_seek_string(
-                    content, "\"|,|null|}|object")) != NULL &&
-               *result) {
+        while ((result = (char *)rliza_seek_string(content, "\"|,|}")) != NULL && *result) {
+
+            if (!**content) {
+                rliza_free(rliza);
+                return NULL;
+            }
             if (**content == ',') {
                 (*content)++;
+                if (!**content) {
+                    rliza_free(rliza);
+                    return NULL;
+                }
                 continue;
             }
-            unsigned char *key = NULL;
+            char *key = NULL;
             if (**content == '"') {
                 key = rliza_extract_quotes((char **)content);
+                if (!key || !*key) {
+                    rliza_free(rliza);
+                    return NULL;
+                }
                 char *escaped_key = (char *)malloc(strlen((char *)key) * 2 + 1);
                 rstrstripslashes((char *)key, escaped_key);
-                assert(rliza_seek_string(content, ":|keystr"));
-                (*content)++;
+                char *devider = rliza_seek_string(content, ":|keystr");
 
-                rliza_t *value = rliza_object_from_string(content);
+                if (!devider || !*devider) {
+                    free(escaped_key);
+                    free(key);
+                    rliza_free(rliza);
+                    return NULL;
+                }
+                (*content)++;
+                if (!**content) {
+                    free(key);
+                    free(escaped_key);
+                    rliza_free(rliza);
+                    return NULL;
+                }
+                rliza_t *value = _rliza_loads(content);
+                if (!value) {
+                    free(key);
+                    free(escaped_key);
+                    rliza_free(rliza);
+                    return NULL;
+                }
                 if (value->key)
                     free(value->key);
                 value->key = escaped_key;
                 free(key);
                 rliza_set_object(rliza, value);
-                // printf("<<<<<<<<%s>>>>>>>>>>\n",value->content.string);
             } else if (**content == '}') {
-                (*content)++;
-            } else if (!strncmp(*content, "null", 4)) {
-                (*content) += 4;
-                /*
-                unsigned char * key = (unsigned char *)malloc(5);
-                strcpy((char *)key, "null");
-                (*content) += 4;
-                char *escaped_key = (char *)malloc(strlen((char *)key) * 2 + 1);
-                rstrstripslashes((char *)key, escaped_key);
-                assert(rliza_seek_string(content, ":|keystr"));
-                (*content)++;
-
-                rliza_t *value = rliza_object_from_string(content);
-                if (value->key)
-                    free(value->key);
-                value->key = escaped_key;
-                free(key);
-                rliza_set_object(rliza, value);*/
+                break;
             } else {
-                assert(false && "Parse error.");
+                // Parse error
+                rliza_free(rliza);
+                return NULL;
             }
         };
+        if ((**content != '}')) {
+            rliza_free(rliza);
+            return NULL;
+        }
+        (*content)++;
         return rliza;
     } else if (**content == '[') {
         rliza->type = RLIZA_ARRAY;
         (*content)++;
         char *result;
-        while ((result = (char *)rliza_seek_string(
-                    content, "{|[|\"|\\d|\\b|,|]|null|array")) != NULL &&
-               *result) {
+        while ((result = (char *)rliza_seek_string(content, "{|[|\"|\\d|\\b|,|]|null")) != NULL && *result) {
             if (**content == ',') {
                 (*content)++;
                 continue;
-
             } else if (**content == ']') {
-                (*content)++;
                 break;
             }
-            rliza_t *obj = rliza_object_from_string(content);
+            rliza_t *obj = _rliza_loads(content);
+            if (!obj) {
+                rliza_free(rliza);
+                return NULL;
+            }
             rliza_push(rliza, obj);
+            if (!**content) {
+                rliza_free(rliza);
+                return NULL;
+            }
         }
+        if (**content != ']') {
+            rliza_free(rliza);
+            return NULL;
+        }
+        (*content)++;
         return rliza;
     } else if (**content >= '0' && **content <= '9') {
         char *ptr = *content;
@@ -529,6 +542,14 @@ rliza_t *rliza_object_from_string(char **content) {
             }
             ptr++;
         }
+        if (*(ptr - 1) == '.') {
+            rliza_free(rliza);
+            return NULL;
+        }
+        if (!*ptr) {
+            rliza_free(rliza);
+            return NULL;
+        }
         if (is_decimal) {
             rliza->type = RLIZA_NUMBER;
             rliza->content.number = strtod((char *)*content, NULL);
@@ -536,7 +557,6 @@ rliza_t *rliza_object_from_string(char **content) {
             rliza->type = RLIZA_INTEGER;
             rliza->content.integer = strtoll(*content, NULL, 10);
         }
-        // printf("Parsed number: %lld\n", rliza->content.integer);
         while (isdigit(**content) || (is_decimal && **content == '.')) {
             (*content)++;
         }
@@ -545,46 +565,68 @@ rliza_t *rliza_object_from_string(char **content) {
         rliza->type = RLIZA_BOOLEAN;
         rliza->content.boolean = true;
         *content += 4;
+        if (!**content) {
+            rliza_free(rliza);
+            return NULL;
+        }
         return rliza;
     } else if (!strncmp(*content, "false", 5)) {
         rliza->type = RLIZA_BOOLEAN;
         rliza->content.boolean = false;
         *content += 5;
+        if (!**content) {
+            rliza_free(rliza);
+            return NULL;
+        }
         return rliza;
     } else if (!strncmp(*content, "null", 4)) {
         rliza->type = RLIZA_NULL;
         *content += 4;
+        if (!**content) {
+            rliza_free(rliza);
+            return NULL;
+        }
         return rliza;
     } else if (**content == '"') {
-        unsigned char *extracted = rliza_extract_quotes((char **)content);
-        unsigned char *extracted_without_slashes =
-            (unsigned char *)malloc(strlen((char *)extracted) + 1);
+        char *extracted = rliza_extract_quotes(content);
+        if (!extracted) {
+            rliza_free(rliza);
+            return NULL;
+        }
+        char *extracted_without_slashes = (char *)malloc(strlen((char *)extracted) + 1);
         extracted_without_slashes[0] = 0;
-        rstrstripslashes((char *)extracted, (char *)extracted_without_slashes);
+        rstrstripslashes(extracted, extracted_without_slashes);
         rliza->type = RLIZA_STRING;
         ;
         rliza->content.string = extracted_without_slashes;
         free(extracted);
         return rliza;
     }
-
-    assert(false && "Rliza Overflow.");
-    return rliza;
+    // Parsing error
+    rliza_free(rliza);
+    return NULL;
 }
-unsigned char *rliza_object_to_string(rliza_t *rliza) {
+rliza_t *rliza_loads(char **content) {
+    char *original_content = *content;
+    rliza_t *result = _rliza_loads(content);
+    if (!result) {
+        *content = original_content;
+    }
+    return result;
+}
+
+char *rliza_dumps(rliza_t *rliza) {
     size_t size = 4096;
-    unsigned char *content = (unsigned char *)malloc(size);
+    char *content = (char *)malloc(size);
     content[0] = 0;
     if (rliza->type == RLIZA_INTEGER) {
         if (rliza->key) {
-            sprintf((char *)content, "\"%s\":%lld", rliza->key,
-                    rliza->content.integer);
+            sprintf(content, "\"%s\":%lld", rliza->key, rliza->content.integer);
         } else {
-            sprintf((char *)content, "%lld", rliza->content.integer);
+            sprintf(content, "%lld", rliza->content.integer);
         }
     } else if (rliza->type == RLIZA_STRING) {
-        char *escaped_string =
-            (char *)malloc(strlen((char *)rliza->content.string) * 2 + 1);
+        char *escaped_string = (char *)malloc(strlen((char *)rliza->content.string) * 2 + 1);
         rstraddslashes((char *)rliza->content.string, escaped_string);
 
         if (size < strlen((char *)rliza->content.string) * 2 + 1) {
@@ -592,87 +634,95 @@ unsigned char *rliza_object_to_string(rliza_t *rliza) {
             content = realloc(content, size + 1024);
         }
         if (rliza->key) {
-            char *escaped_key =
-                (char *)malloc(strlen((char *)rliza->key) * 2 + 1);
+            char *escaped_key = (char *)malloc(strlen((char *)rliza->key) * 2 + 1);
             rstraddslashes((char *)rliza->key, escaped_key);
-            sprintf((char *)content, "\"%s\":\"%s\"", escaped_key,
-                    escaped_string);
+            sprintf(content, "\"%s\":\"%s\"", escaped_key, escaped_string);
             free(escaped_key);
             // rliza->content.string);
         } else {
 
-            sprintf((char *)content, "\"%s\"",
+            sprintf(content, "\"%s\"",
                     escaped_string); // rliza->content.string);
         }
         free(escaped_string);
     } else if (rliza->type == RLIZA_NUMBER) {
         if (rliza->key) {
-            sprintf((char *)content, "\"%s\":%f", rliza->key,
-                    rliza->content.number);
+            sprintf(content, "\"%s\":%f", rliza->key, rliza->content.number);
         } else {
-            sprintf((char *)content, "%f", rliza->content.number);
+            sprintf(content, "%f", rliza->content.number);
+        }
+        int last_zero = 0;
+        bool beyond_dot = false;
+        for (size_t i = 0; i < strlen(content); i++) {
+            if (content[i] == '.') {
+                beyond_dot = true;
+            } else if (beyond_dot == true) {
+                if (content[i - 1] != '.') {
+                    if (content[i] == '0') {
+                        if (!last_zero)
+                            last_zero = i;
+                    } else {
+                        last_zero = 0;
+                    }
+                }
+            }
+        }
+        if (last_zero != 0) {
+            content[last_zero] = 0;
         }
     } else if (rliza->type == RLIZA_BOOLEAN) {
         if (rliza->key) {
-            sprintf((char *)content, "\"%s\":%s", rliza->key,
-                    rliza->content.boolean ? "true" : "false");
+            sprintf(content, "\"%s\":%s", rliza->key, rliza->content.boolean ? "true" : "false");
         } else {
-            sprintf((char *)content, "%s",
-                    rliza->content.boolean ? "true" : "false");
+            sprintf(content, "%s", rliza->content.boolean ? "true" : "false");
         }
     } else if (rliza->type == RLIZA_OBJECT) {
-        strcpy((char *)content, "{");
+        strcpy(content, "{");
         for (unsigned i = 0; i < rliza->count; i++) {
-            unsigned char *content_chunk =
-                rliza_object_to_string(rliza->content.map[i]);
-            if (strlen((char *)content_chunk) + strlen((char *)content) >
-                size) {
-                size += strlen((char *)content_chunk) + 1;
+            char *content_chunk = rliza_dumps(rliza->content.map[i]);
+            if (strlen(content_chunk) + strlen(content) > size) {
+                size += strlen(content_chunk) + 1;
                 realloc(content, size);
             }
-            strcat((char *)content, (char *)content_chunk);
+            strcat(content, content_chunk);
             free(content_chunk);
-            strcat((char *)content, ",");
+            strcat(content, ",");
         }
-        content[strlen((char *)content) - 1] = 0;
-        strcat((char *)content, "}");
+        content[strlen(content) - 1] = 0;
+        strcat(content, "}");
     } else if (rliza->type == RLIZA_ARRAY) {
         if (rliza->key) {
-            char *escaped_key =
-                (char *)malloc(strlen((char *)rliza->key) * 2 + 1);
+            char *escaped_key = (char *)malloc(strlen((char *)rliza->key) * 2 + 1);
             rstraddslashes((char *)rliza->key, escaped_key);
 
-            sprintf((char *)content, "\"%s\":[", escaped_key);
+            sprintf(content, "\"%s\":[", escaped_key);
             free(escaped_key);
         } else
-            strcpy((char *)content, "[");
+            strcpy(content, "[");
 
         for (unsigned i = 0; i < rliza->count; i++) {
-            unsigned char *content_chunk =
-                rliza_object_to_string(rliza->content.map[i]);
-            if (strlen((char *)content_chunk) + strlen((char *)content) >
-                size) {
-                size += strlen((char *)content_chunk) + 1;
+            char *content_chunk = rliza_dumps(rliza->content.map[i]);
+            if (strlen(content_chunk) + strlen(content) > size) {
+                size += strlen(content_chunk) + 1;
                 realloc(content, size);
             }
-            strcat((char *)content, (char *)content_chunk);
+            strcat(content, content_chunk);
             free(content_chunk);
-            strcat((char *)content, ",");
+            strcat(content, ",");
         }
-        if (content[strlen((char *)content) - 1] != '[')
-            content[strlen((char *)content) - 1] = 0;
-        strcat((char *)content, "]");
+        if (content[strlen(content) - 1] != '[')
+            content[strlen(content) - 1] = 0;
+        strcat(content, "]");
     } else if (rliza->type == RLIZA_NULL) {
 
         if (rliza->key) {
-            char *escaped_key =
-                (char *)malloc(strlen((char *)rliza->key) * 2 + 1);
+            char *escaped_key = (char *)malloc(strlen((char *)rliza->key) * 2 + 1);
             rstraddslashes((char *)rliza->key, escaped_key);
 
-            sprintf((char *)content, "\"%s\":null", escaped_key);
+            sprintf(content, "\"%s\":null", escaped_key);
             free(escaped_key);
         } else
-            strcpy((char *)content, "null");
+            strcpy(content, "null");
     }
     return content;
 }
@@ -683,6 +733,16 @@ void rliza_push(rliza_t *self, rliza_t *obj) {
     //     realloc(self->content.array, sizeof(rliza_t *) * (self->count + 1));
     // self->content.array[self->count] = obj;
     // self->count++;
+}
+
+int rliza_validate(char *json_content) {
+    char *json_contentp = json_content;
+    rliza_t *to_object = _rliza_loads(&json_contentp);
+    if (to_object) {
+        rliza_free(to_object);
+        return json_contentp - json_content;
+    }
+    return false;
 }
 
 #endif

@@ -85,8 +85,7 @@ void bench_all(unsigned int times) {
     assert(bench(times, "                   ponyyzd", "p+o.*yyzd$$$$"));
     assert(bench(times, "abc", "def|gek|abc"));
     assert(bench(times, "abc", "def|a?b?c|def"));
-    assert(bench(times, "NL18RABO0322309700",
-                 "([A-Z]{2})([0-9]{2})([A-Z]{4}[0-9])([0-9]+)$"));
+    assert(bench(times, "NL18RABO0322309700", "([A-Z]{2})([0-9]{2})([A-Z]{4}[0-9])([0-9]+)$"));
 }
 
 bool r4_match_stats(char *str, char *expr) {
@@ -102,17 +101,14 @@ bool r4_match_stats(char *str, char *expr) {
 
 int main() {
 
-    assert(r4_match_stats("NL18RABO0322309700",
-                          "(\\w{2})(\\d{2})(\\w{4}\\d)(\\d{10})"));
+    assert(r4_match_stats("NL18RABO0322309700", "(\\w{2})(\\d{2})(\\w{4}\\d)(\\d{10})"));
 
     unsigned int times = 1000;
     bench_all(times);
 
     RBENCH(1, {
-        assert(r4_match_stats("#define DEFINETEST 1\n",
-                              "#define\\s+(\\w[\\d\\w_]+)\\s+([\\w\\d_]+)"));
-        assert(r4_match_stats("#define DEFINETEST 1\n",
-                              "#define\\s+(\\w[\\d\\w_]+)\\s+([\\w\\d_]+)"));
+        assert(r4_match_stats("#define DEFINETEST 1\n", "#define\\s+(\\w[\\d\\w_]+)\\s+([\\w\\d_]+)"));
+        assert(r4_match_stats("#define DEFINETEST 1\n", "#define\\s+(\\w[\\d\\w_]+)\\s+([\\w\\d_]+)"));
         assert(r4_match_stats("ponyyy", "^p+o.*yyy$$$$"));
         assert(!r4_match_stats("ponyyy", "p%+o.*yyy$$$$"));
         assert(!r4_match_stats("ponyyyd", "^p+o.*yyz$$$$"));
@@ -123,18 +119,12 @@ int main() {
         assert(r4_match_stats("12111678993", "12(.*)67(.*)3$"));
         assert(r4_match_stats("NL17RABO0322309700", "NL(.*)R(.*)0(.*)0(.*)0$"));
 
-        assert(r4_match_stats("NL18RABO0322309700",
-                              "(\\w{2})(\\d{2})(\\w{4}\\d)(\\d+)$"));
-        assert(r4_match_stats("NL18RABO0322309700garbage",
-                              "(\\w{2})(\\d{2})(\\w{4}\\d)(\\d+)"));
-        assert(r4_match_stats("NL18RABO0322309700",
-                              "(\\w{2})(\\d{2})(\\w{4}\\d)(\\d+)$"));
-        assert(r4_match_stats(" NL18RABO0322309700",
-                              "(\\w{2})(\\d{2})(\\w{4}\\d)(\\d+)$"));
-        assert(r4_match_stats("  NL18RABO0322309700",
-                              "(\\w{2})(\\d{2})(\\w{4}\\d)(\\d+)$"));
-        assert(
-            r4_match_stats("NL18RABO0", "(\\w\\w)(\\d\\d)(\\w\\w\\w\\w\\d)$"));
+        assert(r4_match_stats("NL18RABO0322309700", "(\\w{2})(\\d{2})(\\w{4}\\d)(\\d+)$"));
+        assert(r4_match_stats("NL18RABO0322309700garbage", "(\\w{2})(\\d{2})(\\w{4}\\d)(\\d+)"));
+        assert(r4_match_stats("NL18RABO0322309700", "(\\w{2})(\\d{2})(\\w{4}\\d)(\\d+)$"));
+        assert(r4_match_stats(" NL18RABO0322309700", "(\\w{2})(\\d{2})(\\w{4}\\d)(\\d+)$"));
+        assert(r4_match_stats("  NL18RABO0322309700", "(\\w{2})(\\d{2})(\\w{4}\\d)(\\d+)$"));
+        assert(r4_match_stats("NL18RABO0", "(\\w\\w)(\\d\\d)(\\w\\w\\w\\w\\d)$"));
         assert(r4_match_stats("q", "\\q$"));
         assert(r4_match_stats("ab123", "[a-z0-9]+$"));
         assert(r4_match_stats("ppppony", "p*pppony"));
@@ -156,9 +146,8 @@ int main() {
         assert(r4_match_stats("abc", "def|gek|abc"));
         assert(!r4_match_stats("abc", "def|gek|abd"));
         assert(r4_match_stats("abc", "def|abc|def"));
-        assert(r4_match_stats(
-            "suwv", "[abcdesfghijklmnopqrtuvw][abcdefghijklmnopqrstuvw]["
-                    "abcdefghijklmnopqrstuvw][abcdefghijklmnopqrstuvw]"));
+        assert(r4_match_stats("suwv", "[abcdesfghijklmnopqrtuvw][abcdefghijklmnopqrstuvw]["
+                                      "abcdefghijklmnopqrstuvw][abcdefghijklmnopqrstuvw]"));
         test_r4_next();
         r4_enable_debug();
 

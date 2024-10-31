@@ -1,4 +1,4 @@
-// RETOOR - Oct 29 2024
+// RETOOR - Oct 31 2024
 // MIT License
 // ===========
 
@@ -154,8 +154,7 @@ void *rfree(void *obj) {
 char *rmalloc_stats() {
     static char res[200];
     res[0] = 0;
-    sprintf(res, "Memory usage: %lld allocated, %lld freed, %lld in use.",
-            rmalloc_alloc_count, rmalloc_free_count, rmalloc_count);
+    sprintf(res, "Memory usage: %lld allocated, %lld freed, %lld in use.", rmalloc_alloc_count, rmalloc_free_count, rmalloc_count);
     return res;
 }
 
@@ -280,8 +279,7 @@ int *nsock_select(suseconds_t timeout) {
         FD_SET(socks[i], &efds);
     }
 
-    int activity = select(nsock_max_socket_fd + 1, &rfds, NULL, &efds,
-                          timeout == 0 ? NULL : &tv);
+    int activity = select(nsock_max_socket_fd + 1, &rfds, NULL, &efds, timeout == 0 ? NULL : &tv);
     if ((activity < 0) && (errno != EINTR)) {
         perror("Select error\n");
         return NULL;
@@ -291,13 +289,11 @@ int *nsock_select(suseconds_t timeout) {
     if (FD_ISSET(server_fd, &rfds)) {
         struct sockaddr_in address;
         int addrlen = sizeof(address);
-        address.sin_family = AF_INET; // IPv4
-        address.sin_addr.s_addr =
-            INADDR_ANY; // Listen on any available network interface
+        address.sin_family = AF_INET;         // IPv4
+        address.sin_addr.s_addr = INADDR_ANY; // Listen on any available network interface
 
         int new_socket = 0;
-        if ((new_socket = accept(server_fd, (struct sockaddr *)&address,
-                                 (socklen_t *)&addrlen)) < 0) {
+        if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0) {
             perror("Accept failed");
         } else {
             nsock_socks[new_socket] = new_socket;
@@ -363,8 +359,7 @@ unsigned char *nsock_read_all(int fd, int length) {
 int nsock_write_all(int fd, unsigned char *data, int length) {
     int bytes_written = 0;
     while (bytes_written < length) {
-        int bytes_chunk =
-            write(fd, data + bytes_written, length - bytes_written);
+        int bytes_chunk = write(fd, data + bytes_written, length - bytes_written);
         if (bytes_chunk <= 0) {
             nsock_close(fd);
             return 0;
@@ -373,15 +368,13 @@ int nsock_write_all(int fd, unsigned char *data, int length) {
     }
     return bytes_written;
 }
-void nsock(int port, void (*on_connect)(int fd), void (*on_data)(int fd),
-           void (*on_close)(int fd)) {
+void nsock(int port, void (*on_connect)(int fd), void (*on_data)(int fd), void (*on_close)(int fd)) {
     nsock_init(2048);
     nsock_listen(port);
     nsock_on_connect = on_connect;
     nsock_on_data = on_data;
     nsock_on_close = on_close;
-    int serve_in_terminal = nsock_on_connect == NULL && nsock_on_data == NULL &&
-                            nsock_on_close == NULL;
+    int serve_in_terminal = nsock_on_connect == NULL && nsock_on_data == NULL && nsock_on_close == NULL;
     while (1) {
         int *readable = nsock_select(1000000000);
         if (!serve_in_terminal)
@@ -489,8 +482,7 @@ unsigned char *net_socket_read(rnet_socket_t *, unsigned int buff_size);
 void _net_socket_close(int sock);
 void net_socket_close(rnet_socket_t *sock);
 
-rnet_server_t *rnet_server_new(int socket_fd, unsigned int port,
-                               unsigned int backlog) {
+rnet_server_t *rnet_server_new(int socket_fd, unsigned int port, unsigned int backlog) {
     rnet_server_t *server = malloc(sizeof(rnet_server_t));
     server->socket_fd = socket_fd;
     server->sockets = NULL;
@@ -505,10 +497,8 @@ rnet_server_t *rnet_server_new(int socket_fd, unsigned int port,
     return server;
 }
 
-rnet_server_t *rnet_server_add_socket(rnet_server_t *server,
-                                      rnet_socket_t *sock) {
-    server->sockets = realloc(server->sockets, sizeof(rnet_socket_t *) *
-                                                   (server->socket_count + 1));
+rnet_server_t *rnet_server_add_socket(rnet_server_t *server, rnet_socket_t *sock) {
+    server->sockets = realloc(server->sockets, sizeof(rnet_socket_t *) * (server->socket_count + 1));
     server->sockets[server->socket_count] = sock;
     server->socket_count++;
     sock->on_read = server->on_read;
@@ -605,8 +595,7 @@ int net_socket_connect(const char *host, unsigned int port) {
     }
 
     for (p = res; p != NULL; p = p->ai_next) {
-        if ((socket_fd =
-                 socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+        if ((socket_fd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
             continue;
         }
 
@@ -648,8 +637,7 @@ int net_socket_accept(int net_socket_server_fd) {
     struct sockaddr_in address;
     int addrlen = sizeof(address);
     int new_socket = -1;
-    if ((new_socket = accept(net_socket_server_fd, (struct sockaddr *)&address,
-                             (socklen_t *)&addrlen)) < 0) {
+    if ((new_socket = accept(net_socket_server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0) {
         close(new_socket);
         return -1;
     } else {
@@ -688,8 +676,7 @@ static void net_socket_stats(WrenVM *vm)
     wrenInsertInList(vm, 0, -1, 1);
 }*/
 
-size_t net_socket_write(rnet_socket_t *sock, unsigned char *message,
-                        size_t size) {
+size_t net_socket_write(rnet_socket_t *sock, unsigned char *message, size_t size) {
     ssize_t sent_total = 0;
     ssize_t sent = 0;
     ssize_t to_send = size;
@@ -769,8 +756,7 @@ void rnet_safe_str(char *str, size_t length) {
 }
 
 rnet_select_result_t *rnet_new_socket_select_result(int socket_fd) {
-    rnet_select_result_t *result =
-        (rnet_select_result_t *)malloc(sizeof(rnet_select_result_t));
+    rnet_select_result_t *result = (rnet_select_result_t *)malloc(sizeof(rnet_select_result_t));
     memset(result, 0, sizeof(rnet_select_result_t));
     result->server_fd = socket_fd;
     result->socket_count = 0;
@@ -779,8 +765,7 @@ rnet_select_result_t *rnet_new_socket_select_result(int socket_fd) {
 }
 
 void rnet_select_result_add(rnet_select_result_t *result, rnet_socket_t *sock) {
-    result->sockets = realloc(result->sockets, sizeof(rnet_socket_t *) *
-                                                   (result->socket_count + 1));
+    result->sockets = realloc(result->sockets, sizeof(rnet_socket_t *) * (result->socket_count + 1));
     result->sockets[result->socket_count] = sock;
     result->socket_count++;
 }
@@ -813,16 +798,14 @@ rnet_select_result_t *net_socket_select(rnet_server_t *server) {
         return NULL;
     }
     if (FD_ISSET(server->socket_fd, &read_fds)) {
-        if ((new_socket = accept(server->socket_fd, (struct sockaddr *)&address,
-                                 (socklen_t *)&addrlen)) < 0) {
+        if ((new_socket = accept(server->socket_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0) {
             perror("Accept failed\n");
             return NULL;
         }
 
         // net_set_non_blocking(new_socket);
         char name[50] = {0};
-        sprintf(name, "fd:%.4d:ip:%12s:port:%.6d", new_socket,
-                inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+        sprintf(name, "fd:%.4d:ip:%12s:port:%.6d", new_socket, inet_ntoa(address.sin_addr), ntohs(address.sin_port));
         rnet_socket_t *sock_obj = NULL;
         for (unsigned int i = 0; i < server->socket_count; i++) {
             if (server->sockets && server->sockets[i]->fd == -1) {
@@ -837,18 +820,14 @@ rnet_select_result_t *net_socket_select(rnet_server_t *server) {
         strcpy(sock_obj->name, name);
         sockets_connected++;
         sockets_total++;
-        sockets_concurrent_record =
-            sockets_connected > sockets_concurrent_record
-                ? sockets_connected
-                : sockets_concurrent_record;
+        sockets_concurrent_record = sockets_connected > sockets_concurrent_record ? sockets_connected : sockets_concurrent_record;
         if (new_socket > net_socket_max_fd) {
             net_socket_max_fd = new_socket;
         }
         sock_obj->connected = true;
         sock_obj->on_connect(sock_obj);
     }
-    rnet_select_result_t *result =
-        rnet_new_socket_select_result(server->socket_fd);
+    rnet_select_result_t *result = rnet_new_socket_select_result(server->socket_fd);
     unsigned int readable_count = 0;
     for (unsigned int i = 0; i < server->socket_count; i++) {
         if (server->sockets[i]->fd == -1)
@@ -918,8 +897,7 @@ bool rargs_isset(int argc, char *argv[], char *key) {
     return false;
 }
 
-char *rargs_get_option_string(int argc, char *argv[], char *key,
-                              const char *def) {
+char *rargs_get_option_string(int argc, char *argv[], char *key, const char *def) {
 
     for (int i = 0; i < argc; i++) {
         if (!strcmp(argv[i], key)) {
@@ -1105,8 +1083,7 @@ void rbuffer_reset(rbuffer_t *rfb) {
     rfb->pos = 0;
 }
 
-unsigned char ustrncmp(const unsigned char *s1, const unsigned char *s2,
-                       size_t n) {
+unsigned char ustrncmp(const unsigned char *s1, const unsigned char *s2, size_t n) {
     return strncmp((char *)s1, (char *)s2, n);
     while (n && *s1 == *s2) {
         n--;
@@ -1130,8 +1107,7 @@ unsigned char *rbuffer_match_option(rbuffer_t *rfb, char *options) {
     char options_cpy[1024] = {0};
     strcpy(options_cpy, options);
     char *memory = options_cpy;
-    while ((option = strtok_r(option == NULL ? memory : NULL, "|", &memory)) !=
-           NULL) {
+    while ((option = strtok_r(option == NULL ? memory : NULL, "|", &memory)) != NULL) {
 
         size_t option_length = strlen(option);
         if (option_length > rfb->size - rfb->pos) {
@@ -1141,8 +1117,7 @@ unsigned char *rbuffer_match_option(rbuffer_t *rfb, char *options) {
             return rfb->data;
         }
         if (rfb->size - rfb->pos >= 5 && !strcmp(option, "\\b") &&
-            ((!ustrncmp(rfb->data, (unsigned char *)"true", 4) ||
-              !ustrncmp(rfb->data, (unsigned char *)"false", 5)))) {
+            ((!ustrncmp(rfb->data, (unsigned char *)"true", 4) || !ustrncmp(rfb->data, (unsigned char *)"false", 5)))) {
             return rfb->data;
         }
         if (!ustrncmp(rfb->data, (unsigned char *)option, option_length)) {
@@ -1271,17 +1246,14 @@ char *_rcat_charp_bool(char *a, bool *b) {
     }
 }
 
-#define rcat(x, y)                                                             \
-    _Generic((x),                                                              \
-        int: _Generic((y),                                                     \
-        int: _rcat_int_int,                                                    \
-        double: _rcat_int_double,                                              \
-        char *: _rcat_charp_charp),                                            \
-        char *: _Generic((y),                                                  \
-        int: _rcat_charp_int,                                                  \
-        double: _rcat_charp_double,                                            \
-        char *: _rcat_charp_charp,                                             \
-        char: _rcat_charp_char,                                                \
+#define rcat(x, y)                                                                                                                         \
+    _Generic((x),                                                                                                                          \
+        int: _Generic((y), int: _rcat_int_int, double: _rcat_int_double, char *: _rcat_charp_charp),                                       \
+        char *: _Generic((y),                                                                                                              \
+        int: _rcat_charp_int,                                                                                                              \
+        double: _rcat_charp_double,                                                                                                        \
+        char *: _rcat_charp_charp,                                                                                                         \
+        char: _rcat_charp_char,                                                                                                            \
         bool: _rcat_charp_bool))((x), (y))
 
 char *rgenerate_key() {
@@ -1353,6 +1325,7 @@ void rstrstripslashes(const char *content, char *result) {
             } else if (c == '\\') {
                 // No need tbh
                 c = '\\';
+                i++;
             }
         }
         result[index] = c;
@@ -1561,8 +1534,7 @@ int rstrsplit(char *input, char **lines) {
 
 bool rstartswithnumber(char *str) { return isdigit(str[0]); }
 
-void rstrmove2(char *str, unsigned int start, size_t length,
-               unsigned int new_pos) {
+void rstrmove2(char *str, unsigned int start, size_t length, unsigned int new_pos) {
     size_t str_len = strlen(str);
     char new_str[str_len + 1];
     memset(new_str, 0, str_len);
@@ -1583,8 +1555,7 @@ void rstrmove2(char *str, unsigned int start, size_t length,
     new_str[str_len] = 0;
 }
 
-void rstrmove(char *str, unsigned int start, size_t length,
-              unsigned int new_pos) {
+void rstrmove(char *str, unsigned int start, size_t length, unsigned int new_pos) {
     size_t str_len = strlen(str);
     if (start >= str_len || new_pos >= str_len || start + length > str_len) {
         return;
@@ -1666,14 +1637,14 @@ typedef struct rliza_t {
     struct rliza_t *value;
     char *key;
     union {
-        unsigned char *string;
+        char *string;
         bool boolean;
         double number;
         struct rliza_t **map;
         long long integer;
     } content;
     unsigned int count;
-    unsigned char *(*get_string)(struct rliza_t *, char *);
+    char *(*get_string)(struct rliza_t *, char *);
     long long (*get_integer)(struct rliza_t *, char *);
     double (*get_number)(struct rliza_t *, char *);
     bool (*get_boolean)(struct rliza_t *, char *);
@@ -1741,7 +1712,7 @@ void rliza_set_string(rliza_t *self, char *key, char *string);
 void rliza_set_boolean(rliza_t *self, char *key, bool value);
 void rliza_set_number(rliza_t *self, char *key, double value);
 void rliza_set_integer(rliza_t *self, char *key, long long value);
-unsigned char *rliza_get_string(rliza_t *self, char *key);
+char *rliza_get_string(rliza_t *self, char *key);
 long long rliza_get_integer(rliza_t *self, char *key);
 double rliza_get_number(rliza_t *self, char *key);
 bool rliza_get_boolean(rliza_t *self, char *key);
@@ -1749,12 +1720,10 @@ rliza_t *rliza_get_array(rliza_t *self, char *key);
 rliza_t *rliza_get_object(rliza_t *self, char *key);
 void rliza_set_array(rliza_t *self, char *key, rliza_t *array);
 
-unsigned char *rliza_get_string(rliza_t *self, char *key) {
+char *rliza_get_string(rliza_t *self, char *key) {
     for (unsigned int i = 0; i < self->count; i++) {
-        if (self->content.map[i]->key != NULL &&
-            strcmp(self->content.map[i]->key, key) == 0) {
-            if (self->content.map[i]->type == RLIZA_STRING ||
-                self->content.map[i]->type == RLIZA_NULL) {
+        if (self->content.map[i]->key != NULL && strcmp(self->content.map[i]->key, key) == 0) {
+            if (self->content.map[i]->type == RLIZA_STRING || self->content.map[i]->type == RLIZA_NULL) {
                 return self->content.map[i]->content.string;
             }
         }
@@ -1763,10 +1732,8 @@ unsigned char *rliza_get_string(rliza_t *self, char *key) {
 }
 long long rliza_get_integer(rliza_t *self, char *key) {
     for (unsigned int i = 0; i < self->count; i++) {
-        if (self->content.map[i]->key != NULL &&
-            strcmp(self->content.map[i]->key, key) == 0) {
-            if (self->content.map[i]->type == RLIZA_INTEGER ||
-                self->content.map[i]->type == RLIZA_NULL) {
+        if (self->content.map[i]->key != NULL && strcmp(self->content.map[i]->key, key) == 0) {
+            if (self->content.map[i]->type == RLIZA_INTEGER || self->content.map[i]->type == RLIZA_NULL) {
                 return self->content.map[i]->content.integer;
             }
         }
@@ -1776,10 +1743,8 @@ long long rliza_get_integer(rliza_t *self, char *key) {
 
 double rliza_get_number(rliza_t *self, char *key) {
     for (unsigned int i = 0; i < self->count; i++) {
-        if (self->content.map[i]->key != NULL &&
-            strcmp(self->content.map[i]->key, key) == 0) {
-            if (self->content.map[i]->type == RLIZA_NUMBER ||
-                self->content.map[i]->type == RLIZA_NULL) {
+        if (self->content.map[i]->key != NULL && strcmp(self->content.map[i]->key, key) == 0) {
+            if (self->content.map[i]->type == RLIZA_NUMBER || self->content.map[i]->type == RLIZA_NULL) {
                 return self->content.map[i]->content.number;
             }
         }
@@ -1789,10 +1754,8 @@ double rliza_get_number(rliza_t *self, char *key) {
 
 bool rliza_get_boolean(rliza_t *self, char *key) {
     for (unsigned int i = 0; i < self->count; i++) {
-        if (self->content.map[i]->key != NULL &&
-            strcmp(self->content.map[i]->key, key) == 0) {
-            if (self->content.map[i]->type == RLIZA_BOOLEAN ||
-                self->content.map[i]->type == RLIZA_NULL) {
+        if (self->content.map[i]->key != NULL && strcmp(self->content.map[i]->key, key) == 0) {
+            if (self->content.map[i]->type == RLIZA_BOOLEAN || self->content.map[i]->type == RLIZA_NULL) {
                 return self->content.map[i]->content.boolean;
             }
         }
@@ -1802,8 +1765,7 @@ bool rliza_get_boolean(rliza_t *self, char *key) {
 
 rliza_t *rliza_get_object(rliza_t *self, char *key) {
     for (unsigned int i = 0; i < self->count; i++) {
-        if (self->content.map[i]->key != NULL &&
-            strcmp(self->content.map[i]->key, key) == 0) {
+        if (self->content.map[i]->key != NULL && strcmp(self->content.map[i]->key, key) == 0) {
             //  if(self->content.map[i]->type == RLIZA_OBJECT ||
             //  self->content.map[i]->type == RLIZA_NULL){
             return self->content.map[i];
@@ -1816,10 +1778,8 @@ rliza_t *rliza_get_object(rliza_t *self, char *key) {
 
 rliza_t *rliza_get_array(rliza_t *self, char *key) {
     for (unsigned int i = 0; i < self->count; i++) {
-        if (self->content.map[i]->key != NULL &&
-            strcmp(self->content.map[i]->key, key) == 0) {
-            if (self->content.map[i]->type == RLIZA_ARRAY ||
-                self->content.map[i]->type == RLIZA_NULL) {
+        if (self->content.map[i]->key != NULL && strcmp(self->content.map[i]->key, key) == 0) {
+            if (self->content.map[i]->type == RLIZA_ARRAY || self->content.map[i]->type == RLIZA_NULL) {
                 return self->content.map[i];
             }
         }
@@ -1838,8 +1798,7 @@ rliza_t *rliza_new_string(char *string) {
         rliza->content.string = NULL;
         return rliza;
     } else {
-        rliza->content.string =
-            (unsigned char *)strdup(string); // (unsigned char *)new_string;
+        rliza->content.string = (char *)strdup(string); // (char *)new_string;
     }
     return rliza;
 }
@@ -1923,7 +1882,7 @@ void rliza_set_string(rliza_t *self, char *key, char *string) {
         rstraddslashes(string, new_string);
         if (obj->content.string)
             free(obj->content.string);
-        obj->content.string = (unsigned char *)new_string;
+        obj->content.string = (char *)new_string;
     }
 }
 
@@ -1951,8 +1910,7 @@ void rliza_set_number(rliza_t *self, char *key, double value) {
 }
 
 void rliza_set_object(rliza_t *self, rliza_t *object) {
-    self->content.map =
-        realloc(self->content.map, sizeof(rliza_t *) * (self->count + 1));
+    self->content.map = realloc(self->content.map, sizeof(rliza_t *) * (self->count + 1));
     self->content.map[self->count] = object;
     self->count++;
 }
@@ -2009,11 +1967,9 @@ void *rliza_coalesce(void *result, void *default_value) {
     return result;
 }
 
-unsigned char *rliza_seek_string(char **content, char *options) {
-    char *content_original = *content;
+char *rliza_seek_string(char **content, char *options) {
     while (**content) {
-        if (**content == '\r' || **content == '\n' || **content == ' ' ||
-            **content == '\t' || **content == '\\') {
+        if (**content == '\r' || **content == '\n' || **content == ' ' || **content == '\t' || **content == '\\') {
             if (**content == '\\' && *(*content + 1) == '"') {
                 while (true) {
                     (*content)++;
@@ -2032,43 +1988,45 @@ unsigned char *rliza_seek_string(char **content, char *options) {
         char *options_ptr = options_cpy;
         char *state = options_ptr;
         char *option = NULL;
-        while ((option = strtok_r(option == NULL ? options_ptr : NULL, "|",
-                                  &state))) {
+        while ((option = strtok_r(option == NULL ? options_ptr : NULL, "|", &state))) {
             if (!strcmp(option, "\\b")) {
-                if (!strncmp(*content, "true", 4) ||
-                    !strncmp(*content, "false", 5)) {
+                if (!strncmp(*content, "true", 4) || !strncmp(*content, "false", 5)) {
 
                     // printf("Boolean match: %c\n", **content);
-                    return (unsigned char *)*content;
+                    return (char *)*content;
                 }
             }
             if (!strcmp(option, "\\d")) {
                 if (**content >= '0' && **content <= '9') {
                     // printf("Number match: %c\n", **content);
-                    return (unsigned char *)*content;
+                    return (char *)*content;
                 }
             }
 
             if (!strncmp(option, *content, strlen(option))) {
                 // printf("Literal match: %c\n", **content);
-                return (unsigned char *)*content;
+                return (char *)*content;
             }
         }
-        printf("PRE_MISMATCHH: <%s>\n", content_original);
-        printf("MISMATCH: %s\n", *content);
-        exit(0);
-        (*content)++;
+        // printf("PRE_MISMATCHH: <%s>\n", content_original);
+        // printf("MISMATCH: %s\n", *content);
+        return NULL;
+        // exit(0);
     }
-    return (unsigned char *)*content;
+    return (char *)*content;
 }
 
-unsigned char *rliza_extract_quotes(char **content) {
+char *rliza_extract_quotes(char **content) {
     rbuffer_t *buffer = rbuffer_new(NULL, 0);
     assert(**content == '"');
     char previous = 0;
     while (true) {
 
         (*content)++;
+        if (!**content) {
+            rbuffer_free(buffer);
+            return NULL;
+        }
 
         if (**content == '"' && previous != '\\') {
             break;
@@ -2079,13 +2037,12 @@ unsigned char *rliza_extract_quotes(char **content) {
     assert(**content == '"');
     (*content)++;
     rbuffer_push(buffer, 0);
-    unsigned char *result = rbuffer_to_string(buffer);
+    char *result = (char *)rbuffer_to_string(buffer);
     return result;
 }
-unsigned char *rliza_object_to_string(rliza_t *rliza);
-rliza_t *rliza_object_from_string(char **content) {
-    char *token =
-        (char *)rliza_seek_string(content, "[|{|\"|\\d|\\b|null|root");
+char *rliza_dumps(rliza_t *rliza);
+rliza_t *_rliza_loads(char **content) {
+    char *token = (char *)rliza_seek_string(content, "[|{|\"|\\d|\\b|null|root");
     if (!token)
         return NULL;
     rliza_t *rliza = rliza_new(RLIZA_NULL);
@@ -2093,70 +2050,97 @@ rliza_t *rliza_object_from_string(char **content) {
         rliza->type = RLIZA_OBJECT;
         (*content)++;
         char *result = NULL;
-        while ((result = (char *)rliza_seek_string(
-                    content, "\"|,|null|}|object")) != NULL &&
-               *result) {
+        while ((result = (char *)rliza_seek_string(content, "\"|,|}")) != NULL && *result) {
+
+            if (!**content) {
+                rliza_free(rliza);
+                return NULL;
+            }
             if (**content == ',') {
                 (*content)++;
+                if (!**content) {
+                    rliza_free(rliza);
+                    return NULL;
+                }
                 continue;
             }
-            unsigned char *key = NULL;
+            char *key = NULL;
             if (**content == '"') {
                 key = rliza_extract_quotes((char **)content);
+                if (!key || !*key) {
+                    rliza_free(rliza);
+                    return NULL;
+                }
                 char *escaped_key = (char *)malloc(strlen((char *)key) * 2 + 1);
                 rstrstripslashes((char *)key, escaped_key);
-                assert(rliza_seek_string(content, ":|keystr"));
-                (*content)++;
+                char *devider = rliza_seek_string(content, ":|keystr");
 
-                rliza_t *value = rliza_object_from_string(content);
+                if (!devider || !*devider) {
+                    free(escaped_key);
+                    free(key);
+                    rliza_free(rliza);
+                    return NULL;
+                }
+                (*content)++;
+                if (!**content) {
+                    free(key);
+                    free(escaped_key);
+                    rliza_free(rliza);
+                    return NULL;
+                }
+                rliza_t *value = _rliza_loads(content);
+                if (!value) {
+                    free(key);
+                    free(escaped_key);
+                    rliza_free(rliza);
+                    return NULL;
+                }
                 if (value->key)
                     free(value->key);
                 value->key = escaped_key;
                 free(key);
                 rliza_set_object(rliza, value);
-                // printf("<<<<<<<<%s>>>>>>>>>>\n",value->content.string);
             } else if (**content == '}') {
-                (*content)++;
-            } else if (!strncmp(*content, "null", 4)) {
-                (*content) += 4;
-                /*
-                unsigned char * key = (unsigned char *)malloc(5);
-                strcpy((char *)key, "null");
-                (*content) += 4;
-                char *escaped_key = (char *)malloc(strlen((char *)key) * 2 + 1);
-                rstrstripslashes((char *)key, escaped_key);
-                assert(rliza_seek_string(content, ":|keystr"));
-                (*content)++;
-
-                rliza_t *value = rliza_object_from_string(content);
-                if (value->key)
-                    free(value->key);
-                value->key = escaped_key;
-                free(key);
-                rliza_set_object(rliza, value);*/
+                break;
             } else {
-                assert(false && "Parse error.");
+                // Parse error
+                rliza_free(rliza);
+                return NULL;
             }
         };
+        if ((**content != '}')) {
+            rliza_free(rliza);
+            return NULL;
+        }
+        (*content)++;
         return rliza;
     } else if (**content == '[') {
         rliza->type = RLIZA_ARRAY;
         (*content)++;
         char *result;
-        while ((result = (char *)rliza_seek_string(
-                    content, "{|[|\"|\\d|\\b|,|]|null|array")) != NULL &&
-               *result) {
+        while ((result = (char *)rliza_seek_string(content, "{|[|\"|\\d|\\b|,|]|null")) != NULL && *result) {
             if (**content == ',') {
                 (*content)++;
                 continue;
-
             } else if (**content == ']') {
-                (*content)++;
                 break;
             }
-            rliza_t *obj = rliza_object_from_string(content);
+            rliza_t *obj = _rliza_loads(content);
+            if (!obj) {
+                rliza_free(rliza);
+                return NULL;
+            }
             rliza_push(rliza, obj);
+            if (!**content) {
+                rliza_free(rliza);
+                return NULL;
+            }
         }
+        if (**content != ']') {
+            rliza_free(rliza);
+            return NULL;
+        }
+        (*content)++;
         return rliza;
     } else if (**content >= '0' && **content <= '9') {
         char *ptr = *content;
@@ -2169,6 +2153,14 @@ rliza_t *rliza_object_from_string(char **content) {
             }
             ptr++;
         }
+        if (*(ptr - 1) == '.') {
+            rliza_free(rliza);
+            return NULL;
+        }
+        if (!*ptr) {
+            rliza_free(rliza);
+            return NULL;
+        }
         if (is_decimal) {
             rliza->type = RLIZA_NUMBER;
             rliza->content.number = strtod((char *)*content, NULL);
@@ -2176,7 +2168,6 @@ rliza_t *rliza_object_from_string(char **content) {
             rliza->type = RLIZA_INTEGER;
             rliza->content.integer = strtoll(*content, NULL, 10);
         }
-        // printf("Parsed number: %lld\n", rliza->content.integer);
         while (isdigit(**content) || (is_decimal && **content == '.')) {
             (*content)++;
         }
@@ -2185,46 +2176,68 @@ rliza_t *rliza_object_from_string(char **content) {
         rliza->type = RLIZA_BOOLEAN;
         rliza->content.boolean = true;
         *content += 4;
+        if (!**content) {
+            rliza_free(rliza);
+            return NULL;
+        }
         return rliza;
     } else if (!strncmp(*content, "false", 5)) {
         rliza->type = RLIZA_BOOLEAN;
         rliza->content.boolean = false;
         *content += 5;
+        if (!**content) {
+            rliza_free(rliza);
+            return NULL;
+        }
         return rliza;
     } else if (!strncmp(*content, "null", 4)) {
         rliza->type = RLIZA_NULL;
         *content += 4;
+        if (!**content) {
+            rliza_free(rliza);
+            return NULL;
+        }
         return rliza;
     } else if (**content == '"') {
-        unsigned char *extracted = rliza_extract_quotes((char **)content);
-        unsigned char *extracted_without_slashes =
-            (unsigned char *)malloc(strlen((char *)extracted) + 1);
+        char *extracted = rliza_extract_quotes(content);
+        if (!extracted) {
+            rliza_free(rliza);
+            return NULL;
+        }
+        char *extracted_without_slashes = (char *)malloc(strlen((char *)extracted) + 1);
         extracted_without_slashes[0] = 0;
-        rstrstripslashes((char *)extracted, (char *)extracted_without_slashes);
+        rstrstripslashes(extracted, extracted_without_slashes);
         rliza->type = RLIZA_STRING;
         ;
         rliza->content.string = extracted_without_slashes;
         free(extracted);
         return rliza;
     }
-
-    assert(false && "Rliza Overflow.");
-    return rliza;
+    // Parsing error
+    rliza_free(rliza);
+    return NULL;
 }
-unsigned char *rliza_object_to_string(rliza_t *rliza) {
+rliza_t *rliza_loads(char **content) {
+    char *original_content = *content;
+    rliza_t *result = _rliza_loads(content);
+    if (!result) {
+        *content = original_content;
+    }
+    return result;
+}
+
+char *rliza_dumps(rliza_t *rliza) {
     size_t size = 4096;
-    unsigned char *content = (unsigned char *)malloc(size);
+    char *content = (char *)malloc(size);
     content[0] = 0;
     if (rliza->type == RLIZA_INTEGER) {
         if (rliza->key) {
-            sprintf((char *)content, "\"%s\":%lld", rliza->key,
-                    rliza->content.integer);
+            sprintf(content, "\"%s\":%lld", rliza->key, rliza->content.integer);
         } else {
-            sprintf((char *)content, "%lld", rliza->content.integer);
+            sprintf(content, "%lld", rliza->content.integer);
         }
     } else if (rliza->type == RLIZA_STRING) {
-        char *escaped_string =
-            (char *)malloc(strlen((char *)rliza->content.string) * 2 + 1);
+        char *escaped_string = (char *)malloc(strlen((char *)rliza->content.string) * 2 + 1);
         rstraddslashes((char *)rliza->content.string, escaped_string);
 
         if (size < strlen((char *)rliza->content.string) * 2 + 1) {
@@ -2232,87 +2245,95 @@ unsigned char *rliza_object_to_string(rliza_t *rliza) {
             content = realloc(content, size + 1024);
         }
         if (rliza->key) {
-            char *escaped_key =
-                (char *)malloc(strlen((char *)rliza->key) * 2 + 1);
+            char *escaped_key = (char *)malloc(strlen((char *)rliza->key) * 2 + 1);
             rstraddslashes((char *)rliza->key, escaped_key);
-            sprintf((char *)content, "\"%s\":\"%s\"", escaped_key,
-                    escaped_string);
+            sprintf(content, "\"%s\":\"%s\"", escaped_key, escaped_string);
             free(escaped_key);
             // rliza->content.string);
         } else {
 
-            sprintf((char *)content, "\"%s\"",
+            sprintf(content, "\"%s\"",
                     escaped_string); // rliza->content.string);
         }
         free(escaped_string);
     } else if (rliza->type == RLIZA_NUMBER) {
         if (rliza->key) {
-            sprintf((char *)content, "\"%s\":%f", rliza->key,
-                    rliza->content.number);
+            sprintf(content, "\"%s\":%f", rliza->key, rliza->content.number);
         } else {
-            sprintf((char *)content, "%f", rliza->content.number);
+            sprintf(content, "%f", rliza->content.number);
+        }
+        int last_zero = 0;
+        bool beyond_dot = false;
+        for (size_t i = 0; i < strlen(content); i++) {
+            if (content[i] == '.') {
+                beyond_dot = true;
+            } else if (beyond_dot == true) {
+                if (content[i - 1] != '.') {
+                    if (content[i] == '0') {
+                        if (!last_zero)
+                            last_zero = i;
+                    } else {
+                        last_zero = 0;
+                    }
+                }
+            }
+        }
+        if (last_zero != 0) {
+            content[last_zero] = 0;
         }
     } else if (rliza->type == RLIZA_BOOLEAN) {
         if (rliza->key) {
-            sprintf((char *)content, "\"%s\":%s", rliza->key,
-                    rliza->content.boolean ? "true" : "false");
+            sprintf(content, "\"%s\":%s", rliza->key, rliza->content.boolean ? "true" : "false");
         } else {
-            sprintf((char *)content, "%s",
-                    rliza->content.boolean ? "true" : "false");
+            sprintf(content, "%s", rliza->content.boolean ? "true" : "false");
         }
     } else if (rliza->type == RLIZA_OBJECT) {
-        strcpy((char *)content, "{");
+        strcpy(content, "{");
         for (unsigned i = 0; i < rliza->count; i++) {
-            unsigned char *content_chunk =
-                rliza_object_to_string(rliza->content.map[i]);
-            if (strlen((char *)content_chunk) + strlen((char *)content) >
-                size) {
-                size += strlen((char *)content_chunk) + 1;
+            char *content_chunk = rliza_dumps(rliza->content.map[i]);
+            if (strlen(content_chunk) + strlen(content) > size) {
+                size += strlen(content_chunk) + 1;
                 realloc(content, size);
             }
-            strcat((char *)content, (char *)content_chunk);
+            strcat(content, content_chunk);
             free(content_chunk);
-            strcat((char *)content, ",");
+            strcat(content, ",");
         }
-        content[strlen((char *)content) - 1] = 0;
-        strcat((char *)content, "}");
+        content[strlen(content) - 1] = 0;
+        strcat(content, "}");
     } else if (rliza->type == RLIZA_ARRAY) {
         if (rliza->key) {
-            char *escaped_key =
-                (char *)malloc(strlen((char *)rliza->key) * 2 + 1);
+            char *escaped_key = (char *)malloc(strlen((char *)rliza->key) * 2 + 1);
             rstraddslashes((char *)rliza->key, escaped_key);
 
-            sprintf((char *)content, "\"%s\":[", escaped_key);
+            sprintf(content, "\"%s\":[", escaped_key);
             free(escaped_key);
         } else
-            strcpy((char *)content, "[");
+            strcpy(content, "[");
 
         for (unsigned i = 0; i < rliza->count; i++) {
-            unsigned char *content_chunk =
-                rliza_object_to_string(rliza->content.map[i]);
-            if (strlen((char *)content_chunk) + strlen((char *)content) >
-                size) {
-                size += strlen((char *)content_chunk) + 1;
+            char *content_chunk = rliza_dumps(rliza->content.map[i]);
+            if (strlen(content_chunk) + strlen(content) > size) {
+                size += strlen(content_chunk) + 1;
                 realloc(content, size);
             }
-            strcat((char *)content, (char *)content_chunk);
+            strcat(content, content_chunk);
             free(content_chunk);
-            strcat((char *)content, ",");
+            strcat(content, ",");
         }
-        if (content[strlen((char *)content) - 1] != '[')
-            content[strlen((char *)content) - 1] = 0;
-        strcat((char *)content, "]");
+        if (content[strlen(content) - 1] != '[')
+            content[strlen(content) - 1] = 0;
+        strcat(content, "]");
     } else if (rliza->type == RLIZA_NULL) {
 
         if (rliza->key) {
-            char *escaped_key =
-                (char *)malloc(strlen((char *)rliza->key) * 2 + 1);
+            char *escaped_key = (char *)malloc(strlen((char *)rliza->key) * 2 + 1);
             rstraddslashes((char *)rliza->key, escaped_key);
 
-            sprintf((char *)content, "\"%s\":null", escaped_key);
+            sprintf(content, "\"%s\":null", escaped_key);
             free(escaped_key);
         } else
-            strcpy((char *)content, "null");
+            strcpy(content, "null");
     }
     return content;
 }
@@ -2323,6 +2344,16 @@ void rliza_push(rliza_t *self, rliza_t *obj) {
     //     realloc(self->content.array, sizeof(rliza_t *) * (self->count + 1));
     // self->content.array[self->count] = obj;
     // self->count++;
+}
+
+int rliza_validate(char *json_content) {
+    char *json_contentp = json_content;
+    rliza_t *to_object = _rliza_loads(&json_contentp);
+    if (to_object) {
+        rliza_free(to_object);
+        return json_contentp - json_content;
+    }
+    return false;
 }
 
 #endif
@@ -2365,14 +2396,14 @@ char *rtempc(char *data) {
     return _rtempc_buffer[current_rtempc_slot];
 }
 
-#define sstring(_pname, _psize)                                                \
-    static char _##_pname[_psize];                                             \
-    _##_pname[0] = 0;                                                          \
+#define sstring(_pname, _psize)                                                                                                            \
+    static char _##_pname[_psize];                                                                                                         \
+    _##_pname[0] = 0;                                                                                                                      \
     char *_pname = _##_pname;
 
-#define string(_pname, _psize)                                                 \
-    char _##_pname[_psize];                                                    \
-    _##_pname[0] = 0;                                                          \
+#define string(_pname, _psize)                                                                                                             \
+    char _##_pname[_psize];                                                                                                                \
+    _##_pname[0] = 0;                                                                                                                      \
     char *_pname = _##_pname;
 
 #define sreset(_pname, _psize) _pname = _##_pname;
@@ -3098,8 +3129,7 @@ int rtest_end(char *content) {
     // Returns application exit code. 0 == success
     printf("%s", content);
     printf("\n@assertions: %d\n", rassert_count);
-    printf("@memory: %s%s\n", rmalloc_stats(),
-           rmalloc_count == 0 ? remo_get("rainbow") : "fire");
+    printf("@memory: %s%s\n", rmalloc_stats(), rmalloc_count == 0 ? remo_get("rainbow") : "fire");
 
     if (rmalloc_count != 0) {
         printf("MEMORY ERROR %s\n", remo_get("cross mark"));
@@ -3137,20 +3167,13 @@ bool rtest_test_true(char *expr, int res, int line) {
         fprintf(stdout, "%s", remo_get("Slightly Smiling Face"));
         return true;
     }
-    rprintrf(stderr, "\nERROR %s on line %d: %s\n", remo_get("skull"), line,
-             expr);
+    rprintrf(stderr, "\nERROR %s on line %d: %s\n", remo_get("skull"), line, expr);
     rtest_fail_count++;
     return false;
 }
-bool rtest_test_false_silent(char *expr, int res, int line) {
-    return rtest_test_true_silent(expr, !res, line);
-}
-bool rtest_test_false(char *expr, int res, int line) {
-    return rtest_test_true(expr, !res, line);
-}
-void rtest_test_skip(char *expr, int line) {
-    rprintgf(stderr, "\n @skip(%s) on line %d\n", expr, line);
-}
+bool rtest_test_false_silent(char *expr, int res, int line) { return rtest_test_true_silent(expr, !res, line); }
+bool rtest_test_false(char *expr, int res, int line) { return rtest_test_true(expr, !res, line); }
+void rtest_test_skip(char *expr, int line) { rprintgf(stderr, "\n @skip(%s) on line %d\n", expr, line); }
 void rtest_test_assert(char *expr, int res, int line) {
     if (rtest_test_true(expr, res, line)) {
         return;
@@ -3159,36 +3182,36 @@ void rtest_test_assert(char *expr, int res, int line) {
     exit(40);
 }
 
-#define rtest_banner(content)                                                  \
-    rcurrent_banner = content;                                                 \
+#define rtest_banner(content)                                                                                                              \
+    rcurrent_banner = content;                                                                                                             \
     rtest_test_banner(content, __FILE__);
 #define rtest_true(expr) rtest_test_true(#expr, expr, __LINE__);
-#define rtest_assert(expr)                                                     \
-    {                                                                          \
-        int __valid = expr ? 1 : 0;                                            \
-        rtest_test_true(#expr, __valid, __LINE__);                             \
-    };                                                                         \
+#define rtest_assert(expr)                                                                                                                 \
+    {                                                                                                                                      \
+        int __valid = expr ? 1 : 0;                                                                                                        \
+        rtest_test_true(#expr, __valid, __LINE__);                                                                                         \
+    };                                                                                                                                     \
     ;
 
-#define rassert(expr)                                                          \
-    {                                                                          \
-        int __valid = expr ? 1 : 0;                                            \
-        rtest_test_true(#expr, __valid, __LINE__);                             \
-    };                                                                         \
+#define rassert(expr)                                                                                                                      \
+    {                                                                                                                                      \
+        int __valid = expr ? 1 : 0;                                                                                                        \
+        rtest_test_true(#expr, __valid, __LINE__);                                                                                         \
+    };                                                                                                                                     \
     ;
-#define rtest_asserts(expr)                                                    \
-    {                                                                          \
-        int __valid = expr ? 1 : 0;                                            \
-        rtest_test_true_silent(#expr, __valid, __LINE__);                      \
+#define rtest_asserts(expr)                                                                                                                \
+    {                                                                                                                                      \
+        int __valid = expr ? 1 : 0;                                                                                                        \
+        rtest_test_true_silent(#expr, __valid, __LINE__);                                                                                  \
     };
-#define rasserts(expr)                                                         \
-    {                                                                          \
-        int __valid = expr ? 1 : 0;                                            \
-        rtest_test_true_silent(#expr, __valid, __LINE__);                      \
+#define rasserts(expr)                                                                                                                     \
+    {                                                                                                                                      \
+        int __valid = expr ? 1 : 0;                                                                                                        \
+        rtest_test_true_silent(#expr, __valid, __LINE__);                                                                                  \
     };
-#define rtest_false(expr)                                                      \
-    rprintf(" [%s]\t%s\t\n", expr == 0 ? "OK" : "NOK", #expr);                 \
-    assert_count++;                                                            \
+#define rtest_false(expr)                                                                                                                  \
+    rprintf(" [%s]\t%s\t\n", expr == 0 ? "OK" : "NOK", #expr);                                                                             \
+    assert_count++;                                                                                                                        \
     assert(#expr);
 #define rtest_skip(expr) rtest_test_skip(#expr, __LINE__);
 
@@ -3273,8 +3296,7 @@ typedef struct rprogressbar_t {
     FILE *fout;
 } rprogressbar_t;
 
-rprogressbar_t *rprogressbar_new(long min_value, long max_value,
-                                 unsigned int width, FILE *fout) {
+rprogressbar_t *rprogressbar_new(long min_value, long max_value, unsigned int width, FILE *fout) {
     rprogressbar_t *pbar = (rprogressbar_t *)malloc(sizeof(rprogressbar_t));
     pbar->min_value = min_value;
     pbar->max_value = max_value;
@@ -3331,8 +3353,7 @@ void rprogressbar_draw(rprogressbar_t *pbar) {
     }
     bar_content[index] = bar_end_char;
     bar_content[index + 1] = '\0';
-    sprintf(buff, "\033[43m%s\033[0m \033[33m%.2f%%\033[0m ", bar_content,
-            pbar->percentage * 100);
+    sprintf(buff, "\033[43m%s\033[0m \033[33m%.2f%%\033[0m ", bar_content, pbar->percentage * 100);
     strcat(content, buff);
     if (pbar->width == pbar->length) {
         strcat(content, "\r");
@@ -3350,8 +3371,7 @@ bool rprogressbar_update(rprogressbar_t *pbar, unsigned long value) {
         return false;
     }
     pbar->current_value = value;
-    pbar->percentage = (double)pbar->current_value /
-                       (double)(pbar->max_value - pbar->min_value);
+    pbar->percentage = (double)pbar->current_value / (double)(pbar->max_value - pbar->min_value);
     unsigned long new_length = (unsigned long)(pbar->percentage * pbar->width);
     pbar->changed = new_length != pbar->length;
     if (pbar->changed) {
@@ -3394,41 +3414,40 @@ void rlib_test_progressbar() {
 
 #endif
 
-#define RBENCH(times, action)                                                  \
-    {                                                                          \
-        unsigned long utimes = (unsigned long)times;                           \
-        nsecs_t start = nsecs();                                               \
-        for (unsigned long i = 0; i < utimes; i++) {                           \
-            {                                                                  \
-                action;                                                        \
-            }                                                                  \
-        }                                                                      \
-        nsecs_t end = nsecs();                                                 \
-        printf("%s\n", format_time(end - start));                              \
+#define RBENCH(times, action)                                                                                                              \
+    {                                                                                                                                      \
+        unsigned long utimes = (unsigned long)times;                                                                                       \
+        nsecs_t start = nsecs();                                                                                                           \
+        for (unsigned long i = 0; i < utimes; i++) {                                                                                       \
+            {                                                                                                                              \
+                action;                                                                                                                    \
+            }                                                                                                                              \
+        }                                                                                                                                  \
+        nsecs_t end = nsecs();                                                                                                             \
+        printf("%s\n", format_time(end - start));                                                                                          \
     }
 
-#define RBENCHP(times, action)                                                 \
-    {                                                                          \
-        printf("\n");                                                          \
-        nsecs_t start = nsecs();                                               \
-        unsigned int prev_percentage = 0;                                      \
-        unsigned long utimes = (unsigned long)times;                           \
-        for (unsigned long i = 0; i < utimes; i++) {                           \
-            unsigned int percentage =                                          \
-                ((long double)i / (long double)times) * 100;                   \
-            int percentage_changed = percentage != prev_percentage;            \
-            __attribute__((unused)) int first = i == 0;                        \
-            __attribute__((unused)) int last = i == utimes - 1;                \
-            { action; };                                                       \
-            if (percentage_changed) {                                          \
-                printf("\r%d%%", percentage);                                  \
-                fflush(stdout);                                                \
-                                                                               \
-                prev_percentage = percentage;                                  \
-            }                                                                  \
-        }                                                                      \
-        nsecs_t end = nsecs();                                                 \
-        printf("\r%s\n", format_time(end - start));                            \
+#define RBENCHP(times, action)                                                                                                             \
+    {                                                                                                                                      \
+        printf("\n");                                                                                                                      \
+        nsecs_t start = nsecs();                                                                                                           \
+        unsigned int prev_percentage = 0;                                                                                                  \
+        unsigned long utimes = (unsigned long)times;                                                                                       \
+        for (unsigned long i = 0; i < utimes; i++) {                                                                                       \
+            unsigned int percentage = ((long double)i / (long double)times) * 100;                                                         \
+            int percentage_changed = percentage != prev_percentage;                                                                        \
+            __attribute__((unused)) int first = i == 0;                                                                                    \
+            __attribute__((unused)) int last = i == utimes - 1;                                                                            \
+            { action; };                                                                                                                   \
+            if (percentage_changed) {                                                                                                      \
+                printf("\r%d%%", percentage);                                                                                              \
+                fflush(stdout);                                                                                                            \
+                                                                                                                                           \
+                prev_percentage = percentage;                                                                                              \
+            }                                                                                                                              \
+        }                                                                                                                                  \
+        nsecs_t end = nsecs();                                                                                                             \
+        printf("\r%s\n", format_time(end - start));                                                                                        \
     }
 
 struct rbench_t;
@@ -3464,19 +3483,15 @@ typedef struct rbench_t {
     bool silent;
     nsecs_t execution_time;
 #ifdef __cplusplus
-    void (*add_function)(struct rbench_t *r, const char *name,
-                         const char *group, void (*)());
+    void (*add_function)(struct rbench_t *r, const char *name, const char *group, void (*)());
 #else
-    void (*add_function)(struct rbench_t *r, const char *name,
-                         const char *group, void *);
+    void (*add_function)(struct rbench_t *r, const char *name, const char *group, void *);
 #endif
     void (*rbench_reset)(struct rbench_t *r);
     struct rbench_t *(*execute)(struct rbench_t *r, long times);
     struct rbench_t *(*execute1)(struct rbench_t *r, long times, void *arg1);
-    struct rbench_t *(*execute2)(struct rbench_t *r, long times, void *arg1,
-                                 void *arg2);
-    struct rbench_t *(*execute3)(struct rbench_t *r, long times, void *arg1,
-                                 void *arg2, void *arg3);
+    struct rbench_t *(*execute2)(struct rbench_t *r, long times, void *arg1, void *arg2);
+    struct rbench_t *(*execute3)(struct rbench_t *r, long times, void *arg1, void *arg2, void *arg3);
 
 } rbench_t;
 
@@ -3527,11 +3542,9 @@ typedef void *(*rbench_call2)(void *, void *);
 typedef void *(*rbench_call3)(void *, void *, void *);
 
 #ifdef __cplusplus
-void rbench_add_function(rbench_t *rp, const char *name, const char *group,
-                         void (*call)()) {
+void rbench_add_function(rbench_t *rp, const char *name, const char *group, void (*call)()) {
 #else
-void rbench_add_function(rbench_t *rp, const char *name, const char *group,
-                         void *call) {
+void rbench_add_function(rbench_t *rp, const char *name, const char *group, void *call) {
 #endif
     rbench_function_t *f = &rp->functions[rp->function_count];
     rp->function_count++;
@@ -3573,8 +3586,7 @@ bool rbench_was_last_function(rbench_t *r) {
     return false;
 }
 
-rbench_function_t *rbench_execute_prepare(rbench_t *r, int findex, long times,
-                                          int argc) {
+rbench_function_t *rbench_execute_prepare(rbench_t *r, int findex, long times, int argc) {
     rbench_toggle_stdout(r);
     if (findex == 0) {
         r->execution_time = 0;
@@ -3598,8 +3610,7 @@ void rbench_execute_finish(rbench_t *r) {
         free(r->progress_bar);
         r->progress_bar = NULL;
     }
-    r->current->average_execution_time =
-        r->current->total_execution_time / r->current->times_executed;
+    r->current->average_execution_time = r->current->total_execution_time / r->current->times_executed;
     ;
     // printf("   %s:%s finished executing in
     // %s\n",r->current->group,r->current->name,
@@ -3619,19 +3630,14 @@ void rbench_execute_finish(rbench_t *r) {
             bool is_winner = winner_index == i;
             if (is_winner) {
                 if (!r->silent)
-                    rprintyf(stderr, " > %s:%s:%s\n",
-                             format_time(rbf->total_execution_time), rbf->group,
-                             rbf->name);
+                    rprintyf(stderr, " > %s:%s:%s\n", format_time(rbf->total_execution_time), rbf->group, rbf->name);
             } else {
                 if (!r->silent)
-                    rprintbf(stderr, "   %s:%s:%s\n",
-                             format_time(rbf->total_execution_time), rbf->group,
-                             rbf->name);
+                    rprintbf(stderr, "   %s:%s:%s\n", format_time(rbf->total_execution_time), rbf->group, rbf->name);
             }
         }
         if (!r->silent)
-            rprintgf(stderr, "Total execution time: %s\n",
-                     format_time(total_time));
+            rprintgf(stderr, "Total execution time: %s\n", format_time(total_time));
     }
     rbench_restore_stdout(r);
     rbf = NULL;
@@ -3690,8 +3696,7 @@ struct rbench_t *rbench_execute1(rbench_t *r, long times, void *arg1) {
     return r;
 }
 
-struct rbench_t *rbench_execute2(rbench_t *r, long times, void *arg1,
-                                 void *arg2) {
+struct rbench_t *rbench_execute2(rbench_t *r, long times, void *arg1, void *arg2) {
 
     for (unsigned int i = 0; i < r->function_count; i++) {
         rbench_function_t *f = rbench_execute_prepare(r, i, times, 2);
@@ -3717,8 +3722,7 @@ struct rbench_t *rbench_execute2(rbench_t *r, long times, void *arg1,
     return r;
 }
 
-struct rbench_t *rbench_execute3(rbench_t *r, long times, void *arg1,
-                                 void *arg2, void *arg3) {
+struct rbench_t *rbench_execute3(rbench_t *r, long times, void *arg1, void *arg2, void *arg3) {
 
     for (unsigned int i = 0; i < r->function_count; i++) {
         rbench_function_t *f = rbench_execute_prepare(r, i, times, 3);
@@ -3789,31 +3793,29 @@ int rcov_main(int argc, char *argv[]) {
     }
     if (!check_lcov()) {
 
-        printf(
-            "lcov is not installed. Please execute `sudo apt install lcov`.\n");
+        printf("lcov is not installed. Please execute `sudo apt install lcov`.\n");
         return 1;
     }
     char *source_file = argv[1];
-    char *commands[] = {
-        "rm -f *.gcda   2>/dev/null",
-        "rm -f *.gcno   2>/dev/null",
-        "rm -f %s.coverage.info   2>/dev/null",
-        "gcc -pg -fprofile-arcs -ftest-coverage -g -o %s_coverage.o %s",
-        "./%s_coverage.o",
-        "lcov --capture --directory . --output-file %s.coverage.info",
-        "genhtml %s.coverage.info --output-directory /tmp/%s.coverage",
-        "rm -f *.gcda   2>/dev/null",
-        "rm -f *.gcno   2>/dev/null",
-        "rm -f %s.coverage.info   2>/dev/null", //"cat gmon.out",
+    char *commands[] = {"rm -f *.gcda   2>/dev/null",
+                        "rm -f *.gcno   2>/dev/null",
+                        "rm -f %s.coverage.info   2>/dev/null",
+                        "gcc -pg -fprofile-arcs -ftest-coverage -g -o %s_coverage.o %s",
+                        "./%s_coverage.o",
+                        "lcov --capture --directory . --output-file %s.coverage.info",
+                        "genhtml %s.coverage.info --output-directory /tmp/%s.coverage",
+                        "rm -f *.gcda   2>/dev/null",
+                        "rm -f *.gcno   2>/dev/null",
+                        "rm -f %s.coverage.info   2>/dev/null", //"cat gmon.out",
 
-        "gprof %s_coverage.o gmon.out > output.rcov_analysis",
+                        "gprof %s_coverage.o gmon.out > output.rcov_analysis",
 
-        "rm -f gmon.out",
-        "cat output.rcov_analysis",
-        "rm output.rcov_analysis",
-        "rm -f %s_coverage.o",
+                        "rm -f gmon.out",
+                        "cat output.rcov_analysis",
+                        "rm output.rcov_analysis",
+                        "rm -f %s_coverage.o",
 
-        "google-chrome /tmp/%s.coverage/index.html"};
+                        "google-chrome /tmp/%s.coverage/index.html"};
     uint command_count = sizeof(commands) / sizeof(commands[0]);
     RBENCH(1,{
         for (uint i = 0; i < command_count; i++) {
@@ -3868,6 +3870,8 @@ void rstring_list_free(rstring_list_t *rsl) {
     for (unsigned int i = 0; i < rsl->size; i++) {
         free(rsl->strings[i]);
     }
+    if (rsl->strings)
+        free(rsl->strings);
     free(rsl);
     rsl = NULL;
 }
@@ -3875,11 +3879,10 @@ void rstring_list_free(rstring_list_t *rsl) {
 void rstring_list_add(rstring_list_t *rsl, char *str) {
     if (rsl->count == rsl->size) {
         rsl->size++;
-        rsl->strings =
-            (char **)realloc(rsl->strings, sizeof(char *) * rsl->size);
+
+        rsl->strings = (char **)realloc(rsl->strings, sizeof(char *) * rsl->size);
     }
-    rsl->strings[rsl->count] = (char *)malloc(strlen(str) + 1);
-    strcpy(rsl->strings[rsl->count], str);
+    rsl->strings[rsl->count] = strdup(str);
     rsl->count++;
 }
 bool rstring_list_contains(rstring_list_t *rsl, char *str) {
@@ -3940,8 +3943,7 @@ void rforfile(char *path, void callback(char *)) {
         if (!d)
             break;
 
-        if ((d->d_name[0] == '.' && strlen(d->d_name) == 1) ||
-            d->d_name[1] == '.') {
+        if ((d->d_name[0] == '.' && strlen(d->d_name) == 1) || d->d_name[1] == '.') {
             continue;
         }
         char full_path[4096];
@@ -4058,12 +4060,10 @@ char *rhttp_current_timestamp() {
     return time_string;
 }
 
-void rhttp_logs(const char *prefix, const char *level, const char *format,
-                va_list args) {
+void rhttp_logs(const char *prefix, const char *level, const char *format, va_list args) {
     char buf[strlen(format) + BUFSIZ + 1];
     buf[0] = 0;
-    sprintf(buf, "%s%s %s %s\e[0m", prefix, rhttp_current_timestamp(), level,
-            format);
+    sprintf(buf, "%s%s %s %s\e[0m", prefix, rhttp_current_timestamp(), level, format);
     vfprintf(stdout, buf, args);
 }
 void rhttp_log_info(const char *format, ...) {
@@ -4196,18 +4196,14 @@ char *rhttp_header_get_string(rhttp_request_t *r, const char *name) {
     return NULL;
 }
 
-void rhttp_print_header(rhttp_header_t *h) {
-    rhttp_log_debug("Header: <%s> \"%s\"\n", h->name, h->value);
-}
+void rhttp_print_header(rhttp_header_t *h) { rhttp_log_debug("Header: <%s> \"%s\"\n", h->name, h->value); }
 void rhttp_print_headers(rhttp_header_t *h) {
     while (h) {
         rhttp_print_header(h);
         h = h->next;
     }
 }
-void rhttp_print_request_line(rhttp_request_t *r) {
-    rhttp_log_info("%s %s %s\n", r->method, r->path, r->version);
-}
+void rhttp_print_request_line(rhttp_request_t *r) { rhttp_log_info("%s %s %s\n", r->method, r->path, r->version); }
 void rhttp_print_request(rhttp_request_t *r) {
     rhttp_print_request_line(r);
     if (rhttp_opt_debug)
@@ -4221,8 +4217,7 @@ void rhttp_close(rhttp_request_t *r) {
     rhttp_free_request(r);
 }
 rhttp_request_t *rhttp_parse_request(int s) {
-    rhttp_request_t *request =
-        (rhttp_request_t *)malloc(sizeof(rhttp_request_t));
+    rhttp_request_t *request = (rhttp_request_t *)malloc(sizeof(rhttp_request_t));
     http_request_init(request);
     char buf[BUFF_SIZE] = {0};
     request->c = s;
@@ -4264,8 +4259,7 @@ rhttp_request_t *rhttp_parse_request(int s) {
     request->headers = NULL;
     request->keep_alive = false;
     if (rhttp_parse_headers(request)) {
-        char *keep_alive_string =
-            rhttp_header_get_string(request, "Connection");
+        char *keep_alive_string = rhttp_header_get_string(request, "Connection");
         if (keep_alive_string && !strcmp(keep_alive_string, "keep-alive")) {
             request->keep_alive = 1;
         }
@@ -4293,8 +4287,7 @@ size_t rhttp_send_drain(int s, void *tsend, size_t to_send_len) {
     long bytes_sent = 0;
     long bytes_sent_total = 0;
     while (1) {
-        bytes_sent = send(s, to_send + bytes_sent_total,
-                          to_send_len - bytes_sent_total, 0);
+        bytes_sent = send(s, to_send + bytes_sent_total, to_send_len - bytes_sent_total, 0);
         if (bytes_sent <= 0) {
             bytes_sent_total = 0;
             break;
@@ -4308,8 +4301,7 @@ size_t rhttp_send_drain(int s, void *tsend, size_t to_send_len) {
             // error
             break;
         } else {
-            rhttp_log_info("Extra send of %d/%d bytes.\n", bytes_sent_total,
-                           to_send_len);
+            rhttp_log_info("Extra send of %d/%d bytes.\n", bytes_sent_total, to_send_len);
         }
     }
 
@@ -4319,8 +4311,7 @@ size_t rhttp_send_drain(int s, void *tsend, size_t to_send_len) {
 
 typedef int (*rhttp_request_handler_t)(rhttp_request_t *r);
 
-void rhttp_serve(const char *host, int port, int backlog, int request_logging,
-                 int request_debug, rhttp_request_handler_t handler,
+void rhttp_serve(const char *host, int port, int backlog, int request_logging, int request_debug, rhttp_request_handler_t handler,
                  void *context) {
     signal(SIGPIPE, SIG_IGN);
     rhttp_sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -4341,8 +4332,7 @@ void rhttp_serve(const char *host, int port, int backlog, int request_logging,
         struct sockaddr_in client_addr;
         int addrlen = sizeof(client_addr);
 
-        rhttp_c = accept(rhttp_sock, (struct sockaddr *)&client_addr,
-                         (socklen_t *)&addrlen);
+        rhttp_c = accept(rhttp_sock, (struct sockaddr *)&client_addr, (socklen_t *)&addrlen);
 
         rhttp_connections_handled++;
         while (true) {
@@ -4389,8 +4379,7 @@ int rhttp_file_response(rhttp_request_t *r, char *path) {
     if (strstr(text_extensions, ext)) {
         sprintf(content_type_header, "Content-Type: %s\r\n", "text/html");
     }
-    sprintf(response, "HTTP/1.1 200 OK\r\n%sContent-Length:%ld\r\n\r\n",
-            content_type_header, file_size);
+    sprintf(response, "HTTP/1.1 200 OK\r\n%sContent-Length:%ld\r\n\r\n", content_type_header, file_size);
     if (!rhttp_send_drain(r->c, response, 0)) {
         rhttp_log_error("Error sending file: %s\n", path);
     }
@@ -4530,8 +4519,7 @@ int rhttp_main(int argc, char *argv[]) {
     if (rhttp_opt_buffered)
         setvbuf(stdout, NULL, _IOFBF, BUFSIZ);
 
-    rhttp_serve(rhttp_opt_host, rhttp_opt_port, 1024, rhttp_opt_request_logging,
-                rhttp_opt_debug, rhttp_default_request_handler, NULL);
+    rhttp_serve(rhttp_opt_host, rhttp_opt_port, 1024, rhttp_opt_request_logging, rhttp_opt_debug, rhttp_default_request_handler, NULL);
 
     return 0;
 }
@@ -4549,10 +4537,8 @@ typedef struct rhttp_client_request_t {
     int bytes_received;
 } rhttp_client_request_t;
 
-rhttp_client_request_t *rhttp_create_request(const char *host, int port,
-                                             const char *path) {
-    rhttp_client_request_t *r =
-        (rhttp_client_request_t *)malloc(sizeof(rhttp_client_request_t));
+rhttp_client_request_t *rhttp_create_request(const char *host, int port, const char *path) {
+    rhttp_client_request_t *r = (rhttp_client_request_t *)malloc(sizeof(rhttp_client_request_t));
     char request_line[4096] = {0};
     sprintf(request_line,
             "GET %s HTTP/1.1\r\n"
@@ -4614,8 +4600,7 @@ void rhttp_free_client_request(rhttp_client_request_t *r) {
     free(r);
 }
 
-void rhttp_client_bench(int workers, int times, const char *host, int port,
-                        const char *path) {
+void rhttp_client_bench(int workers, int times, const char *host, int port, const char *path) {
     rhttp_client_request_t *requests[workers];
     while (times > 0) {
 
@@ -4640,8 +4625,7 @@ char *rhttp_client_get(const char *host, int port, const char *path) {
         reconnects++;
         tick();
         if (reconnects == reconnects_max) {
-            fprintf(stderr, "Maxium reconnects exceeded for %s:%d\n", host,
-                    port);
+            fprintf(stderr, "Maxium reconnects exceeded for %s:%d\n", host, port);
             rhttp_free_client_request(r);
             return NULL;
         }
@@ -4703,8 +4687,7 @@ void rjson_object_close(rjson_t *rjs) {
     rjson_write(rjs, "}");
 }
 void rjson_array_start(rjson_t *rjs) {
-    if (rjs->length &&
-        (rstrendswith(rjs->content, "}") || rstrendswith(rjs->content, "]")))
+    if (rjs->length && (rstrendswith(rjs->content, "}") || rstrendswith(rjs->content, "]")))
         rjson_write(rjs, ",");
     rjson_write(rjs, "[");
 }
@@ -4717,8 +4700,7 @@ void rjson_array_close(rjson_t *rjs) {
 }
 
 void rjson_kv_string(rjson_t *rjs, char *key, char *value) {
-    if (rjs->length && !rstrendswith(rjs->content, "{") &&
-        !rstrendswith(rjs->content, "[")) {
+    if (rjs->length && !rstrendswith(rjs->content, "{") && !rstrendswith(rjs->content, "[")) {
         rjson_write(rjs, ",");
     }
     rjson_write(rjs, "\"");
@@ -4732,8 +4714,7 @@ void rjson_kv_string(rjson_t *rjs, char *key, char *value) {
 }
 
 void rjson_kv_int(rjson_t *rjs, char *key, ulonglong value) {
-    if (rjs->length && !rstrendswith(rjs->content, "{") &&
-        !rstrendswith(rjs->content, "[")) {
+    if (rjs->length && !rstrendswith(rjs->content, "{") && !rstrendswith(rjs->content, "[")) {
         rjson_write(rjs, ",");
     }
     rjson_write(rjs, "\"");
@@ -4744,8 +4725,7 @@ void rjson_kv_int(rjson_t *rjs, char *key, ulonglong value) {
     rjson_write(rjs, value_str);
 }
 void rjson_kv_number(rjson_t *rjs, char *key, ulonglong value) {
-    if (rjs->length && !rstrendswith(rjs->content, "{") &&
-        !rstrendswith(rjs->content, "[")) {
+    if (rjs->length && !rstrendswith(rjs->content, "{") && !rstrendswith(rjs->content, "[")) {
         rjson_write(rjs, ",");
     }
     rjson_write(rjs, "\"");
@@ -4758,8 +4738,7 @@ void rjson_kv_number(rjson_t *rjs, char *key, ulonglong value) {
 }
 
 void rjson_kv_bool(rjson_t *rjs, char *key, int value) {
-    if (rjs->length && !rstrendswith(rjs->content, "{") &&
-        !rstrendswith(rjs->content, "[")) {
+    if (rjs->length && !rstrendswith(rjs->content, "{") && !rstrendswith(rjs->content, "[")) {
         rjson_write(rjs, ",");
     }
     rjson_write(rjs, "\"");
@@ -4769,8 +4748,7 @@ void rjson_kv_bool(rjson_t *rjs, char *key, int value) {
 }
 
 void rjson_kv_duration(rjson_t *rjs, char *key, nsecs_t value) {
-    if (rjs->length && !rstrendswith(rjs->content, "{") &&
-        !rstrendswith(rjs->content, "[")) {
+    if (rjs->length && !rstrendswith(rjs->content, "{") && !rstrendswith(rjs->content, "[")) {
         rjson_write(rjs, ",");
     }
     rjson_write(rjs, "\"");
@@ -4827,10 +4805,9 @@ static char *_format_function_name(const char *name) {
     return result;
 }
 
-#define DEBUG_VALIDATE_FUNCTION                                                \
-    if (_r4_debug || r4->debug)                                                \
-        printf("DEBUG: %s %s <%s> \"%s\"\n", _format_function_name(__func__),  \
-               r4->valid ? "valid" : "INVALID", r4->expr, r4->str);
+#define DEBUG_VALIDATE_FUNCTION                                                                                                            \
+    if (_r4_debug || r4->debug)                                                                                                            \
+        printf("DEBUG: %s %s <%s> \"%s\"\n", _format_function_name(__func__), r4->valid ? "valid" : "INVALID", r4->expr, r4->str);
 
 struct r4_t;
 
@@ -5306,8 +5283,7 @@ static bool r4_validate_group_open(r4_t *r4) {
         char *str_extract_end = r4->str;
         unsigned int extracted_length = str_extract_end - str_extract_start;
         // strlen(str_extract_start) - strlen(str_extract_end);
-        char *str_extracted =
-            (char *)calloc(sizeof(char), extracted_length + 1);
+        char *str_extracted = (char *)calloc(sizeof(char), extracted_length + 1);
         strncpy(str_extracted, str_extract_start, extracted_length);
         r4_match_add(r4, str_extracted);
     }
@@ -5329,8 +5305,7 @@ static bool r4_validate_slash(r4_t *r4) {
 }
 
 static void r4_match_add(r4_t *r4, char *extracted) {
-    r4->matches =
-        (char **)realloc(r4->matches, (r4->match_count + 1) * sizeof(char *));
+    r4->matches = (char **)realloc(r4->matches, (r4->match_count + 1) * sizeof(char *));
     r4->matches[r4->match_count] = extracted;
     r4->match_count++;
 }
@@ -5341,8 +5316,7 @@ static bool r4_validate_word_boundary_start(r4_t *r4) {
     if (!r4->valid) {
         return r4->valid;
     }
-    r4->valid =
-        isalpha(*r4->str) && (r4->str == r4->_str || !isalpha(*(r4->str - 1)));
+    r4->valid = isalpha(*r4->str) && (r4->str == r4->_str || !isalpha(*(r4->str - 1)));
     if (r4->in_range || r4->in_block || !r4->is_greedy) {
         return r4->valid;
     }
@@ -5354,8 +5328,7 @@ static bool r4_validate_word_boundary_end(r4_t *r4) {
     if (!r4->valid) {
         return r4->valid;
     }
-    r4->valid =
-        isalpha(*r4->str) && (*(r4->str + 1) == 0 || !isalpha(*(r4->str + 1)));
+    r4->valid = isalpha(*r4->str) && (*(r4->str + 1) == 0 || !isalpha(*(r4->str + 1)));
     if (r4->in_range || r4->in_block || !r4->is_greedy) {
         return r4->valid;
     }
@@ -5446,8 +5419,7 @@ static bool r4_backtrack(r4_t *r4) {
         r4->str = str;
     }
     if (_r4_debug)
-        printf("DEBUG: backtrack end (%d) result: %d %s\n", r4->backtracking,
-               result, r4->backtracking == 0 ? "\033[0m" : "");
+        printf("DEBUG: backtrack end (%d) result: %d %s\n", r4->backtracking, result, r4->backtracking == 0 ? "\033[0m" : "");
     return result;
 }
 
@@ -5870,8 +5842,7 @@ void rrex3_cmp_literal_range(rrex3_t *rrex3) {
 }
 
 bool rrex3_is_function(char chr) {
-    if (chr == ']' || chr == ')' || chr == '\\' || chr == '?' || chr == '+' ||
-        chr == '*')
+    if (chr == ']' || chr == ')' || chr == '\\' || chr == '?' || chr == '+' || chr == '*')
         return true;
     return false;
 }
@@ -5886,8 +5857,7 @@ inline static void rrex3_cmp_literal(rrex3_t *rrex3) {
         }
     }
 #if RREX3_DEBUG == 1
-    printf("Literal check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-           rrex3->valid);
+    printf("Literal check: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 
 #endif
     if (*rrex3->expr == 0 && !*rrex3->str) {
@@ -5919,8 +5889,7 @@ inline static void rrex3_cmp_literal(rrex3_t *rrex3) {
 
 inline static void rrex3_cmp_dot(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
-    printf("Dot check (any char): %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-           rrex3->valid);
+    printf("Dot check (any char): %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
     rrex3_set_previous(rrex3);
     rrex3->expr++;
@@ -5945,8 +5914,7 @@ inline static void rrex3_cmp_dot(rrex3_t *rrex3) {
 
 inline static void rrex3_cmp_question_mark(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
-    printf("Question mark check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-           rrex3->valid);
+    printf("Question mark check: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
     rrex3_set_previous(rrex3);
 
@@ -5957,8 +5925,7 @@ inline static void rrex3_cmp_question_mark(rrex3_t *rrex3) {
 
 inline static void rrex3_cmp_whitespace(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
-    printf("Whitespace check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-           rrex3->valid);
+    printf("Whitespace check: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
     rrex3_set_previous(rrex3);
 
@@ -5972,8 +5939,7 @@ inline static void rrex3_cmp_whitespace(rrex3_t *rrex3) {
 
 inline static void rrex3_cmp_whitespace_upper(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
-    printf("Non whitespace check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-           rrex3->valid);
+    printf("Non whitespace check: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
     rrex3_set_previous(rrex3);
 
@@ -6054,8 +6020,7 @@ inline static void rrex3_cmp_plus2(rrex3_t *rrex3) {
 
 inline static void rrex3_cmp_plus(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
-    rprintg("Asterisk start check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-            rrex3->valid);
+    rprintg("Asterisk start check: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
     if (!rrex3->valid) {
         rrex3->expr++;
@@ -6149,15 +6114,13 @@ inline static void rrex3_cmp_plus(rrex3_t *rrex3) {
     rrex3->valid = true;
 
 #if RREX3_DEBUG == 1
-    rprintg("Asterisk end check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-            rrex3->valid);
+    rprintg("Asterisk end check: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
 }
 
 inline static void rrex3_cmp_asterisk(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
-    rprintg("Asterisk start check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-            rrex3->valid);
+    rprintg("Asterisk start check: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
     if (!rrex3->valid) {
         rrex3->valid = true;
@@ -6251,15 +6214,13 @@ inline static void rrex3_cmp_asterisk(rrex3_t *rrex3) {
     rrex3->valid = true;
 
 #if RREX3_DEBUG == 1
-    rprintg("Asterisk end check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-            rrex3->valid);
+    rprintg("Asterisk end check: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
 }
 
 inline static void rrex3_cmp_asterisk2(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
-    rprintg("Asterisk start check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-            rrex3->valid);
+    rprintg("Asterisk start check: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
     if (!rrex3->valid) {
         rrex3->valid = true;
@@ -6347,8 +6308,7 @@ inline static void rrex3_cmp_asterisk2(rrex3_t *rrex3) {
             }
         }
 
-        if ((success_next && !success_current) ||
-            (!success_next && !success_current)) {
+        if ((success_next && !success_current) || (!success_next && !success_current)) {
             break;
         }
     }
@@ -6356,8 +6316,7 @@ inline static void rrex3_cmp_asterisk2(rrex3_t *rrex3) {
     rrex3->str = right_str;
     rrex3->valid = true;
 #if RREX3_DEBUG == 1
-    rprintg("Asterisk end check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-            rrex3->valid);
+    rprintg("Asterisk end check: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
 }
 
@@ -6504,8 +6463,7 @@ inline static void rrex3_cmp_range(rrex3_t *rrex3) {
 inline static void rrex3_cmp_word_start_or_end(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
     if (*rrex3->expr != 'B') {
-        printf("Check word start or end: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-               rrex3->valid);
+        printf("Check word start or end: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
     }
 
 #endif
@@ -6527,8 +6485,7 @@ inline static void rrex3_cmp_word_start_or_end(rrex3_t *rrex3) {
 }
 inline static void rrex3_cmp_word_not_start_or_end(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
-    printf("Check word NOT start or end: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-           rrex3->valid);
+    printf("Check word NOT start or end: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 
 #endif
     rrex3_set_previous(rrex3);
@@ -6539,8 +6496,7 @@ inline static void rrex3_cmp_word_not_start_or_end(rrex3_t *rrex3) {
 
 inline static void rrex3_cmp_brackets(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
-    rprintb("\\l Brackets start: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-            rrex3->valid);
+    rprintb("\\l Brackets start: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
     rrex3_set_previous(rrex3);
     char *original_expr = rrex3->expr;
@@ -6587,8 +6543,7 @@ inline static void rrex3_cmp_brackets(rrex3_t *rrex3) {
     rrex3_set_previous(rrex3);
     rrex3->expr = previous_expr;
 #if RREX3_DEBUG == 1
-    rprintb("\\l Brackets end: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-            rrex3->valid);
+    rprintb("\\l Brackets end: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
 }
 
@@ -6607,8 +6562,7 @@ inline static void rrex3_cmp_pipe(rrex3_t *rrex3) {
 }
 inline static void rrex3_cmp_parentheses(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
-    rprinty("\\l Parentheses start check: %c:%c:%d\n", *rrex3->expr,
-            *rrex3->str, rrex3->valid);
+    rprinty("\\l Parentheses start check: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
 
     rrex3_set_previous(rrex3);
@@ -6619,8 +6573,7 @@ inline static void rrex3_cmp_parentheses(rrex3_t *rrex3) {
     if (rrex3->match_count == rrex3->match_capacity) {
 
         rrex3->match_capacity++;
-        rrex3->matches = (char **)realloc(
-            rrex3->matches, rrex3->match_capacity * sizeof(char *));
+        rrex3->matches = (char **)realloc(rrex3->matches, rrex3->match_capacity * sizeof(char *));
     }
     rrex3->matches[rrex3->match_count] = (char *)malloc(strlen(rrex3->str) + 1);
     strcpy(rrex3->matches[rrex3->match_count], rrex3->str);
@@ -6645,14 +6598,11 @@ inline static void rrex3_cmp_parentheses(rrex3_t *rrex3) {
         rrex3->str = original_str;
         free(rrex3->matches[rrex3->match_count]);
     } else {
-        rrex3->matches[rrex3->match_count]
-                      [strlen(rrex3->matches[rrex3->match_count]) -
-                       strlen(rrex3->str)] = 0;
+        rrex3->matches[rrex3->match_count][strlen(rrex3->matches[rrex3->match_count]) - strlen(rrex3->str)] = 0;
         rrex3->match_count++;
     }
 #if RREX3_DEBUG == 1
-    rprinty("\\l Parentheses end: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-            rrex3->valid);
+    rprinty("\\l Parentheses end: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
 }
 
@@ -6723,8 +6673,7 @@ rrex3_t *rrex3_compile(rrex3_t *rrex, char *expr) {
             *compiled = *(expr + 1);
             expr++;
             expr++;
-        } else if (*expr == '[' && *(expr + 1) == '0' && *(expr + 2) == '-' &&
-                   *(expr + 3) == '9' && *(expr + 4) == ']') {
+        } else if (*expr == '[' && *(expr + 1) == '0' && *(expr + 2) == '-' && *(expr + 3) == '9' && *(expr + 4) == ']') {
             *compiled = '\\';
             compiled++;
             *compiled = 'd';
@@ -6850,8 +6799,7 @@ rrex3_t *rrex3(rrex3_t *rrex3, char *str, char *expr) {
 void rrex3_test() {
     rrex3_t *rrex = rrex3_new();
 
-    assert(rrex3(rrex, "\"stdio.h\"\"string.h\"\"sys/time.h\"",
-                 "\"(.*)\"\"(.*)\"\"(.*)\""));
+    assert(rrex3(rrex, "\"stdio.h\"\"string.h\"\"sys/time.h\"", "\"(.*)\"\"(.*)\"\"(.*)\""));
 
     assert(rrex3(rrex, "aaaaaaa", "a*a$"));
 
@@ -6972,16 +6920,14 @@ void rrex3_test() {
 
     assert(rrex3(rrex, "abcde", ".....$"));
 
-    assert(rrex3(rrex, "abcdefghijklmnopqrstuvwxyz",
-                 "..........................$"));
+    assert(rrex3(rrex, "abcdefghijklmnopqrstuvwxyz", "..........................$"));
     // printf("(%d)\n", rrex->valid);
 
     assert(rrex3(rrex, "#include <stdio.h>", "#include.*<(.*)>"));
     assert(!strcmp(rrex->matches[0], "stdio.h"));
     assert(rrex3(rrex, "#include \"stdlib.h\"", "#include.\"(.*)\""));
     assert(!strcmp(rrex->matches[0], "stdlib.h"));
-    assert(rrex3(rrex, "\"stdio.h\"\"string.h\"\"sys/time.h\"",
-                 "\"(.*)\"\"(.*)\"\"(.*)\""));
+    assert(rrex3(rrex, "\"stdio.h\"\"string.h\"\"sys/time.h\"", "\"(.*)\"\"(.*)\"\"(.*)\""));
     assert(!strcmp(rrex->matches[0], "stdio.h"));
     assert(!strcmp(rrex->matches[1], "string.h"));
     assert(!strcmp(rrex->matches[2], "sys/time.h"));
@@ -6991,8 +6937,7 @@ void rrex3_test() {
     assert(rrex3(rrex, "    #include \"stdlib.h\"", "#include.+\"(.+)\""));
     assert(!strcmp(rrex->matches[0], "stdlib.h"));
 
-    assert(rrex3(rrex, "    \"stdio.h\"\"string.h\"\"sys/time.h\"",
-                 "\"(.+)\"\"(.+)\"\"(.+)\""));
+    assert(rrex3(rrex, "    \"stdio.h\"\"string.h\"\"sys/time.h\"", "\"(.+)\"\"(.+)\"\"(.+)\""));
     assert(!strcmp(rrex->matches[0], "stdio.h"));
     assert(!strcmp(rrex->matches[1], "string.h"));
     assert(!strcmp(rrex->matches[2], "sys/time.h"));
@@ -7119,25 +7064,19 @@ char *rsnake_to_camel(const char *snake_case) {
     for (int i = 0; i < length; i++) {
         if (i > 0 && snake_case[i] == '_' && snake_case[i + 1] == 'T') {
             toUpper = 1;
-            if (snake_case[i + 1] == 'T' &&
-                (snake_case[i + 2] != '\n' || snake_case[i + 2] != '\0' ||
-                 snake_case[i + 2] != ' ')) {
+            if (snake_case[i + 1] == 'T' && (snake_case[i + 2] != '\n' || snake_case[i + 2] != '\0' || snake_case[i + 2] != ' ')) {
 
                 toUpper = 0;
             }
         }
         if (snake_case[i] == '_' && snake_case[i + 1] != 't') {
             toUpper = 1;
-            if (snake_case[i + 1] == 't' &&
-                (snake_case[i + 2] != '\n' || snake_case[i + 2] != '\0' ||
-                 snake_case[i + 2] != ' ')) {
+            if (snake_case[i + 1] == 't' && (snake_case[i + 2] != '\n' || snake_case[i + 2] != '\0' || snake_case[i + 2] != ' ')) {
                 toUpper = 0;
             }
-        } else if (snake_case[i] == '_' && snake_case[i + 1] == 't' &&
-                   !isspace(snake_case[i + 2])) {
+        } else if (snake_case[i] == '_' && snake_case[i + 1] == 't' && !isspace(snake_case[i + 2])) {
             toUpper = 1;
-        } else if (snake_case[i] == '_' && snake_case[i + 1] == 'T' &&
-                   !isspace(snake_case[i + 2])) {
+        } else if (snake_case[i] == '_' && snake_case[i + 1] == 'T' && !isspace(snake_case[i + 2])) {
             toUpper = 1;
             camel_case[j++] = '_';
             j++;
@@ -7290,8 +7229,7 @@ void rrawfd(int fd) {
     tcgetattr(fd, &orig_termios); // Get current terminal attributes
 
     struct termios raw = orig_termios;
-    raw.c_lflag &=
-        ~(ICANON | ISIG | ECHO); // ECHO // Disable canonical mode and echoing
+    raw.c_lflag &= ~(ICANON | ISIG | ECHO); // ECHO // Disable canonical mode and echoing
     raw.c_cc[VMIN] = 1;
     raw.c_cc[VTIME] = 240; // Set timeout for read input
 
@@ -7334,13 +7272,10 @@ void cursor_set(rterm_t *rt, int x, int y) {
     rt->cursor.pos = y * rt->size.ws_col + x;
     rterm_move_cursor(rt->cursor.x, rt->cursor.y);
 }
-void cursor_restore(rterm_t *rt) {
-    rterm_move_cursor(rt->cursor.x, rt->cursor.y);
-}
+void cursor_restore(rterm_t *rt) { rterm_move_cursor(rt->cursor.x, rt->cursor.y); }
 
 void rterm_print_status_bar(rterm_t *rt, char c, unsigned long i) {
-    if (rt->_status_text_previous &&
-        !strcmp(rt->_status_text_previous, rt->status_text)) {
+    if (rt->_status_text_previous && !strcmp(rt->_status_text_previous, rt->status_text)) {
         return;
     }
     if (rt->_status_text_previous) {
@@ -7362,8 +7297,7 @@ void rterm_print_status_bar(rterm_t *rt, char c, unsigned long i) {
     char content[500];
     content[0] = 0;
     if (!rt->status_text) {
-        sprintf(content, "\rp:%d:%d | k:%c:%d | i:%ld ", rt->cursor.x + 1,
-                rt->cursor.y + 1, c == 0 ? '0' : c, c, i);
+        sprintf(content, "\rp:%d:%d | k:%c:%d | i:%ld ", rt->cursor.x + 1, rt->cursor.y + 1, c == 0 ? '0' : c, c, i);
     } else {
         sprintf(content, "\r%s", rt->status_text);
     }
@@ -7661,13 +7595,11 @@ static unsigned int _content_line;
 static unsigned int _content_col;
 
 static int isgroupingchar(char c) {
-    return (c == '{' || c == '}' || c == '(' || c == ')' || c == '[' ||
-            c == ']' || c == '"' || c == '\'');
+    return (c == '{' || c == '}' || c == '(' || c == ')' || c == '[' || c == ']' || c == '"' || c == '\'');
 }
 
 static int isoperator(char c) {
-    return (c == '+' || c == '-' || c == '/' || c == '*' || c == '=' ||
-            c == '>' || c == '<' || c == '|' || c == '&');
+    return (c == '+' || c == '-' || c == '/' || c == '*' || c == '=' || c == '>' || c == '<' || c == '|' || c == '&');
 }
 
 static rtoken_t rtoken_new() {
@@ -7684,8 +7616,7 @@ rtoken_t rlex_number() {
     bool first_char = true;
     int dot_count = 0;
     char c;
-    while (isdigit(c = _content[_content_ptr]) ||
-           (first_char && _content[_content_ptr] == '-') ||
+    while (isdigit(c = _content[_content_ptr]) || (first_char && _content[_content_ptr] == '-') ||
            (dot_count == 0 && _content[_content_ptr] == '.')) {
         if (c == '.')
             dot_count++;
@@ -7726,8 +7657,7 @@ static rtoken_t rlex_operator() {
     bool is_first = true;
     while (isoperator(_content[_content_ptr])) {
         if (!is_first) {
-            if (_content[_content_ptr - 1] == '=' &&
-                _content[_content_ptr] == '-') {
+            if (_content[_content_ptr - 1] == '=' && _content[_content_ptr] == '-') {
                 break;
             }
         }
@@ -7845,15 +7775,11 @@ rtoken_t rlex_next() {
             _content_ptr++;
         } else if (isspace(_content[_content_ptr])) {
             _content_ptr++;
-        } else if (isdigit(_content[_content_ptr]) ||
-                   (_content[_content_ptr] == '-' &&
-                    isdigit(_content[_content_ptr + 1]))) {
+        } else if (isdigit(_content[_content_ptr]) || (_content[_content_ptr] == '-' && isdigit(_content[_content_ptr + 1]))) {
             return rlex_number();
-        } else if (isalpha(_content[_content_ptr]) ||
-                   _content[_content_ptr] == '_') {
+        } else if (isalpha(_content[_content_ptr]) || _content[_content_ptr] == '_') {
             return rlex_symbol();
-        } else if (_content[_content_ptr] == '"' ||
-                   _content[_content_ptr] == '\'') {
+        } else if (_content[_content_ptr] == '"' || _content[_content_ptr] == '\'') {
             return rlex_string();
         } else if (isoperator(_content[_content_ptr])) {
             return rlex_operator();
@@ -7963,13 +7889,10 @@ char *rlex_format(char *content) {
             continue;
         }
         if ((token_previous.type == RT_SYMBOL && token.type == RT_NUMBER) ||
-            (token_previous.type == RT_NUMBER && token.type == RT_SYMBOL) ||
-            (token_previous.type == RT_PUNCT && token.type == RT_SYMBOL) ||
-            (token_previous.type == RT_BRACE_CLOSE &&
-             token.type == RT_SYMBOL) ||
+            (token_previous.type == RT_NUMBER && token.type == RT_SYMBOL) || (token_previous.type == RT_PUNCT && token.type == RT_SYMBOL) ||
+            (token_previous.type == RT_BRACE_CLOSE && token.type == RT_SYMBOL) ||
             (token_previous.type == RT_SYMBOL && token.type == RT_SYMBOL)) {
-            if (token_previous.value[0] != ',' &&
-                token_previous.value[0] != '.') {
+            if (token_previous.value[0] != ',' && token_previous.value[0] != '.') {
                 if (token.type != RT_OPERATOR && token.value[0] != '.') {
                     strcat(result, "\n");
                     rlex_repeat_str(result, tab_chars, tab_index);
@@ -8083,13 +8006,9 @@ void merge_file(char *source, FILE *d) {
     }
     if (strstr(files_history, source)) {
         if (strstr(files_duplicate, source)) {
-            rprintmf(stderr,
-                     "\\l Already included: %s. Already on duplicate list.\n",
-                     source);
+            rprintmf(stderr, "\\l Already included: %s. Already on duplicate list.\n", source);
         } else {
-            rprintcf(stderr,
-                     "\\l Already included: %s. Adding to duplicate list.\n",
-                     source);
+            rprintcf(stderr, "\\l Already included: %s. Adding to duplicate list.\n", source);
             strcat(files_duplicate, source);
             strcat(files_duplicate, "\n");
         }
@@ -8173,11 +8092,9 @@ int rmerge_main(int argc, char *argv[]) {
     }
     printf("\n");
     if (has_error) {
-        rprintrf(stderr,
-                 "\\l Warning: there are errors while merging this file.\n");
+        rprintrf(stderr, "\\l Warning: there are errors while merging this file.\n");
     } else {
-        rprintgf(stderr, "\\l Merge succesful without error(s).%s\n",
-                 remo_get("fire"));
+        rprintgf(stderr, "\\l Merge succesful without error(s).%s\n", remo_get("fire"));
     }
     return 0;
 }
@@ -8198,9 +8115,8 @@ int rlib_main(int argc, char *argv[]) {
         printf("rlib\n\n");
         printf("options:\n");
         printf(" httpd - a http file server. Accepts port as argument.\n");
-        printf(
-            " rmerge - a merge tool. Converts c source files to one file \n"
-            "          with local includes by giving main file as argument.\n");
+        printf(" rmerge - a merge tool. Converts c source files to one file \n"
+               "          with local includes by giving main file as argument.\n");
         printf(" rcov - coverage tool theat cleans up after himself. Based on "
                "lcov.\n");
         printf(" rcase - tool to swap input file automatically between"

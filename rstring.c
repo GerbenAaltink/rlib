@@ -73,9 +73,8 @@ void sort_test(char *text, char *text_sort_expected) {
 
 void rstring_test_rstrsort() {
     rtest_banner("Sorting string content");
-    sort_test(
-        "Line 3\nLine 2\nLine 4\nLine 1\nQQ 333.29\n3.22\n1337.29\n3.22\n",
-        "Line 1\nLine 2\nLine 3\nLine 4\n3.22\n3.22\nQQ 333.29\n1337.29\n");
+    sort_test("Line 3\nLine 2\nLine 4\nLine 1\nQQ 333.29\n3.22\n1337.29\n3.22\n",
+              "Line 1\nLine 2\nLine 3\nLine 4\n3.22\n3.22\nQQ 333.29\n1337.29\n");
     sort_test("333.29\n3.22\n1337.29\n3.22\nLine 3\nThe original line 2\nLine "
               "4\nLine 1\n",
               "Line 1\nThe original line 2\nLine 3\nLine "
@@ -92,8 +91,7 @@ void rstring_test_rformat_number() {
     rassert(!strcmp(rformat_number(1000000001), "1.000.000.001"));
     rassert(!strcmp(rformat_number(1000000000001), "1.000.000.000.001"));
     rassert(!strcmp(rformat_number(1000000000000001), "1.000.000.000.000.001"));
-    rassert(
-        !strcmp(rformat_number(-1000000000000001), "-1.000.000.000.000.001"));
+    rassert(!strcmp(rformat_number(-1000000000000001), "-1.000.000.000.000.001"));
 }
 
 void rstring_test_rstraddslashes() {
@@ -106,10 +104,10 @@ void rstring_test_rstraddslashes() {
 
 void rstring_test_rstrstripslashes() {
     rtest_banner("Stripslashes");
-    char input[] = "\\r\\t\\n\\b\\f test";
+    char input[] = "\\r\\t\\n\\b\\f\" test";
     char output[100];
     rstrstripslashes(input, output);
-    rassert(!strcmp((char *)output, "\r\t\n\b\f test"));
+    rassert(!strcmp((char *)output, "\r\t\n\b\f\" test"));
 }
 
 void rstring_test_rstrstartswith() {

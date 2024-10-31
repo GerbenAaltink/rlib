@@ -63,17 +63,14 @@ char *_rcat_charp_bool(char *a, bool *b) {
     }
 }
 
-#define rcat(x, y)                                                             \
-    _Generic((x),                                                              \
-        int: _Generic((y),                                                     \
-        int: _rcat_int_int,                                                    \
-        double: _rcat_int_double,                                              \
-        char *: _rcat_charp_charp),                                            \
-        char *: _Generic((y),                                                  \
-        int: _rcat_charp_int,                                                  \
-        double: _rcat_charp_double,                                            \
-        char *: _rcat_charp_charp,                                             \
-        char: _rcat_charp_char,                                                \
+#define rcat(x, y)                                                                                                                         \
+    _Generic((x),                                                                                                                          \
+        int: _Generic((y), int: _rcat_int_int, double: _rcat_int_double, char *: _rcat_charp_charp),                                       \
+        char *: _Generic((y),                                                                                                              \
+        int: _rcat_charp_int,                                                                                                              \
+        double: _rcat_charp_double,                                                                                                        \
+        char *: _rcat_charp_charp,                                                                                                         \
+        char: _rcat_charp_char,                                                                                                            \
         bool: _rcat_charp_bool))((x), (y))
 
 char *rgenerate_key() {
@@ -145,6 +142,7 @@ void rstrstripslashes(const char *content, char *result) {
             } else if (c == '\\') {
                 // No need tbh
                 c = '\\';
+                i++;
             }
         }
         result[index] = c;
@@ -353,8 +351,7 @@ int rstrsplit(char *input, char **lines) {
 
 bool rstartswithnumber(char *str) { return isdigit(str[0]); }
 
-void rstrmove2(char *str, unsigned int start, size_t length,
-               unsigned int new_pos) {
+void rstrmove2(char *str, unsigned int start, size_t length, unsigned int new_pos) {
     size_t str_len = strlen(str);
     char new_str[str_len + 1];
     memset(new_str, 0, str_len);
@@ -375,8 +372,7 @@ void rstrmove2(char *str, unsigned int start, size_t length,
     new_str[str_len] = 0;
 }
 
-void rstrmove(char *str, unsigned int start, size_t length,
-              unsigned int new_pos) {
+void rstrmove(char *str, unsigned int start, size_t length, unsigned int new_pos) {
     size_t str_len = strlen(str);
     if (start >= str_len || new_pos >= str_len || start + length > str_len) {
         return;

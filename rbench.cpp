@@ -28,9 +28,7 @@ long long hashit2(const char **s) {
     return hashval % HASHSIZE;
 }
 
-bool keycmp(const char **key1, const char **key2) {
-    return !strcmp(*key1, *key2);
-}
+bool keycmp(const char **key1, const char **key2) { return !strcmp(*key1, *key2); }
 
 HashMap(HashMap_name, char *, char *, long long, hashit, keycmp)
 
@@ -73,8 +71,7 @@ void rbench_table_yuriimap() {
         map = new_map;
     }
     char *key = strdup(rgenerate_key());
-    DS_codes_t code =
-        HashMap_name_put(map, (const char **)&key, (const char **)&key);
+    DS_codes_t code = HashMap_name_put(map, (const char **)&key, (const char **)&key);
     const char *res = *HashMap_name_get(map, (const char **)&key);
     rasserts(!strcmp(res, key));
     if (rbf->last) {
@@ -147,8 +144,7 @@ void bench_fast_yurrii() {
     char *key = NULL;
     BENCHP(90000, {
         key = rgenerate_key();
-        DS_codes_t code =
-            HashMap_name_put(map, (const char **)&key, (const char **)&key);
+        DS_codes_t code = HashMap_name_put(map, (const char **)&key, (const char **)&key);
         const char *res = *HashMap_name_get(map, (const char **)&key);
         rasserts(!strcmp(res, key));
     });

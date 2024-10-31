@@ -115,19 +115,11 @@ const char *p2;
     return c1 - c2;
 }
 
-void bench_rstrcmp(void *arg1, void *arg2) {
-    __attribute__((unused)) int res = rstrcmp(arg1, arg2);
-}
-void bench_cstrcmp(void *arg1, void *arg2) {
-    __attribute__((unused)) int res = strcmp(arg1, arg2);
-}
+void bench_rstrcmp(void *arg1, void *arg2) { __attribute__((unused)) int res = rstrcmp(arg1, arg2); }
+void bench_cstrcmp(void *arg1, void *arg2) { __attribute__((unused)) int res = strcmp(arg1, arg2); }
 
-bool bench_starts_with_r(const char *s1, const char *s2) {
-    return rstrstartswith(s1, s2);
-}
-bool bench_ends_with_r(const char *s1, const char *s2) {
-    return rstrendswith(s1, s2);
-}
+bool bench_starts_with_r(const char *s1, const char *s2) { return rstrstartswith(s1, s2); }
+bool bench_ends_with_r(const char *s1, const char *s2) { return rstrendswith(s1, s2); }
 
 bool bench_starts_with_gpt(const char *str, const char *prefix) {
     while (*prefix) {
@@ -297,8 +289,7 @@ void bench_strcmp(long times) {
     r->add_function(r, "strcmp", "scmp", strcmp);
     r->add_function(r, "rstrcmp", "scmp", rstrcmp);
     r->add_function(r, "strcmp_gpt", "scmp", strcmp_gpt);
-    r->execute2(r, times, "abcdefghijklmnopqrstuvwxyz",
-                "abcdefghijklmnopqrstuvwxyz");
+    r->execute2(r, times, "abcdefghijklmnopqrstuvwxyz", "abcdefghijklmnopqrstuvwxyz");
     total_execution_time += r->execution_time;
     total_times += times * 2;
     rbench_free(r);
@@ -358,13 +349,13 @@ void bench_endswith(long times) {
     rbench_free(r);
 }
 
-#define ifwhile(cond, action)                                                  \
-    {                                                                          \
-        bool _did_doit = false;                                                \
-        while (cond) {                                                         \
-            _did_doit = true;                                                  \
-            { action }                                                         \
-        }                                                                      \
+#define ifwhile(cond, action)                                                                                                              \
+    {                                                                                                                                      \
+        bool _did_doit = false;                                                                                                            \
+        while (cond) {                                                                                                                     \
+            _did_doit = true;                                                                                                              \
+            { action }                                                                                                                     \
+        }                                                                                                                                  \
         if (_did_doit)
 
 #define endifwhile }
@@ -374,15 +365,12 @@ int main() {
     long times = 900000000;
 
     printf("With %% progress times:\n");
-    BENCH(times,
-          { bench_starts_with_yurii("abcdefghijklmnopqrstuvw", "abcdef"); });
+    BENCH(times, { bench_starts_with_yurii("abcdefghijklmnopqrstuvw", "abcdef"); });
     BENCH(times, { bench_ends_with_yurii("abcdefghijklmnopqrstuvw", "uvw"); });
 
     printf("Without %% progress times:\n");
-    BENCH(times * 1000,
-          { bench_starts_with_yurii("abcdefghijklmnopqrstuvw", "abcdef"); });
-    BENCH(times * 1000,
-          { bench_ends_with_yurii("abcdefghijklmnopqrstuvw", "uvw"); });
+    BENCH(times * 1000, { bench_starts_with_yurii("abcdefghijklmnopqrstuvw", "abcdef"); });
+    BENCH(times * 1000, { bench_ends_with_yurii("abcdefghijklmnopqrstuvw", "uvw"); });
 
     bench_table(times / 10000);
     bench_sprintf(times / 10000);

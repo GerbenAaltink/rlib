@@ -70,8 +70,7 @@ void rrawfd(int fd) {
     tcgetattr(fd, &orig_termios); // Get current terminal attributes
 
     struct termios raw = orig_termios;
-    raw.c_lflag &=
-        ~(ICANON | ISIG | ECHO); // ECHO // Disable canonical mode and echoing
+    raw.c_lflag &= ~(ICANON | ISIG | ECHO); // ECHO // Disable canonical mode and echoing
     raw.c_cc[VMIN] = 1;
     raw.c_cc[VTIME] = 240; // Set timeout for read input
 
@@ -114,13 +113,10 @@ void cursor_set(rterm_t *rt, int x, int y) {
     rt->cursor.pos = y * rt->size.ws_col + x;
     rterm_move_cursor(rt->cursor.x, rt->cursor.y);
 }
-void cursor_restore(rterm_t *rt) {
-    rterm_move_cursor(rt->cursor.x, rt->cursor.y);
-}
+void cursor_restore(rterm_t *rt) { rterm_move_cursor(rt->cursor.x, rt->cursor.y); }
 
 void rterm_print_status_bar(rterm_t *rt, char c, unsigned long i) {
-    if (rt->_status_text_previous &&
-        !strcmp(rt->_status_text_previous, rt->status_text)) {
+    if (rt->_status_text_previous && !strcmp(rt->_status_text_previous, rt->status_text)) {
         return;
     }
     if (rt->_status_text_previous) {
@@ -142,8 +138,7 @@ void rterm_print_status_bar(rterm_t *rt, char c, unsigned long i) {
     char content[500];
     content[0] = 0;
     if (!rt->status_text) {
-        sprintf(content, "\rp:%d:%d | k:%c:%d | i:%ld ", rt->cursor.x + 1,
-                rt->cursor.y + 1, c == 0 ? '0' : c, c, i);
+        sprintf(content, "\rp:%d:%d | k:%c:%d | i:%ld ", rt->cursor.x + 1, rt->cursor.y + 1, c == 0 ? '0' : c, c, i);
     } else {
         sprintf(content, "\r%s", rt->status_text);
     }

@@ -1,14 +1,11 @@
 #include "rnet.h"
 
-void on_client_connect(rnet_socket_t *sock) {
-    printf("%s connected\n", sock->name);
-}
+void on_client_connect(rnet_socket_t *sock) { printf("%s connected\n", sock->name); }
 void on_client_read(rnet_socket_t *sock) {
     unsigned char *data = net_socket_read(sock, 4096);
     if (!data)
         return;
-    char *http_headers =
-        "HTTP/1.1 200 OK\r\nContent-Length: 10\r\nConnection: close\r\n\r\n";
+    char *http_headers = "HTTP/1.1 200 OK\r\nContent-Length: 10\r\nConnection: close\r\n\r\n";
     net_socket_write(sock, (unsigned char *)http_headers, strlen(http_headers));
     rnet_safe_str((char *)data, sock->bytes_received);
     // data[11] = 0;
@@ -17,9 +14,7 @@ void on_client_read(rnet_socket_t *sock) {
     if (!strncmp((char *)data, "GET ", 4))
         net_socket_close(sock);
 }
-void on_client_close(rnet_socket_t *sock) {
-    printf("%s disconnected\n", sock->name);
-}
+void on_client_close(rnet_socket_t *sock) { printf("%s disconnected\n", sock->name); }
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {

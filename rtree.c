@@ -34,8 +34,7 @@ void rtree_bench(long item_count) {
     b->add_function(b, "random_key", "rtree_rw", rtree_bench_f);
     b->execute(b, 1000000);
     // rassert(rnsecs_to_msecs(b->execution_time) < 700); // faster than 700ms
-    printf("r/w %ld items and deallocated in %s\n", item_count,
-           format_time(b->execution_time));
+    printf("r/w %ld items and deallocated in %s\n", item_count, format_time(b->execution_time));
     rbench_free(b);
 }
 

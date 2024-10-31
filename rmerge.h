@@ -83,13 +83,9 @@ void merge_file(char *source, FILE *d) {
     }
     if (strstr(files_history, source)) {
         if (strstr(files_duplicate, source)) {
-            rprintmf(stderr,
-                     "\\l Already included: %s. Already on duplicate list.\n",
-                     source);
+            rprintmf(stderr, "\\l Already included: %s. Already on duplicate list.\n", source);
         } else {
-            rprintcf(stderr,
-                     "\\l Already included: %s. Adding to duplicate list.\n",
-                     source);
+            rprintcf(stderr, "\\l Already included: %s. Adding to duplicate list.\n", source);
             strcat(files_duplicate, source);
             strcat(files_duplicate, "\n");
         }
@@ -173,11 +169,9 @@ int rmerge_main(int argc, char *argv[]) {
     }
     printf("\n");
     if (has_error) {
-        rprintrf(stderr,
-                 "\\l Warning: there are errors while merging this file.\n");
+        rprintrf(stderr, "\\l Warning: there are errors while merging this file.\n");
     } else {
-        rprintgf(stderr, "\\l Merge succesful without error(s).%s\n",
-                 remo_get("fire"));
+        rprintgf(stderr, "\\l Merge succesful without error(s).%s\n", remo_get("fire"));
     }
     return 0;
 }

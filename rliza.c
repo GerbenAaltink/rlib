@@ -4,11 +4,37 @@
 int main() {
     rtest_banner("rliza");
     rtest_banner("serialize/deserialize");
-    char *json_content =
-        "{\"error\":\"not \\\"aaa\\\" found\",\"rows\":[[1,23],[1,23],[1,23]]}";
+    char *json_content = "{\"error\":\"not \\\"aaa\\\" found\",\"rows\":[[1,23],[1,23],[1,23,true,false,5.5,5.505,6.1]]}";
+
+    rassert(rliza_validate("{\"error\":\"not \\\"aaa\\\" found\",\"rows\":[[1,23],[1,23],[1,23,true,false,5.5,5.505]]}"));
+    rassert(!rliza_validate("{\"error\":\"not \\\"aaa\\\" found\",\"rows\":[[1,23],[1,23],[1,23,true,false,5.5,5.505,6.]]}"));
+    rassert(!rliza_validate("{\"error\":\"not \\\"aaa\\\" found\",\"rows\""));
+    rassert(!rliza_validate("{\"error\":\"not \\\"aaa\\\" found\",\"rows\":["));
+    rassert(!rliza_validate("{\"error\":\"not \\\"aaa\\\" found\",\"rows"));
+    rassert(!rliza_validate("{\"error\":\"not \\\"aaa\\\" found\",\""));
+    rassert(!rliza_validate("{\"error\":\"not \\\"aaa\\\" found\","));
+
+    char *double_content = "{}{}[]";
+    free(rliza_loads(&double_content));
+    rassert(!strcmp(double_content, "{}[]"));
+    free(rliza_loads(&double_content));
+    rassert(!strcmp(double_content, "[]"));
+    char *error_content = "{}*{}";
+    free(rliza_loads(&error_content));
+    rassert(!strcmp(error_content, "*{}"));
+    rliza_loads(&error_content);
+    rassert(!strcmp(error_content, "*{}"));
+    rassert(rliza_validate("{}"));
+    rassert(!rliza_validate("{"));
+    rassert(!rliza_validate("}"));
+    rassert(!rliza_validate("["));
+    rassert(!rliza_validate("]"));
+    rassert(!rliza_validate("\\"));
+    rassert(!rliza_validate("*"));
+    rassert(!rliza_validate("!"));
     char *json_contentp = json_content;
-    rliza_t *to_object = rliza_object_from_string(&json_contentp);
-    char *to_string = (char *)rliza_object_to_string(to_object);
+    rliza_t *to_object = rliza_loads(&json_contentp);
+    char *to_string = (char *)rliza_dumps(to_object);
     rassert(!strcmp(to_string, json_content));
     printf("\n<%s>\n", to_string);
     printf("<%s>\n", json_content);
@@ -28,39 +54,37 @@ int main() {
     rliza_set_string(rliza, "str1", "str1value");
     rliza_set_null(rliza, "q");
 
-    unsigned char *original_content = rliza_object_to_string(rliza);
-    unsigned char *content = original_content;
+    char *original_content = rliza_dumps(rliza);
+    char *content = original_content;
 
     printf("%s\n", content, content[strlen((char *)content)] == 0);
 
-    rliza_t *rliza2 = rliza_object_from_string((char **)&content);
+    rliza_t *rliza2 = rliza_loads((char **)&content);
 
-    unsigned char *content2 = rliza_object_to_string(rliza2);
+    char *content2 = rliza_dumps(rliza2);
 
     content = original_content;
     rassert(!(strcmp((char *)content,
                      (char *)content2))); // strcmp(content,content2);
-    unsigned char *content2p = original_content;
+    char *content2p = original_content;
     content = original_content;
-    rliza_t *rliza3 = rliza_object_from_string((char **)&content2p);
-    unsigned char *content3 = rliza_object_to_string(rliza2);
+    rliza_t *rliza3 = rliza_loads((char **)&content2p);
+    char *content3 = rliza_dumps(rliza2);
 
     rtest_banner("compare several serilizations. Should be equal.\n");
     content = original_content;
     printf("content1:<%s>\n", content);
     printf("content2:<%s>\n", content2);
     printf("content3:<%s>\n", content3);
-    assert(!ustrncmp(content2, content3, strlen((char *)content2)));
-    assert(!ustrncmp(content, content2, strlen((char *)content)));
+    rassert(!strncmp(content2, content3, strlen((char *)content2)));
+    rassert(!strncmp(content, content2, strlen((char *)content)));
     rliza_free(rliza2);
     rliza_free(rliza3);
     free(original_content);
     free(content2);
     free(content3);
-    printf("Coalesce %s\n",
-           (unsigned char *)rliza_coalesce(rliza_get_string(rliza, "a"), "#1"));
-    printf("Coalesce %s\n",
-           (unsigned char *)rliza_coalesce(rliza_get_string(rliza, "b"), "#2"));
+    printf("Coalesce %s\n", (char *)rliza_coalesce(rliza_get_string(rliza, "a"), "#1"));
+    printf("Coalesce %s\n", (char *)rliza_coalesce(rliza_get_string(rliza, "b"), "#2"));
 
     rliza_free(rliza);
 

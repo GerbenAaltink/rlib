@@ -163,8 +163,7 @@ void test_formatter() {
     free(formatted);
 
     formatted = rlex_format("lala+lolo=(1,2,3) little.test=(4,5,6)");
-    char *expected_new_lines4 =
-        "lala + lolo = (1, 2, 3)\nlittle.test = (4, 5, 6)";
+    char *expected_new_lines4 = "lala + lolo = (1, 2, 3)\nlittle.test = (4, 5, 6)";
     rtest_assert(!strcmp(formatted, expected_new_lines4));
     free(formatted);
 }

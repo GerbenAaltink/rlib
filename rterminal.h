@@ -70,8 +70,7 @@ typedef struct rprogressbar_t {
     FILE *fout;
 } rprogressbar_t;
 
-rprogressbar_t *rprogressbar_new(long min_value, long max_value,
-                                 unsigned int width, FILE *fout) {
+rprogressbar_t *rprogressbar_new(long min_value, long max_value, unsigned int width, FILE *fout) {
     rprogressbar_t *pbar = (rprogressbar_t *)malloc(sizeof(rprogressbar_t));
     pbar->min_value = min_value;
     pbar->max_value = max_value;
@@ -128,8 +127,7 @@ void rprogressbar_draw(rprogressbar_t *pbar) {
     }
     bar_content[index] = bar_end_char;
     bar_content[index + 1] = '\0';
-    sprintf(buff, "\033[43m%s\033[0m \033[33m%.2f%%\033[0m ", bar_content,
-            pbar->percentage * 100);
+    sprintf(buff, "\033[43m%s\033[0m \033[33m%.2f%%\033[0m ", bar_content, pbar->percentage * 100);
     strcat(content, buff);
     if (pbar->width == pbar->length) {
         strcat(content, "\r");
@@ -147,8 +145,7 @@ bool rprogressbar_update(rprogressbar_t *pbar, unsigned long value) {
         return false;
     }
     pbar->current_value = value;
-    pbar->percentage = (double)pbar->current_value /
-                       (double)(pbar->max_value - pbar->min_value);
+    pbar->percentage = (double)pbar->current_value / (double)(pbar->max_value - pbar->min_value);
     unsigned long new_length = (unsigned long)(pbar->percentage * pbar->width);
     pbar->changed = new_length != pbar->length;
     if (pbar->changed) {

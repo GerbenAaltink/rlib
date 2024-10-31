@@ -25,8 +25,7 @@ void rtemp_test_rtempc() {
     sprintf(line, "%s%s%s", rtempc("test1"), rtempc("test2"), rtempc("test3"));
     rassert(!strcmp(line, "test1test2test3"));
     line[0] = 0;
-    sprintf(line, "%s%s%s", classic("test1"), classic("test2"),
-            classic("test3"));
+    sprintf(line, "%s%s%s", classic("test1"), classic("test2"), classic("test3"));
     rassert(strcmp(line, "test1test2test3"));
 }
 

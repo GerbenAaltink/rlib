@@ -34,15 +34,12 @@ void reset_terminal_mode() { tcsetattr(STDIN_FILENO, TCSANOW, &rorig_termios); }
 void set_raw_mode() {
     struct termios new_termios;
     tcgetattr(STDIN_FILENO, &rorig_termios); // Get current terminal settings
-    atexit(
-        reset_terminal_mode); // Ensure original settings are restored on exit
+    atexit(reset_terminal_mode);             // Ensure original settings are restored on exit
 
     new_termios = rorig_termios;
-    new_termios.c_lflag &=
-        ~(ICANON | ECHO); // Disable canonical mode and echoing
-    new_termios.c_cc[VMIN] =
-        1; // Minimum number of characters for noncanonical read
-    new_termios.c_cc[VTIME] = 0; // Timeout in deciseconds for noncanonical read
+    new_termios.c_lflag &= ~(ICANON | ECHO); // Disable canonical mode and echoing
+    new_termios.c_cc[VMIN] = 1;              // Minimum number of characters for noncanonical read
+    new_termios.c_cc[VTIME] = 0;             // Timeout in deciseconds for noncanonical read
 
     tcsetattr(STDIN_FILENO, TCSANOW, &new_termios); // Apply new settings
 }

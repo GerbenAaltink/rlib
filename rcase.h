@@ -68,25 +68,19 @@ char *rsnake_to_camel(const char *snake_case) {
     for (int i = 0; i < length; i++) {
         if (i > 0 && snake_case[i] == '_' && snake_case[i + 1] == 'T') {
             toUpper = 1;
-            if (snake_case[i + 1] == 'T' &&
-                (snake_case[i + 2] != '\n' || snake_case[i + 2] != '\0' ||
-                 snake_case[i + 2] != ' ')) {
+            if (snake_case[i + 1] == 'T' && (snake_case[i + 2] != '\n' || snake_case[i + 2] != '\0' || snake_case[i + 2] != ' ')) {
 
                 toUpper = 0;
             }
         }
         if (snake_case[i] == '_' && snake_case[i + 1] != 't') {
             toUpper = 1;
-            if (snake_case[i + 1] == 't' &&
-                (snake_case[i + 2] != '\n' || snake_case[i + 2] != '\0' ||
-                 snake_case[i + 2] != ' ')) {
+            if (snake_case[i + 1] == 't' && (snake_case[i + 2] != '\n' || snake_case[i + 2] != '\0' || snake_case[i + 2] != ' ')) {
                 toUpper = 0;
             }
-        } else if (snake_case[i] == '_' && snake_case[i + 1] == 't' &&
-                   !isspace(snake_case[i + 2])) {
+        } else if (snake_case[i] == '_' && snake_case[i + 1] == 't' && !isspace(snake_case[i + 2])) {
             toUpper = 1;
-        } else if (snake_case[i] == '_' && snake_case[i + 1] == 'T' &&
-                   !isspace(snake_case[i + 2])) {
+        } else if (snake_case[i] == '_' && snake_case[i + 1] == 'T' && !isspace(snake_case[i + 2])) {
             toUpper = 1;
             camel_case[j++] = '_';
             j++;

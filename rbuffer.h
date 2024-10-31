@@ -106,8 +106,7 @@ void rbuffer_reset(rbuffer_t *rfb) {
     rfb->pos = 0;
 }
 
-unsigned char ustrncmp(const unsigned char *s1, const unsigned char *s2,
-                       size_t n) {
+unsigned char ustrncmp(const unsigned char *s1, const unsigned char *s2, size_t n) {
     return strncmp((char *)s1, (char *)s2, n);
     while (n && *s1 == *s2) {
         n--;
@@ -131,8 +130,7 @@ unsigned char *rbuffer_match_option(rbuffer_t *rfb, char *options) {
     char options_cpy[1024] = {0};
     strcpy(options_cpy, options);
     char *memory = options_cpy;
-    while ((option = strtok_r(option == NULL ? memory : NULL, "|", &memory)) !=
-           NULL) {
+    while ((option = strtok_r(option == NULL ? memory : NULL, "|", &memory)) != NULL) {
 
         size_t option_length = strlen(option);
         if (option_length > rfb->size - rfb->pos) {
@@ -142,8 +140,7 @@ unsigned char *rbuffer_match_option(rbuffer_t *rfb, char *options) {
             return rfb->data;
         }
         if (rfb->size - rfb->pos >= 5 && !strcmp(option, "\\b") &&
-            ((!ustrncmp(rfb->data, (unsigned char *)"true", 4) ||
-              !ustrncmp(rfb->data, (unsigned char *)"false", 5)))) {
+            ((!ustrncmp(rfb->data, (unsigned char *)"true", 4) || !ustrncmp(rfb->data, (unsigned char *)"false", 5)))) {
             return rfb->data;
         }
         if (!ustrncmp(rfb->data, (unsigned char *)option, option_length)) {

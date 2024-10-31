@@ -40,13 +40,11 @@ static unsigned int _content_line;
 static unsigned int _content_col;
 
 static int isgroupingchar(char c) {
-    return (c == '{' || c == '}' || c == '(' || c == ')' || c == '[' ||
-            c == ']' || c == '"' || c == '\'');
+    return (c == '{' || c == '}' || c == '(' || c == ')' || c == '[' || c == ']' || c == '"' || c == '\'');
 }
 
 static int isoperator(char c) {
-    return (c == '+' || c == '-' || c == '/' || c == '*' || c == '=' ||
-            c == '>' || c == '<' || c == '|' || c == '&');
+    return (c == '+' || c == '-' || c == '/' || c == '*' || c == '=' || c == '>' || c == '<' || c == '|' || c == '&');
 }
 
 static rtoken_t rtoken_new() {
@@ -63,8 +61,7 @@ rtoken_t rlex_number() {
     bool first_char = true;
     int dot_count = 0;
     char c;
-    while (isdigit(c = _content[_content_ptr]) ||
-           (first_char && _content[_content_ptr] == '-') ||
+    while (isdigit(c = _content[_content_ptr]) || (first_char && _content[_content_ptr] == '-') ||
            (dot_count == 0 && _content[_content_ptr] == '.')) {
         if (c == '.')
             dot_count++;
@@ -105,8 +102,7 @@ static rtoken_t rlex_operator() {
     bool is_first = true;
     while (isoperator(_content[_content_ptr])) {
         if (!is_first) {
-            if (_content[_content_ptr - 1] == '=' &&
-                _content[_content_ptr] == '-') {
+            if (_content[_content_ptr - 1] == '=' && _content[_content_ptr] == '-') {
                 break;
             }
         }
@@ -224,15 +220,11 @@ rtoken_t rlex_next() {
             _content_ptr++;
         } else if (isspace(_content[_content_ptr])) {
             _content_ptr++;
-        } else if (isdigit(_content[_content_ptr]) ||
-                   (_content[_content_ptr] == '-' &&
-                    isdigit(_content[_content_ptr + 1]))) {
+        } else if (isdigit(_content[_content_ptr]) || (_content[_content_ptr] == '-' && isdigit(_content[_content_ptr + 1]))) {
             return rlex_number();
-        } else if (isalpha(_content[_content_ptr]) ||
-                   _content[_content_ptr] == '_') {
+        } else if (isalpha(_content[_content_ptr]) || _content[_content_ptr] == '_') {
             return rlex_symbol();
-        } else if (_content[_content_ptr] == '"' ||
-                   _content[_content_ptr] == '\'') {
+        } else if (_content[_content_ptr] == '"' || _content[_content_ptr] == '\'') {
             return rlex_string();
         } else if (isoperator(_content[_content_ptr])) {
             return rlex_operator();
@@ -342,13 +334,10 @@ char *rlex_format(char *content) {
             continue;
         }
         if ((token_previous.type == RT_SYMBOL && token.type == RT_NUMBER) ||
-            (token_previous.type == RT_NUMBER && token.type == RT_SYMBOL) ||
-            (token_previous.type == RT_PUNCT && token.type == RT_SYMBOL) ||
-            (token_previous.type == RT_BRACE_CLOSE &&
-             token.type == RT_SYMBOL) ||
+            (token_previous.type == RT_NUMBER && token.type == RT_SYMBOL) || (token_previous.type == RT_PUNCT && token.type == RT_SYMBOL) ||
+            (token_previous.type == RT_BRACE_CLOSE && token.type == RT_SYMBOL) ||
             (token_previous.type == RT_SYMBOL && token.type == RT_SYMBOL)) {
-            if (token_previous.value[0] != ',' &&
-                token_previous.value[0] != '.') {
+            if (token_previous.value[0] != ',' && token_previous.value[0] != '.') {
                 if (token.type != RT_OPERATOR && token.value[0] != '.') {
                     strcat(result, "\n");
                     rlex_repeat_str(result, tab_chars, tab_index);

@@ -3,8 +3,7 @@
 
 int main() {
     rtest_banner("rbuffer");
-    unsigned char *content =
-        (unsigned char *)"[   {\n\t \"\r1\t3\n4truefalsetrue \" }, ]";
+    unsigned char *content = (unsigned char *)"[   {\n\t \"\r1\t3\n4truefalsetrue \" }, ]";
     char *ignore = "\r| |\n|\t|\f|\v";
     rbuffer_t *buffer = rbuffer_new(content, ustrlen(content));
     assert(*rbuffer_consume(buffer, "{|[|,|\"|\\d|\\b", ignore) == '[');

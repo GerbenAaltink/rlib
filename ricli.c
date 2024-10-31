@@ -24,8 +24,7 @@ ricli_line_t *ricli_line_new() {
 
 char *rscli_line_to_json(ricli_line_t *line) {
 
-    char *json =
-        (char *)malloc(sizeof(line->type) + strlen(line->content) * 2 + 10);
+    char *json = (char *)malloc(sizeof(line->type) + strlen(line->content) * 2 + 10);
     json[0] = 0;
     strcpy(json, "{\"type\":\"");
     strcat(json, line->type);

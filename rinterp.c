@@ -1,11 +1,6 @@
 #include "rlexer.c";
 
-typedef enum rip_ast_type_t {
-    RIP_NONE = 0,
-    RIP_BLOCK,
-    RIP_CALL,
-    RIP_LITERAL
-} rip_ast_type_t;
+typedef enum rip_ast_type_t { RIP_NONE = 0, RIP_BLOCK, RIP_CALL, RIP_LITERAL } rip_ast_type_t;
 
 typedef struct rip_ast_t {
     struct rip_ast_t *children;

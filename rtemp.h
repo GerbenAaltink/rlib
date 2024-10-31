@@ -35,14 +35,14 @@ char *rtempc(char *data) {
     return _rtempc_buffer[current_rtempc_slot];
 }
 
-#define sstring(_pname, _psize)                                                \
-    static char _##_pname[_psize];                                             \
-    _##_pname[0] = 0;                                                          \
+#define sstring(_pname, _psize)                                                                                                            \
+    static char _##_pname[_psize];                                                                                                         \
+    _##_pname[0] = 0;                                                                                                                      \
     char *_pname = _##_pname;
 
-#define string(_pname, _psize)                                                 \
-    char _##_pname[_psize];                                                    \
-    _##_pname[0] = 0;                                                          \
+#define string(_pname, _psize)                                                                                                             \
+    char _##_pname[_psize];                                                                                                                \
+    _##_pname[0] = 0;                                                                                                                      \
     char *_pname = _##_pname;
 
 #define sreset(_pname, _psize) _pname = _##_pname;

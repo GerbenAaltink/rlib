@@ -116,8 +116,7 @@ void rrex3_cmp_literal_range(rrex3_t *rrex3) {
 }
 
 bool rrex3_is_function(char chr) {
-    if (chr == ']' || chr == ')' || chr == '\\' || chr == '?' || chr == '+' ||
-        chr == '*')
+    if (chr == ']' || chr == ')' || chr == '\\' || chr == '?' || chr == '+' || chr == '*')
         return true;
     return false;
 }
@@ -132,8 +131,7 @@ inline static void rrex3_cmp_literal(rrex3_t *rrex3) {
         }
     }
 #if RREX3_DEBUG == 1
-    printf("Literal check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-           rrex3->valid);
+    printf("Literal check: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 
 #endif
     if (*rrex3->expr == 0 && !*rrex3->str) {
@@ -165,8 +163,7 @@ inline static void rrex3_cmp_literal(rrex3_t *rrex3) {
 
 inline static void rrex3_cmp_dot(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
-    printf("Dot check (any char): %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-           rrex3->valid);
+    printf("Dot check (any char): %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
     rrex3_set_previous(rrex3);
     rrex3->expr++;
@@ -191,8 +188,7 @@ inline static void rrex3_cmp_dot(rrex3_t *rrex3) {
 
 inline static void rrex3_cmp_question_mark(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
-    printf("Question mark check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-           rrex3->valid);
+    printf("Question mark check: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
     rrex3_set_previous(rrex3);
 
@@ -203,8 +199,7 @@ inline static void rrex3_cmp_question_mark(rrex3_t *rrex3) {
 
 inline static void rrex3_cmp_whitespace(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
-    printf("Whitespace check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-           rrex3->valid);
+    printf("Whitespace check: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
     rrex3_set_previous(rrex3);
 
@@ -218,8 +213,7 @@ inline static void rrex3_cmp_whitespace(rrex3_t *rrex3) {
 
 inline static void rrex3_cmp_whitespace_upper(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
-    printf("Non whitespace check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-           rrex3->valid);
+    printf("Non whitespace check: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
     rrex3_set_previous(rrex3);
 
@@ -300,8 +294,7 @@ inline static void rrex3_cmp_plus2(rrex3_t *rrex3) {
 
 inline static void rrex3_cmp_plus(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
-    rprintg("Asterisk start check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-            rrex3->valid);
+    rprintg("Asterisk start check: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
     if (!rrex3->valid) {
         rrex3->expr++;
@@ -395,15 +388,13 @@ inline static void rrex3_cmp_plus(rrex3_t *rrex3) {
     rrex3->valid = true;
 
 #if RREX3_DEBUG == 1
-    rprintg("Asterisk end check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-            rrex3->valid);
+    rprintg("Asterisk end check: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
 }
 
 inline static void rrex3_cmp_asterisk(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
-    rprintg("Asterisk start check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-            rrex3->valid);
+    rprintg("Asterisk start check: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
     if (!rrex3->valid) {
         rrex3->valid = true;
@@ -497,15 +488,13 @@ inline static void rrex3_cmp_asterisk(rrex3_t *rrex3) {
     rrex3->valid = true;
 
 #if RREX3_DEBUG == 1
-    rprintg("Asterisk end check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-            rrex3->valid);
+    rprintg("Asterisk end check: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
 }
 
 inline static void rrex3_cmp_asterisk2(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
-    rprintg("Asterisk start check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-            rrex3->valid);
+    rprintg("Asterisk start check: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
     if (!rrex3->valid) {
         rrex3->valid = true;
@@ -593,8 +582,7 @@ inline static void rrex3_cmp_asterisk2(rrex3_t *rrex3) {
             }
         }
 
-        if ((success_next && !success_current) ||
-            (!success_next && !success_current)) {
+        if ((success_next && !success_current) || (!success_next && !success_current)) {
             break;
         }
     }
@@ -602,8 +590,7 @@ inline static void rrex3_cmp_asterisk2(rrex3_t *rrex3) {
     rrex3->str = right_str;
     rrex3->valid = true;
 #if RREX3_DEBUG == 1
-    rprintg("Asterisk end check: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-            rrex3->valid);
+    rprintg("Asterisk end check: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
 }
 
@@ -750,8 +737,7 @@ inline static void rrex3_cmp_range(rrex3_t *rrex3) {
 inline static void rrex3_cmp_word_start_or_end(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
     if (*rrex3->expr != 'B') {
-        printf("Check word start or end: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-               rrex3->valid);
+        printf("Check word start or end: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
     }
 
 #endif
@@ -773,8 +759,7 @@ inline static void rrex3_cmp_word_start_or_end(rrex3_t *rrex3) {
 }
 inline static void rrex3_cmp_word_not_start_or_end(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
-    printf("Check word NOT start or end: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-           rrex3->valid);
+    printf("Check word NOT start or end: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 
 #endif
     rrex3_set_previous(rrex3);
@@ -785,8 +770,7 @@ inline static void rrex3_cmp_word_not_start_or_end(rrex3_t *rrex3) {
 
 inline static void rrex3_cmp_brackets(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
-    rprintb("\\l Brackets start: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-            rrex3->valid);
+    rprintb("\\l Brackets start: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
     rrex3_set_previous(rrex3);
     char *original_expr = rrex3->expr;
@@ -833,8 +817,7 @@ inline static void rrex3_cmp_brackets(rrex3_t *rrex3) {
     rrex3_set_previous(rrex3);
     rrex3->expr = previous_expr;
 #if RREX3_DEBUG == 1
-    rprintb("\\l Brackets end: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-            rrex3->valid);
+    rprintb("\\l Brackets end: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
 }
 
@@ -853,8 +836,7 @@ inline static void rrex3_cmp_pipe(rrex3_t *rrex3) {
 }
 inline static void rrex3_cmp_parentheses(rrex3_t *rrex3) {
 #if RREX3_DEBUG == 1
-    rprinty("\\l Parentheses start check: %c:%c:%d\n", *rrex3->expr,
-            *rrex3->str, rrex3->valid);
+    rprinty("\\l Parentheses start check: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
 
     rrex3_set_previous(rrex3);
@@ -865,8 +847,7 @@ inline static void rrex3_cmp_parentheses(rrex3_t *rrex3) {
     if (rrex3->match_count == rrex3->match_capacity) {
 
         rrex3->match_capacity++;
-        rrex3->matches = (char **)realloc(
-            rrex3->matches, rrex3->match_capacity * sizeof(char *));
+        rrex3->matches = (char **)realloc(rrex3->matches, rrex3->match_capacity * sizeof(char *));
     }
     rrex3->matches[rrex3->match_count] = (char *)malloc(strlen(rrex3->str) + 1);
     strcpy(rrex3->matches[rrex3->match_count], rrex3->str);
@@ -891,14 +872,11 @@ inline static void rrex3_cmp_parentheses(rrex3_t *rrex3) {
         rrex3->str = original_str;
         free(rrex3->matches[rrex3->match_count]);
     } else {
-        rrex3->matches[rrex3->match_count]
-                      [strlen(rrex3->matches[rrex3->match_count]) -
-                       strlen(rrex3->str)] = 0;
+        rrex3->matches[rrex3->match_count][strlen(rrex3->matches[rrex3->match_count]) - strlen(rrex3->str)] = 0;
         rrex3->match_count++;
     }
 #if RREX3_DEBUG == 1
-    rprinty("\\l Parentheses end: %c:%c:%d\n", *rrex3->expr, *rrex3->str,
-            rrex3->valid);
+    rprinty("\\l Parentheses end: %c:%c:%d\n", *rrex3->expr, *rrex3->str, rrex3->valid);
 #endif
 }
 
@@ -969,8 +947,7 @@ rrex3_t *rrex3_compile(rrex3_t *rrex, char *expr) {
             *compiled = *(expr + 1);
             expr++;
             expr++;
-        } else if (*expr == '[' && *(expr + 1) == '0' && *(expr + 2) == '-' &&
-                   *(expr + 3) == '9' && *(expr + 4) == ']') {
+        } else if (*expr == '[' && *(expr + 1) == '0' && *(expr + 2) == '-' && *(expr + 3) == '9' && *(expr + 4) == ']') {
             *compiled = '\\';
             compiled++;
             *compiled = 'd';
@@ -1096,8 +1073,7 @@ rrex3_t *rrex3(rrex3_t *rrex3, char *str, char *expr) {
 void rrex3_test() {
     rrex3_t *rrex = rrex3_new();
 
-    assert(rrex3(rrex, "\"stdio.h\"\"string.h\"\"sys/time.h\"",
-                 "\"(.*)\"\"(.*)\"\"(.*)\""));
+    assert(rrex3(rrex, "\"stdio.h\"\"string.h\"\"sys/time.h\"", "\"(.*)\"\"(.*)\"\"(.*)\""));
 
     assert(rrex3(rrex, "aaaaaaa", "a*a$"));
 
@@ -1218,16 +1194,14 @@ void rrex3_test() {
 
     assert(rrex3(rrex, "abcde", ".....$"));
 
-    assert(rrex3(rrex, "abcdefghijklmnopqrstuvwxyz",
-                 "..........................$"));
+    assert(rrex3(rrex, "abcdefghijklmnopqrstuvwxyz", "..........................$"));
     // printf("(%d)\n", rrex->valid);
 
     assert(rrex3(rrex, "#include <stdio.h>", "#include.*<(.*)>"));
     assert(!strcmp(rrex->matches[0], "stdio.h"));
     assert(rrex3(rrex, "#include \"stdlib.h\"", "#include.\"(.*)\""));
     assert(!strcmp(rrex->matches[0], "stdlib.h"));
-    assert(rrex3(rrex, "\"stdio.h\"\"string.h\"\"sys/time.h\"",
-                 "\"(.*)\"\"(.*)\"\"(.*)\""));
+    assert(rrex3(rrex, "\"stdio.h\"\"string.h\"\"sys/time.h\"", "\"(.*)\"\"(.*)\"\"(.*)\""));
     assert(!strcmp(rrex->matches[0], "stdio.h"));
     assert(!strcmp(rrex->matches[1], "string.h"));
     assert(!strcmp(rrex->matches[2], "sys/time.h"));
@@ -1237,8 +1211,7 @@ void rrex3_test() {
     assert(rrex3(rrex, "    #include \"stdlib.h\"", "#include.+\"(.+)\""));
     assert(!strcmp(rrex->matches[0], "stdlib.h"));
 
-    assert(rrex3(rrex, "    \"stdio.h\"\"string.h\"\"sys/time.h\"",
-                 "\"(.+)\"\"(.+)\"\"(.+)\""));
+    assert(rrex3(rrex, "    \"stdio.h\"\"string.h\"\"sys/time.h\"", "\"(.+)\"\"(.+)\"\"(.+)\""));
     assert(!strcmp(rrex->matches[0], "stdio.h"));
     assert(!strcmp(rrex->matches[1], "string.h"));
     assert(!strcmp(rrex->matches[2], "sys/time.h"));

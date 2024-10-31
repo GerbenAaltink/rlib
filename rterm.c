@@ -16,8 +16,7 @@ void before_key_press(rterm_t *rterm) {
 void tick(rterm_t *rt) {
     static char status_text[1024];
     status_text[0] = 0;
-    sprintf(status_text, "\rp:%d:%d | k:%c:%d | i:%ld ", rt->cursor.x + 1,
-            rt->cursor.y + 1, rt->key.c == 0 ? '0' : rt->key.c, rt->key.c,
+    sprintf(status_text, "\rp:%d:%d | k:%c:%d | i:%ld ", rt->cursor.x + 1, rt->cursor.y + 1, rt->key.c == 0 ? '0' : rt->key.c, rt->key.c,
             rt->iterations);
     rt->status_text = status_text;
 }

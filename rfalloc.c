@@ -72,8 +72,7 @@ void *finit(char *path, size_t size) {
         //        exit(EXIT_FAILURE);
         //   }
         // rfensurefile(path,1024*1024);
-        rfm.data =
-            mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, rfm.fd, 0);
+        rfm.data = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, rfm.fd, 0);
         printf("HIERR\n");
     }
     /*

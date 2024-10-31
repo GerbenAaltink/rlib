@@ -66,12 +66,10 @@ char *rhttp_current_timestamp() {
     return time_string;
 }
 
-void rhttp_logs(const char *prefix, const char *level, const char *format,
-                va_list args) {
+void rhttp_logs(const char *prefix, const char *level, const char *format, va_list args) {
     char buf[strlen(format) + BUFSIZ + 1];
     buf[0] = 0;
-    sprintf(buf, "%s%s %s %s\e[0m", prefix, rhttp_current_timestamp(), level,
-            format);
+    sprintf(buf, "%s%s %s %s\e[0m", prefix, rhttp_current_timestamp(), level, format);
     vfprintf(stdout, buf, args);
 }
 void rhttp_log_info(const char *format, ...) {
@@ -204,18 +202,14 @@ char *rhttp_header_get_string(rhttp_request_t *r, const char *name) {
     return NULL;
 }
 
-void rhttp_print_header(rhttp_header_t *h) {
-    rhttp_log_debug("Header: <%s> \"%s\"\n", h->name, h->value);
-}
+void rhttp_print_header(rhttp_header_t *h) { rhttp_log_debug("Header: <%s> \"%s\"\n", h->name, h->value); }
 void rhttp_print_headers(rhttp_header_t *h) {
     while (h) {
         rhttp_print_header(h);
         h = h->next;
     }
 }
-void rhttp_print_request_line(rhttp_request_t *r) {
-    rhttp_log_info("%s %s %s\n", r->method, r->path, r->version);
-}
+void rhttp_print_request_line(rhttp_request_t *r) { rhttp_log_info("%s %s %s\n", r->method, r->path, r->version); }
 void rhttp_print_request(rhttp_request_t *r) {
     rhttp_print_request_line(r);
     if (rhttp_opt_debug)
@@ -229,8 +223,7 @@ void rhttp_close(rhttp_request_t *r) {
     rhttp_free_request(r);
 }
 rhttp_request_t *rhttp_parse_request(int s) {
-    rhttp_request_t *request =
-        (rhttp_request_t *)malloc(sizeof(rhttp_request_t));
+    rhttp_request_t *request = (rhttp_request_t *)malloc(sizeof(rhttp_request_t));
     http_request_init(request);
     char buf[BUFF_SIZE] = {0};
     request->c = s;
@@ -272,8 +265,7 @@ rhttp_request_t *rhttp_parse_request(int s) {
     request->headers = NULL;
     request->keep_alive = false;
     if (rhttp_parse_headers(request)) {
-        char *keep_alive_string =
-            rhttp_header_get_string(request, "Connection");
+        char *keep_alive_string = rhttp_header_get_string(request, "Connection");
         if (keep_alive_string && !strcmp(keep_alive_string, "keep-alive")) {
             request->keep_alive = 1;
         }
@@ -301,8 +293,7 @@ size_t rhttp_send_drain(int s, void *tsend, size_t to_send_len) {
     long bytes_sent = 0;
     long bytes_sent_total = 0;
     while (1) {
-        bytes_sent = send(s, to_send + bytes_sent_total,
-                          to_send_len - bytes_sent_total, 0);
+        bytes_sent = send(s, to_send + bytes_sent_total, to_send_len - bytes_sent_total, 0);
         if (bytes_sent <= 0) {
             bytes_sent_total = 0;
             break;
@@ -316,8 +307,7 @@ size_t rhttp_send_drain(int s, void *tsend, size_t to_send_len) {
             // error
             break;
         } else {
-            rhttp_log_info("Extra send of %d/%d bytes.\n", bytes_sent_total,
-                           to_send_len);
+            rhttp_log_info("Extra send of %d/%d bytes.\n", bytes_sent_total, to_send_len);
         }
     }
 
@@ -327,8 +317,7 @@ size_t rhttp_send_drain(int s, void *tsend, size_t to_send_len) {
 
 typedef int (*rhttp_request_handler_t)(rhttp_request_t *r);
 
-void rhttp_serve(const char *host, int port, int backlog, int request_logging,
-                 int request_debug, rhttp_request_handler_t handler,
+void rhttp_serve(const char *host, int port, int backlog, int request_logging, int request_debug, rhttp_request_handler_t handler,
                  void *context) {
     signal(SIGPIPE, SIG_IGN);
     rhttp_sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -349,8 +338,7 @@ void rhttp_serve(const char *host, int port, int backlog, int request_logging,
         struct sockaddr_in client_addr;
         int addrlen = sizeof(client_addr);
 
-        rhttp_c = accept(rhttp_sock, (struct sockaddr *)&client_addr,
-                         (socklen_t *)&addrlen);
+        rhttp_c = accept(rhttp_sock, (struct sockaddr *)&client_addr, (socklen_t *)&addrlen);
 
         rhttp_connections_handled++;
         while (true) {
@@ -397,8 +385,7 @@ int rhttp_file_response(rhttp_request_t *r, char *path) {
     if (strstr(text_extensions, ext)) {
         sprintf(content_type_header, "Content-Type: %s\r\n", "text/html");
     }
-    sprintf(response, "HTTP/1.1 200 OK\r\n%sContent-Length:%ld\r\n\r\n",
-            content_type_header, file_size);
+    sprintf(response, "HTTP/1.1 200 OK\r\n%sContent-Length:%ld\r\n\r\n", content_type_header, file_size);
     if (!rhttp_send_drain(r->c, response, 0)) {
         rhttp_log_error("Error sending file: %s\n", path);
     }
@@ -538,8 +525,7 @@ int rhttp_main(int argc, char *argv[]) {
     if (rhttp_opt_buffered)
         setvbuf(stdout, NULL, _IOFBF, BUFSIZ);
 
-    rhttp_serve(rhttp_opt_host, rhttp_opt_port, 1024, rhttp_opt_request_logging,
-                rhttp_opt_debug, rhttp_default_request_handler, NULL);
+    rhttp_serve(rhttp_opt_host, rhttp_opt_port, 1024, rhttp_opt_request_logging, rhttp_opt_debug, rhttp_default_request_handler, NULL);
 
     return 0;
 }
@@ -557,10 +543,8 @@ typedef struct rhttp_client_request_t {
     int bytes_received;
 } rhttp_client_request_t;
 
-rhttp_client_request_t *rhttp_create_request(const char *host, int port,
-                                             const char *path) {
-    rhttp_client_request_t *r =
-        (rhttp_client_request_t *)malloc(sizeof(rhttp_client_request_t));
+rhttp_client_request_t *rhttp_create_request(const char *host, int port, const char *path) {
+    rhttp_client_request_t *r = (rhttp_client_request_t *)malloc(sizeof(rhttp_client_request_t));
     char request_line[4096] = {0};
     sprintf(request_line,
             "GET %s HTTP/1.1\r\n"
@@ -622,8 +606,7 @@ void rhttp_free_client_request(rhttp_client_request_t *r) {
     free(r);
 }
 
-void rhttp_client_bench(int workers, int times, const char *host, int port,
-                        const char *path) {
+void rhttp_client_bench(int workers, int times, const char *host, int port, const char *path) {
     rhttp_client_request_t *requests[workers];
     while (times > 0) {
 
@@ -648,8 +631,7 @@ char *rhttp_client_get(const char *host, int port, const char *path) {
         reconnects++;
         tick();
         if (reconnects == reconnects_max) {
-            fprintf(stderr, "Maxium reconnects exceeded for %s:%d\n", host,
-                    port);
+            fprintf(stderr, "Maxium reconnects exceeded for %s:%d\n", host, port);
             rhttp_free_client_request(r);
             return NULL;
         }

@@ -30,10 +30,9 @@ static char *_format_function_name(const char *name) {
     return result;
 }
 
-#define DEBUG_VALIDATE_FUNCTION                                                \
-    if (_r4_debug || r4->debug)                                                \
-        printf("DEBUG: %s %s <%s> \"%s\"\n", _format_function_name(__func__),  \
-               r4->valid ? "valid" : "INVALID", r4->expr, r4->str);
+#define DEBUG_VALIDATE_FUNCTION                                                                                                            \
+    if (_r4_debug || r4->debug)                                                                                                            \
+        printf("DEBUG: %s %s <%s> \"%s\"\n", _format_function_name(__func__), r4->valid ? "valid" : "INVALID", r4->expr, r4->str);
 
 struct r4_t;
 
@@ -509,8 +508,7 @@ static bool r4_validate_group_open(r4_t *r4) {
         char *str_extract_end = r4->str;
         unsigned int extracted_length = str_extract_end - str_extract_start;
         // strlen(str_extract_start) - strlen(str_extract_end);
-        char *str_extracted =
-            (char *)calloc(sizeof(char), extracted_length + 1);
+        char *str_extracted = (char *)calloc(sizeof(char), extracted_length + 1);
         strncpy(str_extracted, str_extract_start, extracted_length);
         r4_match_add(r4, str_extracted);
     }
@@ -532,8 +530,7 @@ static bool r4_validate_slash(r4_t *r4) {
 }
 
 static void r4_match_add(r4_t *r4, char *extracted) {
-    r4->matches =
-        (char **)realloc(r4->matches, (r4->match_count + 1) * sizeof(char *));
+    r4->matches = (char **)realloc(r4->matches, (r4->match_count + 1) * sizeof(char *));
     r4->matches[r4->match_count] = extracted;
     r4->match_count++;
 }
@@ -544,8 +541,7 @@ static bool r4_validate_word_boundary_start(r4_t *r4) {
     if (!r4->valid) {
         return r4->valid;
     }
-    r4->valid =
-        isalpha(*r4->str) && (r4->str == r4->_str || !isalpha(*(r4->str - 1)));
+    r4->valid = isalpha(*r4->str) && (r4->str == r4->_str || !isalpha(*(r4->str - 1)));
     if (r4->in_range || r4->in_block || !r4->is_greedy) {
         return r4->valid;
     }
@@ -557,8 +553,7 @@ static bool r4_validate_word_boundary_end(r4_t *r4) {
     if (!r4->valid) {
         return r4->valid;
     }
-    r4->valid =
-        isalpha(*r4->str) && (*(r4->str + 1) == 0 || !isalpha(*(r4->str + 1)));
+    r4->valid = isalpha(*r4->str) && (*(r4->str + 1) == 0 || !isalpha(*(r4->str + 1)));
     if (r4->in_range || r4->in_block || !r4->is_greedy) {
         return r4->valid;
     }
@@ -649,8 +644,7 @@ static bool r4_backtrack(r4_t *r4) {
         r4->str = str;
     }
     if (_r4_debug)
-        printf("DEBUG: backtrack end (%d) result: %d %s\n", r4->backtracking,
-               result, r4->backtracking == 0 ? "\033[0m" : "");
+        printf("DEBUG: backtrack end (%d) result: %d %s\n", r4->backtracking, result, r4->backtracking == 0 ? "\033[0m" : "");
     return result;
 }
 

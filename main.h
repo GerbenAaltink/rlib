@@ -20,9 +20,8 @@ int rlib_main(int argc, char *argv[]) {
         printf("rlib\n\n");
         printf("options:\n");
         printf(" httpd - a http file server. Accepts port as argument.\n");
-        printf(
-            " rmerge - a merge tool. Converts c source files to one file \n"
-            "          with local includes by giving main file as argument.\n");
+        printf(" rmerge - a merge tool. Converts c source files to one file \n"
+               "          with local includes by giving main file as argument.\n");
         printf(" rcov - coverage tool theat cleans up after himself. Based on "
                "lcov.\n");
         printf(" rcase - tool to swap input file automatically between"

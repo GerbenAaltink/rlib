@@ -81,8 +81,7 @@ unsigned char *net_socket_read(rnet_socket_t *, unsigned int buff_size);
 void _net_socket_close(int sock);
 void net_socket_close(rnet_socket_t *sock);
 
-rnet_server_t *rnet_server_new(int socket_fd, unsigned int port,
-                               unsigned int backlog) {
+rnet_server_t *rnet_server_new(int socket_fd, unsigned int port, unsigned int backlog) {
     rnet_server_t *server = malloc(sizeof(rnet_server_t));
     server->socket_fd = socket_fd;
     server->sockets = NULL;
@@ -97,10 +96,8 @@ rnet_server_t *rnet_server_new(int socket_fd, unsigned int port,
     return server;
 }
 
-rnet_server_t *rnet_server_add_socket(rnet_server_t *server,
-                                      rnet_socket_t *sock) {
-    server->sockets = realloc(server->sockets, sizeof(rnet_socket_t *) *
-                                                   (server->socket_count + 1));
+rnet_server_t *rnet_server_add_socket(rnet_server_t *server, rnet_socket_t *sock) {
+    server->sockets = realloc(server->sockets, sizeof(rnet_socket_t *) * (server->socket_count + 1));
     server->sockets[server->socket_count] = sock;
     server->socket_count++;
     sock->on_read = server->on_read;
@@ -197,8 +194,7 @@ int net_socket_connect(const char *host, unsigned int port) {
     }
 
     for (p = res; p != NULL; p = p->ai_next) {
-        if ((socket_fd =
-                 socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+        if ((socket_fd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
             continue;
         }
 
@@ -240,8 +236,7 @@ int net_socket_accept(int net_socket_server_fd) {
     struct sockaddr_in address;
     int addrlen = sizeof(address);
     int new_socket = -1;
-    if ((new_socket = accept(net_socket_server_fd, (struct sockaddr *)&address,
-                             (socklen_t *)&addrlen)) < 0) {
+    if ((new_socket = accept(net_socket_server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0) {
         close(new_socket);
         return -1;
     } else {
@@ -280,8 +275,7 @@ static void net_socket_stats(WrenVM *vm)
     wrenInsertInList(vm, 0, -1, 1);
 }*/
 
-size_t net_socket_write(rnet_socket_t *sock, unsigned char *message,
-                        size_t size) {
+size_t net_socket_write(rnet_socket_t *sock, unsigned char *message, size_t size) {
     ssize_t sent_total = 0;
     ssize_t sent = 0;
     ssize_t to_send = size;
@@ -361,8 +355,7 @@ void rnet_safe_str(char *str, size_t length) {
 }
 
 rnet_select_result_t *rnet_new_socket_select_result(int socket_fd) {
-    rnet_select_result_t *result =
-        (rnet_select_result_t *)malloc(sizeof(rnet_select_result_t));
+    rnet_select_result_t *result = (rnet_select_result_t *)malloc(sizeof(rnet_select_result_t));
     memset(result, 0, sizeof(rnet_select_result_t));
     result->server_fd = socket_fd;
     result->socket_count = 0;
@@ -371,8 +364,7 @@ rnet_select_result_t *rnet_new_socket_select_result(int socket_fd) {
 }
 
 void rnet_select_result_add(rnet_select_result_t *result, rnet_socket_t *sock) {
-    result->sockets = realloc(result->sockets, sizeof(rnet_socket_t *) *
-                                                   (result->socket_count + 1));
+    result->sockets = realloc(result->sockets, sizeof(rnet_socket_t *) * (result->socket_count + 1));
     result->sockets[result->socket_count] = sock;
     result->socket_count++;
 }
@@ -405,16 +397,14 @@ rnet_select_result_t *net_socket_select(rnet_server_t *server) {
         return NULL;
     }
     if (FD_ISSET(server->socket_fd, &read_fds)) {
-        if ((new_socket = accept(server->socket_fd, (struct sockaddr *)&address,
-                                 (socklen_t *)&addrlen)) < 0) {
+        if ((new_socket = accept(server->socket_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0) {
             perror("Accept failed\n");
             return NULL;
         }
 
         // net_set_non_blocking(new_socket);
         char name[50] = {0};
-        sprintf(name, "fd:%.4d:ip:%12s:port:%.6d", new_socket,
-                inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+        sprintf(name, "fd:%.4d:ip:%12s:port:%.6d", new_socket, inet_ntoa(address.sin_addr), ntohs(address.sin_port));
         rnet_socket_t *sock_obj = NULL;
         for (unsigned int i = 0; i < server->socket_count; i++) {
             if (server->sockets && server->sockets[i]->fd == -1) {
@@ -429,18 +419,14 @@ rnet_select_result_t *net_socket_select(rnet_server_t *server) {
         strcpy(sock_obj->name, name);
         sockets_connected++;
         sockets_total++;
-        sockets_concurrent_record =
-            sockets_connected > sockets_concurrent_record
-                ? sockets_connected
-                : sockets_concurrent_record;
+        sockets_concurrent_record = sockets_connected > sockets_concurrent_record ? sockets_connected : sockets_concurrent_record;
         if (new_socket > net_socket_max_fd) {
             net_socket_max_fd = new_socket;
         }
         sock_obj->connected = true;
         sock_obj->on_connect(sock_obj);
     }
-    rnet_select_result_t *result =
-        rnet_new_socket_select_result(server->socket_fd);
+    rnet_select_result_t *result = rnet_new_socket_select_result(server->socket_fd);
     unsigned int readable_count = 0;
     for (unsigned int i = 0; i < server->socket_count; i++) {
         if (server->sockets[i]->fd == -1)

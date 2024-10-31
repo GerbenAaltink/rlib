@@ -15,41 +15,40 @@
 #include "rstring.h"
 #include "rterminal.h"
 
-#define RBENCH(times, action)                                                  \
-    {                                                                          \
-        unsigned long utimes = (unsigned long)times;                           \
-        nsecs_t start = nsecs();                                               \
-        for (unsigned long i = 0; i < utimes; i++) {                           \
-            {                                                                  \
-                action;                                                        \
-            }                                                                  \
-        }                                                                      \
-        nsecs_t end = nsecs();                                                 \
-        printf("%s\n", format_time(end - start));                              \
+#define RBENCH(times, action)                                                                                                              \
+    {                                                                                                                                      \
+        unsigned long utimes = (unsigned long)times;                                                                                       \
+        nsecs_t start = nsecs();                                                                                                           \
+        for (unsigned long i = 0; i < utimes; i++) {                                                                                       \
+            {                                                                                                                              \
+                action;                                                                                                                    \
+            }                                                                                                                              \
+        }                                                                                                                                  \
+        nsecs_t end = nsecs();                                                                                                             \
+        printf("%s\n", format_time(end - start));                                                                                          \
     }
 
-#define RBENCHP(times, action)                                                 \
-    {                                                                          \
-        printf("\n");                                                          \
-        nsecs_t start = nsecs();                                               \
-        unsigned int prev_percentage = 0;                                      \
-        unsigned long utimes = (unsigned long)times;                           \
-        for (unsigned long i = 0; i < utimes; i++) {                           \
-            unsigned int percentage =                                          \
-                ((long double)i / (long double)times) * 100;                   \
-            int percentage_changed = percentage != prev_percentage;            \
-            __attribute__((unused)) int first = i == 0;                        \
-            __attribute__((unused)) int last = i == utimes - 1;                \
-            { action; };                                                       \
-            if (percentage_changed) {                                          \
-                printf("\r%d%%", percentage);                                  \
-                fflush(stdout);                                                \
-                                                                               \
-                prev_percentage = percentage;                                  \
-            }                                                                  \
-        }                                                                      \
-        nsecs_t end = nsecs();                                                 \
-        printf("\r%s\n", format_time(end - start));                            \
+#define RBENCHP(times, action)                                                                                                             \
+    {                                                                                                                                      \
+        printf("\n");                                                                                                                      \
+        nsecs_t start = nsecs();                                                                                                           \
+        unsigned int prev_percentage = 0;                                                                                                  \
+        unsigned long utimes = (unsigned long)times;                                                                                       \
+        for (unsigned long i = 0; i < utimes; i++) {                                                                                       \
+            unsigned int percentage = ((long double)i / (long double)times) * 100;                                                         \
+            int percentage_changed = percentage != prev_percentage;                                                                        \
+            __attribute__((unused)) int first = i == 0;                                                                                    \
+            __attribute__((unused)) int last = i == utimes - 1;                                                                            \
+            { action; };                                                                                                                   \
+            if (percentage_changed) {                                                                                                      \
+                printf("\r%d%%", percentage);                                                                                              \
+                fflush(stdout);                                                                                                            \
+                                                                                                                                           \
+                prev_percentage = percentage;                                                                                              \
+            }                                                                                                                              \
+        }                                                                                                                                  \
+        nsecs_t end = nsecs();                                                                                                             \
+        printf("\r%s\n", format_time(end - start));                                                                                        \
     }
 
 struct rbench_t;
@@ -85,19 +84,15 @@ typedef struct rbench_t {
     bool silent;
     nsecs_t execution_time;
 #ifdef __cplusplus
-    void (*add_function)(struct rbench_t *r, const char *name,
-                         const char *group, void (*)());
+    void (*add_function)(struct rbench_t *r, const char *name, const char *group, void (*)());
 #else
-    void (*add_function)(struct rbench_t *r, const char *name,
-                         const char *group, void *);
+    void (*add_function)(struct rbench_t *r, const char *name, const char *group, void *);
 #endif
     void (*rbench_reset)(struct rbench_t *r);
     struct rbench_t *(*execute)(struct rbench_t *r, long times);
     struct rbench_t *(*execute1)(struct rbench_t *r, long times, void *arg1);
-    struct rbench_t *(*execute2)(struct rbench_t *r, long times, void *arg1,
-                                 void *arg2);
-    struct rbench_t *(*execute3)(struct rbench_t *r, long times, void *arg1,
-                                 void *arg2, void *arg3);
+    struct rbench_t *(*execute2)(struct rbench_t *r, long times, void *arg1, void *arg2);
+    struct rbench_t *(*execute3)(struct rbench_t *r, long times, void *arg1, void *arg2, void *arg3);
 
 } rbench_t;
 
@@ -148,11 +143,9 @@ typedef void *(*rbench_call2)(void *, void *);
 typedef void *(*rbench_call3)(void *, void *, void *);
 
 #ifdef __cplusplus
-void rbench_add_function(rbench_t *rp, const char *name, const char *group,
-                         void (*call)()) {
+void rbench_add_function(rbench_t *rp, const char *name, const char *group, void (*call)()) {
 #else
-void rbench_add_function(rbench_t *rp, const char *name, const char *group,
-                         void *call) {
+void rbench_add_function(rbench_t *rp, const char *name, const char *group, void *call) {
 #endif
     rbench_function_t *f = &rp->functions[rp->function_count];
     rp->function_count++;
@@ -194,8 +187,7 @@ bool rbench_was_last_function(rbench_t *r) {
     return false;
 }
 
-rbench_function_t *rbench_execute_prepare(rbench_t *r, int findex, long times,
-                                          int argc) {
+rbench_function_t *rbench_execute_prepare(rbench_t *r, int findex, long times, int argc) {
     rbench_toggle_stdout(r);
     if (findex == 0) {
         r->execution_time = 0;
@@ -219,8 +211,7 @@ void rbench_execute_finish(rbench_t *r) {
         free(r->progress_bar);
         r->progress_bar = NULL;
     }
-    r->current->average_execution_time =
-        r->current->total_execution_time / r->current->times_executed;
+    r->current->average_execution_time = r->current->total_execution_time / r->current->times_executed;
     ;
     // printf("   %s:%s finished executing in
     // %s\n",r->current->group,r->current->name,
@@ -240,19 +231,14 @@ void rbench_execute_finish(rbench_t *r) {
             bool is_winner = winner_index == i;
             if (is_winner) {
                 if (!r->silent)
-                    rprintyf(stderr, " > %s:%s:%s\n",
-                             format_time(rbf->total_execution_time), rbf->group,
-                             rbf->name);
+                    rprintyf(stderr, " > %s:%s:%s\n", format_time(rbf->total_execution_time), rbf->group, rbf->name);
             } else {
                 if (!r->silent)
-                    rprintbf(stderr, "   %s:%s:%s\n",
-                             format_time(rbf->total_execution_time), rbf->group,
-                             rbf->name);
+                    rprintbf(stderr, "   %s:%s:%s\n", format_time(rbf->total_execution_time), rbf->group, rbf->name);
             }
         }
         if (!r->silent)
-            rprintgf(stderr, "Total execution time: %s\n",
-                     format_time(total_time));
+            rprintgf(stderr, "Total execution time: %s\n", format_time(total_time));
     }
     rbench_restore_stdout(r);
     rbf = NULL;
@@ -311,8 +297,7 @@ struct rbench_t *rbench_execute1(rbench_t *r, long times, void *arg1) {
     return r;
 }
 
-struct rbench_t *rbench_execute2(rbench_t *r, long times, void *arg1,
-                                 void *arg2) {
+struct rbench_t *rbench_execute2(rbench_t *r, long times, void *arg1, void *arg2) {
 
     for (unsigned int i = 0; i < r->function_count; i++) {
         rbench_function_t *f = rbench_execute_prepare(r, i, times, 2);
@@ -338,8 +323,7 @@ struct rbench_t *rbench_execute2(rbench_t *r, long times, void *arg1,
     return r;
 }
 
-struct rbench_t *rbench_execute3(rbench_t *r, long times, void *arg1,
-                                 void *arg2, void *arg3) {
+struct rbench_t *rbench_execute3(rbench_t *r, long times, void *arg1, void *arg2, void *arg3) {
 
     for (unsigned int i = 0; i < r->function_count; i++) {
         rbench_function_t *f = rbench_execute_prepare(r, i, times, 3);

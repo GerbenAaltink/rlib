@@ -15,8 +15,7 @@ bool rargs_isset(int argc, char *argv[], char *key) {
     return false;
 }
 
-char *rargs_get_option_string(int argc, char *argv[], char *key,
-                              const char *def) {
+char *rargs_get_option_string(int argc, char *argv[], char *key, const char *def) {
 
     for (int i = 0; i < argc; i++) {
         if (!strcmp(argv[i], key)) {

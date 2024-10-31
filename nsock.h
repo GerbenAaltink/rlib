@@ -120,8 +120,7 @@ int *nsock_select(suseconds_t timeout) {
         FD_SET(socks[i], &efds);
     }
 
-    int activity = select(nsock_max_socket_fd + 1, &rfds, NULL, &efds,
-                          timeout == 0 ? NULL : &tv);
+    int activity = select(nsock_max_socket_fd + 1, &rfds, NULL, &efds, timeout == 0 ? NULL : &tv);
     if ((activity < 0) && (errno != EINTR)) {
         perror("Select error\n");
         return NULL;
@@ -131,13 +130,11 @@ int *nsock_select(suseconds_t timeout) {
     if (FD_ISSET(server_fd, &rfds)) {
         struct sockaddr_in address;
         int addrlen = sizeof(address);
-        address.sin_family = AF_INET; // IPv4
-        address.sin_addr.s_addr =
-            INADDR_ANY; // Listen on any available network interface
+        address.sin_family = AF_INET;         // IPv4
+        address.sin_addr.s_addr = INADDR_ANY; // Listen on any available network interface
 
         int new_socket = 0;
-        if ((new_socket = accept(server_fd, (struct sockaddr *)&address,
-                                 (socklen_t *)&addrlen)) < 0) {
+        if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0) {
             perror("Accept failed");
         } else {
             nsock_socks[new_socket] = new_socket;
@@ -203,8 +200,7 @@ unsigned char *nsock_read_all(int fd, int length) {
 int nsock_write_all(int fd, unsigned char *data, int length) {
     int bytes_written = 0;
     while (bytes_written < length) {
-        int bytes_chunk =
-            write(fd, data + bytes_written, length - bytes_written);
+        int bytes_chunk = write(fd, data + bytes_written, length - bytes_written);
         if (bytes_chunk <= 0) {
             nsock_close(fd);
             return 0;
@@ -213,15 +209,13 @@ int nsock_write_all(int fd, unsigned char *data, int length) {
     }
     return bytes_written;
 }
-void nsock(int port, void (*on_connect)(int fd), void (*on_data)(int fd),
-           void (*on_close)(int fd)) {
+void nsock(int port, void (*on_connect)(int fd), void (*on_data)(int fd), void (*on_close)(int fd)) {
     nsock_init(2048);
     nsock_listen(port);
     nsock_on_connect = on_connect;
     nsock_on_data = on_data;
     nsock_on_close = on_close;
-    int serve_in_terminal = nsock_on_connect == NULL && nsock_on_data == NULL &&
-                            nsock_on_close == NULL;
+    int serve_in_terminal = nsock_on_connect == NULL && nsock_on_data == NULL && nsock_on_close == NULL;
     while (1) {
         int *readable = nsock_select(1000000000);
         if (!serve_in_terminal)

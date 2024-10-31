@@ -12,10 +12,8 @@ int main() {
     rjson_kv_bool(json, "bool", true);
     rjson_object_close(json);
     rjson_array_close(json);
-    rassert(!strcmp(
-        json->content,
-        "[{\"string\":\"value\",\"number\":\"1.337.421.984\",\"duration\":\"1."
-        "34s\",\"ulonglong\":1337420,\"bool\":true}]"));
+    rassert(!strcmp(json->content, "[{\"string\":\"value\",\"number\":\"1.337.421.984\",\"duration\":\"1."
+                                   "34s\",\"ulonglong\":1337420,\"bool\":true}]"));
     rjson_free(json);
     return rtest_end("");
 }

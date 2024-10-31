@@ -59,8 +59,7 @@ void rforfile(char *path, void callback(char *)) {
         if (!d)
             break;
 
-        if ((d->d_name[0] == '.' && strlen(d->d_name) == 1) ||
-            d->d_name[1] == '.') {
+        if ((d->d_name[0] == '.' && strlen(d->d_name) == 1) || d->d_name[1] == '.') {
             continue;
         }
         char full_path[4096];

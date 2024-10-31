@@ -45,8 +45,7 @@ void rjson_object_close(rjson_t *rjs) {
     rjson_write(rjs, "}");
 }
 void rjson_array_start(rjson_t *rjs) {
-    if (rjs->length &&
-        (rstrendswith(rjs->content, "}") || rstrendswith(rjs->content, "]")))
+    if (rjs->length && (rstrendswith(rjs->content, "}") || rstrendswith(rjs->content, "]")))
         rjson_write(rjs, ",");
     rjson_write(rjs, "[");
 }
@@ -59,8 +58,7 @@ void rjson_array_close(rjson_t *rjs) {
 }
 
 void rjson_kv_string(rjson_t *rjs, char *key, char *value) {
-    if (rjs->length && !rstrendswith(rjs->content, "{") &&
-        !rstrendswith(rjs->content, "[")) {
+    if (rjs->length && !rstrendswith(rjs->content, "{") && !rstrendswith(rjs->content, "[")) {
         rjson_write(rjs, ",");
     }
     rjson_write(rjs, "\"");
@@ -74,8 +72,7 @@ void rjson_kv_string(rjson_t *rjs, char *key, char *value) {
 }
 
 void rjson_kv_int(rjson_t *rjs, char *key, ulonglong value) {
-    if (rjs->length && !rstrendswith(rjs->content, "{") &&
-        !rstrendswith(rjs->content, "[")) {
+    if (rjs->length && !rstrendswith(rjs->content, "{") && !rstrendswith(rjs->content, "[")) {
         rjson_write(rjs, ",");
     }
     rjson_write(rjs, "\"");
@@ -86,8 +83,7 @@ void rjson_kv_int(rjson_t *rjs, char *key, ulonglong value) {
     rjson_write(rjs, value_str);
 }
 void rjson_kv_number(rjson_t *rjs, char *key, ulonglong value) {
-    if (rjs->length && !rstrendswith(rjs->content, "{") &&
-        !rstrendswith(rjs->content, "[")) {
+    if (rjs->length && !rstrendswith(rjs->content, "{") && !rstrendswith(rjs->content, "[")) {
         rjson_write(rjs, ",");
     }
     rjson_write(rjs, "\"");
@@ -100,8 +96,7 @@ void rjson_kv_number(rjson_t *rjs, char *key, ulonglong value) {
 }
 
 void rjson_kv_bool(rjson_t *rjs, char *key, int value) {
-    if (rjs->length && !rstrendswith(rjs->content, "{") &&
-        !rstrendswith(rjs->content, "[")) {
+    if (rjs->length && !rstrendswith(rjs->content, "{") && !rstrendswith(rjs->content, "[")) {
         rjson_write(rjs, ",");
     }
     rjson_write(rjs, "\"");
@@ -111,8 +106,7 @@ void rjson_kv_bool(rjson_t *rjs, char *key, int value) {
 }
 
 void rjson_kv_duration(rjson_t *rjs, char *key, nsecs_t value) {
-    if (rjs->length && !rstrendswith(rjs->content, "{") &&
-        !rstrendswith(rjs->content, "[")) {
+    if (rjs->length && !rstrendswith(rjs->content, "{") && !rstrendswith(rjs->content, "[")) {
         rjson_write(rjs, ",");
     }
     rjson_write(rjs, "\"");
