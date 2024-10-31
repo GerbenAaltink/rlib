@@ -353,14 +353,14 @@ void *rliza_coalesce(void *result, void *default_value) {
 }
 
 char *rliza_seek_string(char **content, char **options) {
-    while (**content == ' ' || **content == '\n' || **content == '\t' || **content == '\r') {
-        (*content)++;
-    }
-    if(**content == 0)
+    //while (**content == ' ' || **content == '\n' || **content == '\t' || **content == '\r') {
+     //   (*content)++;
+    //}
+    if (**content == 0)
         return *content;
     char *option = NULL;
     unsigned int option_index = 0;
-    
+
     while (true) {
         option = options[option_index];
         if (option == NULL)
@@ -496,7 +496,7 @@ rliza_t *_rliza_loads(char **content) {
         rliza->type = RLIZA_ARRAY;
         (*content)++;
         char *result;
-        static char *seek_for4[] = {"[","{", "\"", "d", ",","]", "null", "true", "false", NULL};
+        static char *seek_for4[] = {"[", "{", "\"", "d", ",", "]", "null", "true", "false", NULL};
         while ((result = (char *)rliza_seek_string(content, seek_for4)) != NULL && *result) {
             if (**content == ',') {
                 (*content)++;
