@@ -11,6 +11,7 @@ tag" />
 #include "rtypes.h"
 #include "nsock.h"
 #include "rmalloc.h"
+#include "uuid.h"
 #include "rnet.h"
 #include "rargs.h"
 #include "rcat.h"

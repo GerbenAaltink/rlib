@@ -226,8 +226,8 @@ void rstraddslashes(const char *content, char *result) {
         }
         result[index] = content[i];
         index++;
+        result[index] = 0;
     }
-    result[index] = 0;
 }
 
 int rstrip_whitespace(char *input, char *output) {

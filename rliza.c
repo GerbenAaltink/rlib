@@ -5,7 +5,7 @@
 #include "rbench.h"
 void performance_test() {
     size_t size = rfile_size("resources/large.json");
-    char *data = rmalloc(size + 1);
+    char *data = malloc(size + 1);
     rfile_readb("resources/large.json", data, size);
     data[size] = 0;
     RBENCH(1, {
@@ -20,7 +20,8 @@ int main() {
     rtest_banner("performance test");
     performance_test();
     rtest_banner("serialize/deserialize");
-    char *json_content = "{\"error\":\"not \\\"aaa\\\" found\",\"rows\":[[1,23],[1,23],[1,23,true,false,5.5,5.505,6.1]]}";
+    char *json_content = "{\"error\":\"not \\\"aaa\\\" "
+                         "found\",\"rows\":[{\"a\":true},{\"b\":false},{\"c\":null},[1,23],[1,23],[1,23,true,false,5.5,5.505,6.1]]}";
 
     rassert(rliza_validate("{\"error\":\"not \\\"aaa\\\" found\",\"rows\":[[1,23],[1,23],[1,23,true,false,5.5,5.505]]}"));
     rassert(!rliza_validate("{\"error\":\"not \\\"aaa\\\" found\",\"rows\":[[1,23],[1,23],[1,23,true,false,5.5,5.505,6.]]}"));
@@ -40,9 +41,11 @@ int main() {
     rassert(!strcmp(error_content, "*{}"));
     rliza_loads(&error_content);
     rassert(!strcmp(error_content, "*{}"));
+
     rassert(rliza_validate("{}"));
     rassert(!rliza_validate("{"));
     rassert(!rliza_validate("}"));
+
     rassert(!rliza_validate("["));
     rassert(!rliza_validate("]"));
     rassert(!rliza_validate("\\"));
@@ -68,9 +71,11 @@ int main() {
     rliza_set_integer(rliza, "e", 5);
     rliza_set_integer(rliza, "f", 6);
     rliza_set_string(rliza, "str1", "str1value");
+    rliza->set_object(rliza, "obj", rliza);
     rliza_set_null(rliza, "q");
 
     char *original_content = rliza_dumps(rliza);
+    printf("%s\n", original_content);
     char *content = original_content;
 
     printf("%s\n", content, content[strlen((char *)content)] == 0);

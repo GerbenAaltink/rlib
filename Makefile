@@ -2,7 +2,7 @@
 CC = gcc
 
 # Compiler flags
-CFLAGS = -Wall -Wextra -Werror -O2 -std=c2x -lm -lrt -pthread -fPIC 
+CFLAGS = -Wall -Wextra -Werror -Ofast -std=c2x -lm -lrt -pthread -fPIC 
 LDFLAGS = -lm
  
 # -D_POSIX_C_SOURCE=199309L 
@@ -195,9 +195,9 @@ run_rkeytable:
 build: format_rlib_h
 	cp ./clean build/clean
 	cp rlib.h rlibrlibso.c
-	@gcc rlibrlibso.c -fPIC -shared -o ./build/librlib.so -O2
+	@gcc rlibrlibso.c $(CFLAGS) -shared -o ./build/librlib.so
 	@echo "Built a new rlib.so"
-	@gcc rlibso.c -L./build -Wl,-rpath=. -lrlib -o  ./build/rlibso -O2
+	@gcc rlibso.c -L./build -Wl,-rpath=. -lrlib -o  ./build/rlibso ${CFLAGS}
 	@cd ./build && ./rlibso
 	@echo "Build succesful"
 
