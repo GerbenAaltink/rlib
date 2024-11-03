@@ -78,9 +78,9 @@ int main() {
     free(true_string);
     rliza->set_object(rliza, "obj", true_value);
     rliza_free(true_value);
-    rliza_t * val = rliza->get_object(rliza, "obj");
+    rliza_t *val = rliza->get_object(rliza, "obj");
     (void)val;
-    //printf("val: %d\n", val);
+    // printf("val: %d\n", val);
     rliza_set_null(rliza, "q");
 
     char *original_content = rliza_dumps(rliza);
