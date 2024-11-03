@@ -71,7 +71,15 @@ int main() {
     rliza_set_integer(rliza, "e", 5);
     rliza_set_integer(rliza, "f", 6);
     rliza_set_string(rliza, "str1", "str1value");
-    rliza->set_object(rliza, "obj", rliza);
+
+    char *true_string = strdup("false");
+    char *true_stringp = true_string;
+    rliza_t *true_value = rliza_loads(&true_stringp);
+    free(true_string);
+    rliza->set_boolean(rliza, "obj", true_value->content.boolean);
+    rliza_free(true_value);
+    bool val = rliza->get_boolean(rliza, "obj");
+    printf("val: %d\n", val);
     rliza_set_null(rliza, "q");
 
     char *original_content = rliza_dumps(rliza);

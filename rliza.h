@@ -590,27 +590,18 @@ rliza_t *_rliza_loads(char **content) {
         rliza->type = RLIZA_BOOLEAN;
         rliza->content.boolean = true;
         *content += 4;
-        if (!**content) {
-            rliza_free(rliza);
-            return NULL;
-        }
+
         return rliza;
     } else if (!strncmp(*content, "false", 5)) {
         rliza->type = RLIZA_BOOLEAN;
         rliza->content.boolean = false;
         *content += 5;
-        if (!**content) {
-            rliza_free(rliza);
-            return NULL;
-        }
+
         return rliza;
     } else if (!strncmp(*content, "null", 4)) {
         rliza->type = RLIZA_NULL;
         *content += 4;
-        if (!**content) {
-            rliza_free(rliza);
-            return NULL;
-        }
+
         return rliza;
     }
     // Parsing error
