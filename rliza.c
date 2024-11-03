@@ -72,14 +72,15 @@ int main() {
     rliza_set_integer(rliza, "f", 6);
     rliza_set_string(rliza, "str1", "str1value");
 
-    char *true_string = strdup("false");
+    char *true_string = strdup("{\"aa\":123}");
     char *true_stringp = true_string;
     rliza_t *true_value = rliza_loads(&true_stringp);
     free(true_string);
-    rliza->set_boolean(rliza, "obj", true_value->content.boolean);
+    rliza->set_object(rliza, "obj", true_value);
     rliza_free(true_value);
-    bool val = rliza->get_boolean(rliza, "obj");
-    printf("val: %d\n", val);
+    rliza_t * val = rliza->get_object(rliza, "obj");
+    (void)val;
+    //printf("val: %d\n", val);
     rliza_set_null(rliza, "q");
 
     char *original_content = rliza_dumps(rliza);
