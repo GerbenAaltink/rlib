@@ -15,6 +15,12 @@ void performance_test() {
     free(data);
 }
 
+void rliza_dumpss(rliza_t *r) {
+    char *content = rliza_dumps(r);
+    printf("%s\n", content);
+    free(content);
+}
+
 int main() {
     rtest_banner("rliza");
     rtest_banner("performance test");
@@ -77,10 +83,15 @@ int main() {
     rliza_t *true_value = rliza_loads(&true_stringp);
     free(true_string);
     rliza->set_object(rliza, "obj", true_value);
+    rliza_dumpss(rliza);
     rliza_free(true_value);
+    rliza_dumpss(rliza);
+
     rliza_t *val = rliza->get_object(rliza, "obj");
     (void)val;
-    // printf("val: %d\n", val);
+    printf("IS NULL: %d\n", val == NULL);
+    int ival = val->get_integer(val, "aa");
+    printf("%d\n", ival); // printf("val: %d\n", val);
     rliza_set_null(rliza, "q");
 
     char *original_content = rliza_dumps(rliza);

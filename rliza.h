@@ -158,15 +158,9 @@ bool rliza_get_boolean(rliza_t *self, char *key) {
 }
 
 rliza_t *rliza_get_object(rliza_t *self, char *key) {
-
     for (unsigned int i = 0; i < self->count; i++) {
         if (self->content.map[i]->key != NULL && strcmp(self->content.map[i]->key, key) == 0) {
-            //  if(self->content.map[i]->type == RLIZA_OBJECT ||
-            //  self->content.map[i]->type == RLIZA_NULL){
-
-            return self->content.map[i]->value;
-            ;
-            //}
+            return self->content.map[i];
         }
     }
     return NULL;
@@ -194,7 +188,7 @@ rliza_t *rliza_new_string(char *string) {
         rliza->content.string = NULL;
         return rliza;
     } else {
-        rliza->content.string = strdup(string); // (char *)new_string;
+        rliza->content.string = strdup(string);
     }
     return rliza;
 }
@@ -405,13 +399,6 @@ char *rliza_seek_string(char **content, char **options) {
         } else if (!strncmp(option, *content, strlen(option))) {
             return (char *)*content;
         }
-    }
-    if (**content != 0) {
-        //*((*content) + 2) = 0;
-        // Works good
-        // if((*(*content + 1) != 0))
-        //   printf("Unexpected json: %c %d %s\n",**content, **content, (*content) + 0);
-        // exit(0);
     }
     return *content;
 }
@@ -641,11 +628,8 @@ char *rliza_dumps(rliza_t *rliza) {
             rstrstripslashes((char *)rliza->key, escaped_key);
             sprintf(content, "\"%s\":\"%s\"", escaped_key, escaped_string);
             free(escaped_key);
-            //  rliza->content.string);
         } else {
-
-            sprintf(content, "\"%s\"",
-                    escaped_string); // rliza->content.string);
+            sprintf(content, "\"%s\"", escaped_string);
         }
         free(escaped_string);
     } else if (rliza->type == RLIZA_NUMBER) {
@@ -700,12 +684,10 @@ char *rliza_dumps(rliza_t *rliza) {
         if (rliza->key) {
             char *escaped_key = (char *)malloc(strlen((char *)rliza->key) * 2 + 1);
             rstraddslashes((char *)rliza->key, escaped_key);
-
             sprintf(content, "\"%s\":[", escaped_key);
             free(escaped_key);
         } else
             strcpy(content, "[");
-
         for (unsigned i = 0; i < rliza->count; i++) {
             char *content_chunk = rliza_dumps(rliza->content.map[i]);
             if (strlen(content_chunk) + strlen(content) > size) {
@@ -724,7 +706,6 @@ char *rliza_dumps(rliza_t *rliza) {
         if (rliza->key) {
             char *escaped_key = (char *)malloc(strlen((char *)rliza->key) * 2 + 1);
             rstraddslashes((char *)rliza->key, escaped_key);
-
             sprintf(content, "\"%s\":null", escaped_key);
             free(escaped_key);
         } else
@@ -733,13 +714,7 @@ char *rliza_dumps(rliza_t *rliza) {
     return content;
 }
 
-void rliza_push(rliza_t *self, rliza_t *obj) {
-    rliza_push_object(self, obj);
-    // self->content.array =
-    //     realloc(self->content.array, sizeof(rliza_t *) * (self->count + 1));
-    // self->content.array[self->count] = obj;
-    // self->count++;
-}
+void rliza_push(rliza_t *self, rliza_t *obj) { rliza_push_object(self, obj); }
 
 int rliza_validate(char *json_content) {
     char *json_contentp = json_content;
