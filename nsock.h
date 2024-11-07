@@ -94,12 +94,12 @@ int *nsock_init(int socket_count) {
     if (nsock_socks) {
         return nsock_socks;
     }
-    nsock_socks = (int *)calloc(1, sizeof(int) * socket_count + 1);
+    nsock_socks = (int *)calloc(1, sizeof(int) * sizeof(int *) * socket_count + 1);
     if (nsock_data) {
         free(nsock_data);
         nsock_data = NULL;
     }
-    nsock_data = (void **)malloc(sizeof(void *) * socket_count + 1);
+    nsock_data = (void **)malloc(sizeof(void **) * socket_count + 1);
     nsock_socks[socket_count] = -1;
     return nsock_socks;
 }
@@ -256,7 +256,7 @@ int *nsock_select(suseconds_t timeout) {
     if (nsock_readable) {
         free(nsock_readable);
     }
-    nsock_readable = (int *)calloc(1, sizeof(int) * (nsock_max_socket_fd + 2));
+    nsock_readable = (int *)calloc(1, sizeof(int *) + sizeof(int)  * (nsock_max_socket_fd + 2));
     nsock_readable[nsock_max_socket_fd + 1] = -1;
     nsock_readable[0] = 0;
     int readable_count = 0;
