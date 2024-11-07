@@ -78,32 +78,19 @@ int main() {
     rliza_set_integer(rliza, "f", 6);
     rliza_set_string(rliza, "str1", "str1value");
 
-    char *true_string = strdup("{\"aa\":123}");
-    char *true_stringp = true_string;
-    rliza_t *true_value = rliza_loads(&true_stringp);
-    free(true_string);
-    rliza->set_object(rliza, "obj", true_value);
-    rliza_dumpss(rliza);
-    rliza_free(true_value);
-    rliza_dumpss(rliza);
-
-    rliza_t *val = rliza->get_object(rliza, "obj");
-    (void)val;
-    printf("IS NULL: %d\n", val == NULL);
-    int ival = val->get_integer(val, "aa");
-    printf("%d\n", ival); // printf("val: %d\n", val);
     rliza_set_null(rliza, "q");
 
     char *original_content = rliza_dumps(rliza);
-    printf("%s\n", original_content);
+    printf("1:%s\n", original_content);
     char *content = original_content;
 
-    printf("%s\n", content, content[strlen((char *)content)] == 0);
+    printf("2:%s %d\n", content, content[strlen((char *)content)] == 0);
 
-    rliza_t *rliza2 = rliza_loads((char **)&content);
+    rliza_t *rliza2 = rliza_loads(&content);
 
+    printf("HAAAh\n");
     char *content2 = rliza_dumps(rliza2);
-
+    printf("HAAAh\n");
     content = original_content;
     rassert(!(strcmp((char *)content,
                      (char *)content2))); // strcmp(content,content2);

@@ -24,7 +24,6 @@
 #else
 #undef _POSIX_C_SOURCE
 #endif
-
 static ulonglong rmalloc_count = 0;
 static ulonglong rmalloc_alloc_count = 0;
 static ulonglong rmalloc_free_count = 0;

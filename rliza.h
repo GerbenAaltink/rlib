@@ -280,7 +280,6 @@ void rliza_set_object(rliza_t *self, char *key, rliza_t *value) {
     rliza_t *obj = rliza_duplicate(value);
     obj->key = strdup(key);
     obj->type = RLIZA_OBJECT;
-
     rliza_push(self, obj);
 }
 
@@ -664,10 +663,14 @@ char *rliza_dumps(rliza_t *rliza) {
             sprintf(content, "%s", rliza->content.boolean ? "true" : "false");
         }
     } else if (rliza->type == RLIZA_OBJECT) {
-        if (rliza->key) {
-            sprintf(content, "\"%s\":", rliza->key);
-        }
+
         strcat(content, "{");
+        if (rliza->key) {
+            strcat(content, "\"");
+            strcat(content, rliza->key);
+            strcat(content, "\":{");
+        }
+        // bool add_braces = false;
         for (unsigned i = 0; i < rliza->count; i++) {
             char *content_chunk = rliza_dumps(rliza->content.map[i]);
             if (strlen(content_chunk) + strlen(content) > size) {
@@ -676,9 +679,16 @@ char *rliza_dumps(rliza_t *rliza) {
             }
             strcat(content, content_chunk);
             free(content_chunk);
+
             strcat(content, ",");
         }
-        content[strlen(content) - 1] = 0;
+        if (content[strlen(content) - 1] == ',') {
+            content[strlen(content) - 1] = '\0';
+
+            if (rliza->key) {
+                strcat(content, "}");
+            }
+        }
         strcat(content, "}");
     } else if (rliza->type == RLIZA_ARRAY) {
         if (rliza->key) {
