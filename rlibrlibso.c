@@ -1,4 +1,4 @@
-// RETOOR - Nov  8 2024
+// RETOOR - Nov  9 2024
 // MIT License
 // ===========
 
@@ -710,7 +710,7 @@ void nsock(int port, void (*on_connect)(int fd), void (*on_data)(int fd), void (
     nsock_on_close = on_close;
     int serve_in_terminal = nsock_on_connect == NULL && nsock_on_data == NULL && nsock_on_close == NULL;
     while (1) {
-        int *readable = nsock_select(1000);
+        int *readable = nsock_select(0);
         if (!serve_in_terminal)
             continue;
         if (!readable)
