@@ -46,7 +46,7 @@ nsock_t *nsock_get(int fd) {
     if (fd >= nsocks_count || nsocks[fd] == NULL) {
         if (fd >= nsocks_count) {
             nsocks_count = fd + 1;
-            nsocks = (nsock_t **)realloc(nsocks, sizeof(nsock_t *) * (nsocks_count));
+            nsocks = (nsock_t **)realloc(nsocks, sizeof(nsock_t *) * sizeof(nsock_t) * (nsocks_count));
             nsocks[fd] = (nsock_t *)calloc(1, sizeof(nsock_t));
         }
         nsocks[fd]->upstreams = NULL;
@@ -256,7 +256,7 @@ int *nsock_select(suseconds_t timeout) {
     if (nsock_readable) {
         free(nsock_readable);
     }
-    nsock_readable = (int *)calloc(1, sizeof(int *) + sizeof(int)  * (nsock_max_socket_fd + 2));
+    nsock_readable = (int *)calloc(1, sizeof(int *) + sizeof(int) * (nsock_max_socket_fd + 2));
     nsock_readable[nsock_max_socket_fd + 1] = -1;
     nsock_readable[0] = 0;
     int readable_count = 0;
@@ -392,7 +392,7 @@ void nsock(int port, void (*on_connect)(int fd), void (*on_data)(int fd), void (
     nsock_on_close = on_close;
     int serve_in_terminal = nsock_on_connect == NULL && nsock_on_data == NULL && nsock_on_close == NULL;
     while (1) {
-        int *readable = nsock_select(1000);
+        int *readable = nsock_select(0);
         if (!serve_in_terminal)
             continue;
         if (!readable)
