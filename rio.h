@@ -84,7 +84,7 @@ bool rfd_wait(int fd, int ms) {
     FD_SET(fd, &read_fds);
 
     timeout.tv_sec = 0;
-    timeout.tv_usec = 1000 * ms; 
+    timeout.tv_usec = 1000 * ms;
 
     int ret = select(fd + 1, &read_fds, NULL, NULL, &timeout);
     return ret > 0 && FD_ISSET(fd, &read_fds);

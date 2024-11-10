@@ -15,12 +15,6 @@ void performance_test() {
     free(data);
 }
 
-void rliza_dumpss(rliza_t *r) {
-    char *content = rliza_dumps(r);
-    printf("%s\n", content);
-    free(content);
-}
-
 int main() {
     rtest_banner("rliza");
 
@@ -55,11 +49,16 @@ int main() {
             "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\"}}\", null, \"AIOHTTP_SESSION_5a2510809b85492b8f14e8d3e2f11da3\"]}";
         rassert(rliza_validate(long_data));
         rliza_t *a = rliza_loads(&long_data);
-        // rliza_dumpss(a);
         rliza_free(a);
-
-        (void)a;
     }
+    char *nested_obj = "{\"test\":123,\"test2\":{\"test3\":123}}";
+    rliza_t *a = rliza_loads(&nested_obj);
+    char *b = rliza_dumps(a);
+    printf("%s\n", b);
+    // rliza_dumpss(a);
+    rliza_free(a);
+    free(b);
+
     rtest_banner("performance test");
     performance_test();
     rtest_banner("serialize/deserialize");

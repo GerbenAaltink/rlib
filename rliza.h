@@ -686,11 +686,16 @@ char *rliza_dumps(rliza_t *rliza) {
         // bool add_braces = false;
         for (unsigned i = 0; i < rliza->count; i++) {
             char *content_chunk = rliza_dumps(rliza->content.map[i]);
-            if (strlen(content_chunk) + strlen(content) > size) {
-                size += strlen(content_chunk) + size + 50;
+            char *content_chunk_stripped = content_chunk;
+            if (*content_chunk_stripped == '{') {
+                content_chunk_stripped++;
+                content_chunk_stripped[strlen(content_chunk_stripped) - 1] = 0;
+            }
+            if (strlen(content_chunk_stripped) + strlen(content) > size) {
+                size += strlen(content_chunk_stripped) + 20;
                 content = realloc(content, size);
             }
-            strcat(content, content_chunk);
+            strcat(content, content_chunk_stripped);
             free(content_chunk);
 
             strcat(content, ",");
@@ -717,11 +722,16 @@ char *rliza_dumps(rliza_t *rliza) {
             strcpy(content, "[");
         for (unsigned i = 0; i < rliza->count; i++) {
             char *content_chunk = rliza_dumps(rliza->content.map[i]);
-            if (strlen(content_chunk) + strlen(content) > size) {
-                size += strlen(content_chunk) + 20;
+            char *content_chunk_stripped = content_chunk;
+            if (*content_chunk_stripped == '{') {
+                // content_chunk_stripped++;
+                // content_chunk_stripped[strlen(content_chunk_stripped) - 1] = 0;
+            }
+            if (strlen(content_chunk_stripped) + strlen(content) > size) {
+                size += strlen(content_chunk_stripped) + 20;
                 content = realloc(content, size);
             }
-            strcat(content, content_chunk);
+            strcat(content, content_chunk_stripped);
             free(content_chunk);
             strcat(content, ",");
         }
@@ -739,6 +749,12 @@ char *rliza_dumps(rliza_t *rliza) {
             strcpy(content, "null");
     }
     return content;
+}
+
+void rliza_dumpss(rliza_t *rliza) {
+    char *output = rliza_dumps(rliza);
+    printf("%s\n", output);
+    free(output);
 }
 
 void rliza_push(rliza_t *self, rliza_t *obj) { rliza_push_object(self, obj); }
