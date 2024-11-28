@@ -6,6 +6,7 @@
 
 #define _POSIX_C_SOURCE_199309L
 #endif
+#include "rtemp.h"
 #include <sys/time.h>
 #include <time.h>
 #undef _POSIX_C_SOURCE_199309L
@@ -113,7 +114,7 @@ void msleep(long miliseonds) {
 }
 
 char *format_time(int64_t nanoseconds) {
-    static char output[1024];
+    char output[1024];
     size_t output_size = sizeof(output);
     output[0] = 0;
     if (nanoseconds < 1000) {
@@ -140,7 +141,7 @@ char *format_time(int64_t nanoseconds) {
             snprintf(output, output_size, "%.2fs", s);
         }
     }
-    return output;
+    return sbuf(output);
 }
 
 #endif

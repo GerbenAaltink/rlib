@@ -1,3 +1,5 @@
+#ifndef RTEMP_H
+#define RTEMP_H
 #include "rtypes.h"
 #include <pthread.h>
 #ifndef RTEMPC_SLOT_COUNT
@@ -48,3 +50,4 @@ char *rtempc(char *data) {
 #define sreset(_pname, _psize) _pname = _##_pname;
 
 #define sbuf(val) rtempc(val)
+#endif

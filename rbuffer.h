@@ -66,7 +66,7 @@ size_t rbuffer_push(rbuffer_t *rfb, unsigned char c) {
         rfb->_data[rfb->pos++] = c;
         return 1;
     }
-    rfb->_data = realloc(rfb->_data, rfb->size + 1);
+    rfb->_data = realloc(rfb->_data, rfb->size ? rfb->size + 1 : rfb->size + 2);
     rfb->_data[rfb->pos++] = c;
     rfb->size++;
     return rfb->pos;

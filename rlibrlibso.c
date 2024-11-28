@@ -1,4 +1,4 @@
-// RETOOR - Nov 14 2024
+// RETOOR - Nov 28 2024
 // MIT License
 // ===========
 
@@ -81,9 +81,62 @@ typedef unsigned char byte;
 #ifndef ulonglong
 #define ulonglong unsigned long long
 #endif
+#include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef RTEMP_H
+#define RTEMP_H
+#include <pthread.h>
+#ifndef RTEMPC_SLOT_COUNT
+#define RTEMPC_SLOT_COUNT 20
+#endif
+#ifndef RTEMPC_SLOT_SIZE
+#define RTEMPC_SLOT_SIZE 1024 * 64 * 128
+#endif
+
+bool _rtempc_initialized = 0;
+pthread_mutex_t _rtempc_thread_lock;
+bool rtempc_use_mutex = true;
+byte _current_rtempc_slot = 1;
+char _rtempc_buffer[RTEMPC_SLOT_COUNT][RTEMPC_SLOT_SIZE];
+char *rtempc(char *data) {
+
+    if (rtempc_use_mutex) {
+        if (!_rtempc_initialized) {
+            _rtempc_initialized = true;
+            pthread_mutex_init(&_rtempc_thread_lock, NULL);
+        }
+
+        pthread_mutex_lock(&_rtempc_thread_lock);
+    }
+
+    uint current_rtempc_slot = _current_rtempc_slot;
+    _rtempc_buffer[current_rtempc_slot][0] = 0;
+    strcpy(_rtempc_buffer[current_rtempc_slot], data);
+    _current_rtempc_slot++;
+    if (_current_rtempc_slot == RTEMPC_SLOT_COUNT) {
+        _current_rtempc_slot = 0;
+    }
+    if (rtempc_use_mutex)
+        pthread_mutex_unlock(&_rtempc_thread_lock);
+    return _rtempc_buffer[current_rtempc_slot];
+}
+
+#define sstring(_pname, _psize)                                                                                                            \
+    static char _##_pname[_psize];                                                                                                         \
+    _##_pname[0] = 0;                                                                                                                      \
+    char *_pname = _##_pname;
+
+#define string(_pname, _psize)                                                                                                             \
+    char _##_pname[_psize];                                                                                                                \
+    _##_pname[0] = 0;                                                                                                                      \
+    char *_pname = _##_pname;
+
+#define sreset(_pname, _psize) _pname = _##_pname;
+
+#define sbuf(val) rtempc(val)
+#endif
 #ifdef _POSIX_C_SOURCE_TEMP
 #undef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE _POSIX_C_SOURCE_TEMP
@@ -91,9 +144,13 @@ typedef unsigned char byte;
 #else
 #undef _POSIX_C_SOURCE
 #endif
-static ulonglong rmalloc_count = 0;
-static ulonglong rmalloc_alloc_count = 0;
-static ulonglong rmalloc_free_count = 0;
+ulonglong rmalloc_count = 0;
+ulonglong rmalloc_alloc_count = 0;
+ulonglong rmalloc_free_count = 0;
+ulonglong rmalloc_total_bytes_allocated = 0;
+
+void *_rmalloc_prev_realloc_obj = NULL;
+size_t _rmalloc_prev_realloc_obj_size = 0;
 
 void *rmalloc(size_t size) {
     void *result;
@@ -102,6 +159,7 @@ void *rmalloc(size_t size) {
     }
     rmalloc_count++;
     rmalloc_alloc_count++;
+    rmalloc_total_bytes_allocated += size;
     return result;
 }
 void *rcalloc(size_t count, size_t size) {
@@ -111,17 +169,28 @@ void *rcalloc(size_t count, size_t size) {
     }
     rmalloc_alloc_count++;
     rmalloc_count++;
+    rmalloc_total_bytes_allocated += count * size;
     return result;
 }
 void *rrealloc(void *obj, size_t size) {
     if (!obj) {
         rmalloc_count++;
-        rmalloc_alloc_count++;
+    }
+
+    rmalloc_alloc_count++;
+    if (obj == _rmalloc_prev_realloc_obj) {
+        rmalloc_total_bytes_allocated += size - _rmalloc_prev_realloc_obj_size;
+        _rmalloc_prev_realloc_obj_size = size - _rmalloc_prev_realloc_obj_size;
+
+    } else {
+        _rmalloc_prev_realloc_obj_size = size;
     }
     void *result;
     while (!(result = realloc(obj, size))) {
         fprintf(stderr, "Warning: realloc failed, trying again.\n");
     }
+    _rmalloc_prev_realloc_obj = result;
+
     return result;
 }
 
@@ -131,8 +200,10 @@ char *rstrdup(const char *s) {
 
     char *result;
     size_t size = strlen(s) + 1;
+
     result = rmalloc(size);
     memcpy(result, s, size);
+    rmalloc_total_bytes_allocated += size;
     return result;
 }
 void *rfree(void *obj) {
@@ -150,10 +221,42 @@ void *rfree(void *obj) {
 #define strdup rstrdup
 #endif
 
+char *rmalloc_lld_format(ulonglong num) {
+
+    char res[100];
+    res[0] = 0;
+    sprintf(res, "%'lld", num);
+    char *resp = res;
+    while (*resp) {
+        if (*resp == ',')
+            *resp = '.';
+        resp++;
+    }
+    return sbuf(res);
+}
+
+char *rmalloc_bytes_format(int factor, ulonglong num) {
+    char *sizes[] = {"B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
+    if (num > 1024) {
+        return rmalloc_bytes_format(factor + 1, num / 1024);
+    }
+    char res[100];
+    sprintf(res, "%s %s", rmalloc_lld_format(num), sizes[factor]);
+    return sbuf(res);
+}
+
 char *rmalloc_stats() {
     static char res[200];
     res[0] = 0;
-    sprintf(res, "Memory usage: %lld allocated, %lld freed, %lld in use.", rmalloc_alloc_count, rmalloc_free_count, rmalloc_count);
+    // int original_locale = localeconv();
+    setlocale(LC_NUMERIC, "en_US.UTF-8");
+    sprintf(res, "Memory usage: %s, %s (re)allocated, %s unqiue free'd, %s in use.", rmalloc_bytes_format(0, rmalloc_total_bytes_allocated),
+            rmalloc_lld_format(rmalloc_alloc_count), rmalloc_lld_format(rmalloc_free_count),
+
+            rmalloc_lld_format(rmalloc_count));
+    // setlocale(LC_NUMERIC, original_locale);
+
+    setlocale(LC_NUMERIC, "");
     return res;
 }
 
@@ -736,59 +839,10 @@ void nsock(int port, void (*on_connect)(int fd), void (*on_data)(int fd), void (
 
 #ifndef UUID_H
 #define UUID_H
-#include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#ifndef RTEMPC_SLOT_COUNT
-#define RTEMPC_SLOT_COUNT 20
-#endif
-#ifndef RTEMPC_SLOT_SIZE
-#define RTEMPC_SLOT_SIZE 1024 * 64 * 128
-#endif
-
-bool _rtempc_initialized = 0;
-pthread_mutex_t _rtempc_thread_lock;
-bool rtempc_use_mutex = true;
-byte _current_rtempc_slot = 1;
-char _rtempc_buffer[RTEMPC_SLOT_COUNT][RTEMPC_SLOT_SIZE];
-char *rtempc(char *data) {
-
-    if (rtempc_use_mutex) {
-        if (!_rtempc_initialized) {
-            _rtempc_initialized = true;
-            pthread_mutex_init(&_rtempc_thread_lock, NULL);
-        }
-
-        pthread_mutex_lock(&_rtempc_thread_lock);
-    }
-
-    uint current_rtempc_slot = _current_rtempc_slot;
-    _rtempc_buffer[current_rtempc_slot][0] = 0;
-    strcpy(_rtempc_buffer[current_rtempc_slot], data);
-    _current_rtempc_slot++;
-    if (_current_rtempc_slot == RTEMPC_SLOT_COUNT) {
-        _current_rtempc_slot = 0;
-    }
-    if (rtempc_use_mutex)
-        pthread_mutex_unlock(&_rtempc_thread_lock);
-    return _rtempc_buffer[current_rtempc_slot];
-}
-
-#define sstring(_pname, _psize)                                                                                                            \
-    static char _##_pname[_psize];                                                                                                         \
-    _##_pname[0] = 0;                                                                                                                      \
-    char *_pname = _##_pname;
-
-#define string(_pname, _psize)                                                                                                             \
-    char _##_pname[_psize];                                                                                                                \
-    _##_pname[0] = 0;                                                                                                                      \
-    char *_pname = _##_pname;
-
-#define sreset(_pname, _psize) _pname = _##_pname;
-
-#define sbuf(val) rtempc(val)
 
 typedef struct {
     unsigned char bytes[16];
@@ -1465,7 +1519,7 @@ size_t rbuffer_push(rbuffer_t *rfb, unsigned char c) {
         rfb->_data[rfb->pos++] = c;
         return 1;
     }
-    rfb->_data = realloc(rfb->_data, rfb->size + 1);
+    rfb->_data = realloc(rfb->_data, rfb->size ? rfb->size + 1 : rfb->size + 2);
     rfb->_data[rfb->pos++] = c;
     rfb->size++;
     return rfb->pos;
@@ -2940,7 +2994,7 @@ void msleep(long miliseonds) {
 }
 
 char *format_time(int64_t nanoseconds) {
-    static char output[1024];
+    char output[1024];
     size_t output_size = sizeof(output);
     output[0] = 0;
     if (nanoseconds < 1000) {
@@ -2967,7 +3021,7 @@ char *format_time(int64_t nanoseconds) {
             snprintf(output, output_size, "%.2fs", s);
         }
     }
-    return output;
+    return sbuf(output);
 }
 
 #endif
@@ -8214,7 +8268,7 @@ char *extract_c_local_include(char *line, char *include_path) {
     return NULL;
 }
 
-char *readline(FILE *f) {
+char *rmerge_readline(FILE *f) {
     static char data[4096];
     data[0] = 0;
     int index = 0;
@@ -8272,7 +8326,7 @@ void merge_file(char *source, FILE *d) {
 
     char *line;
     char include_path[4096];
-    while ((line = readline(fd))) {
+    while ((line = rmerge_readline(fd))) {
 
         include_path[0] = 0;
         if (!*line)
@@ -8328,7 +8382,7 @@ int rmerge_main(int argc, char *argv[]) {
     rewind(f);
     char *data;
     int line_number = 0;
-    while ((data = readline(f))) {
+    while ((data = rmerge_readline(f))) {
         if (line_number) {
             printf("/*%.5d*/    ", line_number);
             line_number++;

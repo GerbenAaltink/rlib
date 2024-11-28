@@ -46,7 +46,7 @@ char *extract_c_local_include(char *line, char *include_path) {
     return NULL;
 }
 
-char *readline(FILE *f) {
+char *rmerge_readline(FILE *f) {
     static char data[4096];
     data[0] = 0;
     int index = 0;
@@ -104,7 +104,7 @@ void merge_file(char *source, FILE *d) {
 
     char *line;
     char include_path[4096];
-    while ((line = readline(fd))) {
+    while ((line = rmerge_readline(fd))) {
 
         include_path[0] = 0;
         if (!*line)
@@ -160,7 +160,7 @@ int rmerge_main(int argc, char *argv[]) {
     rewind(f);
     char *data;
     int line_number = 0;
-    while ((data = readline(f))) {
+    while ((data = rmerge_readline(f))) {
         if (line_number) {
             printf("/*%.5d*/    ", line_number);
             line_number++;
