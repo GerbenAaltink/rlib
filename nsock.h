@@ -64,16 +64,18 @@ void nsock_close(int fd) {
     if (nsock_on_close)
         nsock_on_close(fd);
     nsock_t *sock = nsock_get(fd);
-    if (sock) {
+    if (sock && sock->connected) {
+        sock->connected = false;
         for (unsigned int i = 0; i < sock->upstream_count; i++) {
-            nsock_close(sock->upstreams[i]);
+            nsock_t *upstream = nsock_get(sock->upstreams[i]);
+            if (upstream->connected)
+                nsock_close(sock->upstreams[i]);
             sock->upstreams[i] = 0;
         }
         if (sock->upstream_count) {
             free(sock->upstreams);
         }
         sock->upstream_count = 0;
-        sock->connected = false;
     }
     nsock_socks[fd] = 0;
     close(fd);

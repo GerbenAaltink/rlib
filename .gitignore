@@ -13,4 +13,5 @@ errors.h
 *.tty
 *.o
 build
+.history
 
